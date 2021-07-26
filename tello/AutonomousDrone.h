@@ -1,0 +1,142 @@
+//
+// Created by rbdstudent on 15/06/2021.
+//
+
+#ifndef TELLO_AUTONOMOUSDRONE_H
+#define TELLO_AUTONOMOUSDRONE_H
+
+#include "Room.h"
+#include "Polygon.h"
+#include <opencv2/core.hpp>
+#include <opencv2/videoio.hpp>
+#include <opencv2/highgui.hpp>
+#include <memory>
+#include <System.h>
+#include <iostream>
+#include <unistd.h>
+#include <Converter.h>
+#include <string>
+#include <thread>
+#include "Charger.h"
+
+class AutonomousDrone {
+public:
+    AutonomousDrone(std::shared_ptr<ctello::Tello> drone,/*std::shared_ptr<cv::VideoCapture> capture,*/
+                    std::string vocabularyFilePath, std::string cameraYamlPath, std::string arucoYamlPath,
+                    std::string droneWifiName, int sizeOfFrameStack = 20,
+                    bool withPlot = false, std::string chargerBluetoothAddress = "3C:61:05:03:81:E2");
+
+    void run();
+
+private:
+    bool updateCurrentFrame(ORB_SLAM2::Frame frame);
+
+    int
+    protectiveSphere(Point dronePosition, std::vector<Point> points, double sphereRadius = 0.4, double epsilon = 0.125,
+                     int minSamples = 15);
+
+    void runOrbSlam();
+
+    void areWeInWrongScale(std::vector<Frame> frames);
+
+    std::vector<Point> getCurrentMap();
+
+    bool manageDroneCommand(std::string command, int amountOfAttempt = 3, int amountOfSleep = 0);
+
+    bool doTriangulation();
+
+    void alertLowBattery();
+
+    void stayInTheAir();
+
+    void disconnectDrone();
+
+    void getCameraFeed();
+
+    void howToRotate(int angle, bool clockwise, bool buildMap = false);
+
+    void rotateDrone(int angle, bool clockwise, bool buildMap = false);
+
+    void beginScan(bool findHome = false, int rotationAngle = 25);
+
+    void getNavigationPoints(bool isExit = false);
+
+    std::pair<int, bool> getRotationToFrameAngle(Point point);
+
+    std::pair<Point, Point> getNavigationVector(Point previousPosition, Point destination);
+
+    void collisionDetector(Point destination);
+
+    void monitorDroneProgress(Point destination);
+
+    void maintainAngleToPoint(Point destination, bool rotateToFrameAngle = true);
+
+    std::tuple<int, bool, int>
+    checkMotion(Point oldestPosition, Point currentPosition, Point closePoint, int angleRange = 90);
+
+    void connectDrone();
+
+    void saveMap(int fileNumber = 0);
+
+    Point convertFrameToPoint(Frame frame);
+
+    void updateCurrentLocation(cv::Mat Tcw);
+
+    void flyToNavigationPoints();
+
+    bool navigateDrone(Point destination, bool rotateToFrameAngle = true);
+
+    enum drone_modes {
+        scanning, navigation, noBattery
+    };
+    std::string vocFilePath;
+    Point navigationDestination;
+    int dronePort = 8999;
+    std::string yamlFilePath;
+    Point currentLocation;
+    ORB_SLAM2::System *orbSlamPointer;
+    drone_modes current_drone_mode = scanning;
+    std::shared_ptr<ctello::Tello> drone;
+    std::shared_ptr<cv::Mat> currentImage;
+    std::shared_ptr<cv::VideoCapture> capture;
+    std::shared_ptr<bool> holdCamera;
+    std::string droneWifiName;
+    bool withPlot = false;
+    Point home;
+    std::string arucoYamlPath;
+    bool stop = false;
+    bool orbSlamRunning = false;
+    bool runCamera = true;
+    bool localized = false;
+    bool canStart = false;
+    bool isExit = true;
+    bool commandingDrone = false;
+    bool statusingDrone = false;
+    int speed = 20;
+    const char *const TELLO_STREAM_URL{"udp://0.0.0.0:11111?overrun_nonfatal=1&fifo_size=5000"};
+    std::vector<Room> rooms;
+    std::unordered_map<int, int> whereWeLostLocalization;
+    Room currentRoom;
+    std::string chargerBluetoothAddress;
+    bool droneRotate = false;
+    bool isBlocked = false;
+    bool lookingBack = false;
+    bool rightSideBlocked = false;
+    bool isMinusUp = false;
+    bool leftSideBlocked = false;
+    bool loopCloserHappened = false;
+    bool lowBattery = false;
+    bool reachedCheckpoint = false;
+    bool gettingFurther = false;
+    bool gettingCloser = false;
+    Frame currentFrame;
+    std::vector<Frame> lastFrames;
+    int sizeOfFrameStack;
+    double closeThreshold = 0.4;
+    bool isTurning = false;
+    double safetyThreshold = 0.05;
+    bool exitStayInTheAirLoop;
+    bool weInAWrongScale;
+};
+
+#endif //TELLO_AUTONOMOUSDRONE_H

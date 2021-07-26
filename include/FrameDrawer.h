@@ -24,6 +24,7 @@
 #include "Tracking.h"
 #include "MapPoint.h"
 #include "Map.h"
+#include "Point.h"
 
 #include<opencv2/core/core.hpp>
 #include<opencv2/features2d/features2d.hpp>
@@ -31,42 +32,46 @@
 #include<mutex>
 
 
-namespace ORB_SLAM2
-{
+namespace ORB_SLAM2 {
 
-class Tracking;
-class Viewer;
+    class Tracking;
 
-class FrameDrawer
-{
-public:
-    FrameDrawer(Map* pMap);
+    class Viewer;
 
-    // Update info from the last processed frame.
-    void Update(Tracking *pTracker);
+    class FrameDrawer {
+    public:
+        FrameDrawer(Map *pMap);
 
-    // Draw last processed frame.
-    cv::Mat DrawFrame();
+        // Update info from the last processed frame.
+        void Update(Tracking *pTracker);
 
-protected:
+        // Draw last processed frame.
+        cv::Mat DrawFrame();
 
-    void DrawTextInfo(cv::Mat &im, int nState, cv::Mat &imText);
+        Point SetDestination(Point point) { destination = point; }
 
-    // Info of the frame to be drawn
-    cv::Mat mIm;
-    int N;
-    vector<cv::KeyPoint> mvCurrentKeys;
-    vector<bool> mvbMap, mvbVO;
-    bool mbOnlyTracking;
-    int mnTracked, mnTrackedVO;
-    vector<cv::KeyPoint> mvIniKeys;
-    vector<int> mvIniMatches;
-    int mState;
+        void ClearDestinationPoint() { destination = Point(1000, 1000, 1000); }
 
-    Map* mpMap;
+    protected:
+        Point destination;
 
-    std::mutex mMutex;
-};
+        void DrawTextInfo(cv::Mat &im, int nState, cv::Mat &imText);
+
+        // Info of the frame to be drawn
+        cv::Mat mIm;
+        int N;
+        vector<cv::KeyPoint> mvCurrentKeys;
+        vector<bool> mvbMap, mvbVO;
+        bool mbOnlyTracking;
+        int mnTracked, mnTrackedVO;
+        vector<cv::KeyPoint> mvIniKeys;
+        vector<int> mvIniMatches;
+        int mState;
+
+        Map *mpMap;
+
+        std::mutex mMutex;
+    };
 
 } //namespace ORB_SLAM
 

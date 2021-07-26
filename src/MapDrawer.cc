@@ -19,10 +19,7 @@
 */
 
 #include "MapDrawer.h"
-#include "MapPoint.h"
-#include "KeyFrame.h"
-#include <pangolin/pangolin.h>
-#include <mutex>
+
 
 namespace ORB_SLAM2
 {
@@ -31,14 +28,13 @@ namespace ORB_SLAM2
 MapDrawer::MapDrawer(Map* pMap, const string &strSettingPath):mpMap(pMap)
 {
     cv::FileStorage fSettings(strSettingPath, cv::FileStorage::READ);
-
+    destination = Point(1000,1000,1000);
     mKeyFrameSize = fSettings["Viewer.KeyFrameSize"];
     mKeyFrameLineWidth = fSettings["Viewer.KeyFrameLineWidth"];
     mGraphLineWidth = fSettings["Viewer.GraphLineWidth"];
     mPointSize = fSettings["Viewer.PointSize"];
     mCameraSize = fSettings["Viewer.CameraSize"];
     mCameraLineWidth = fSettings["Viewer.CameraLineWidth"];
-
 }
 
 void MapDrawer::DrawMapPoints()
@@ -76,8 +72,26 @@ void MapDrawer::DrawMapPoints()
         glVertex3f(pos.at<float>(0),pos.at<float>(1),pos.at<float>(2));
 
     }
-
     glEnd();
+
+    if(destination.x != 1000){
+        if (!polygonEdges.empty()){
+            glPointSize(mPointSize*10);
+            glBegin(GL_POINTS);
+            glColor3f(0.0,1.0,0.0);
+            for (auto polygonEdge : polygonEdges){
+                if (!(polygonEdge == destination)){
+                    glVertex3d(polygonEdge.x,polygonEdge.z,polygonEdge.y);
+                }
+            }
+            glEnd();
+        }
+        glPointSize(mPointSize*10);
+        glBegin(GL_POINTS);
+        glColor3f(0.0,0.0,1.0);
+        glVertex3d(destination.x,destination.z,destination.y);
+        glEnd();
+    }
 }
 
 void MapDrawer::DrawKeyFrames(const bool bDrawKF, const bool bDrawGraph)

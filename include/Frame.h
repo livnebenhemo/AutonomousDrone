@@ -22,6 +22,7 @@
 #define FRAME_H
 
 #include<vector>
+#include <memory>
 
 #include "MapPoint.h"
 #include "Thirdparty/DBoW2/DBoW2/BowVector.h"
@@ -31,6 +32,7 @@
 #include "ORBextractor.h"
 
 #include <opencv2/opencv.hpp>
+#include <mutex>
 
 namespace ORB_SLAM2
 {
@@ -71,14 +73,27 @@ public:
 
     // Returns the camera center.
     inline cv::Mat GetCameraCenter(){
+        std::unique_lock<std::mutex> lock(*mutex);
         return mOw.clone();
     }
 
     // Returns inverse of rotation
     inline cv::Mat GetRotationInverse(){
+        std::unique_lock<std::mutex> lock(*mutex);
         return mRwc.clone();
     }
-
+    inline cv::Mat getCameraTranslation(){
+        std::unique_lock<std::mutex> lock(*mutex);
+        return mTcw.clone();
+    }
+    inline int getFrameId(){
+        std::unique_lock<std::mutex> lock(*mutex);
+        return mnId;
+    }
+    inline cv::Mat getCameraRotation(){
+        std::unique_lock<std::mutex> lock(*mutex);
+        return mRwc.clone();
+    }
     // Check if a MapPoint is in the frustum of the camera
     // and fill variables of the MapPoint to be used by the tracking
     bool isInFrustum(MapPoint* pMP, float viewingCosLimit);
@@ -86,7 +101,7 @@ public:
     // Compute the cell of a keypoint (return false if outside the grid)
     bool PosInGrid(const cv::KeyPoint &kp, int &posX, int &posY);
 
-    vector<size_t> GetFeaturesInArea(const float &x, const float  &y, const float  &r, const int minLevel=-1, const int maxLevel=-1) const;
+    vector<size_t> GetFeaturesInArea(const double &x, const double  &y, const double  &r, const int minLevel=-1, const int maxLevel=-1) const;
 
     // Search a match for each keypoint in the left image to a keypoint in the right image.
     // If there is a match, depth is computed and the right coordinate associated to the left keypoint is stored.
@@ -148,7 +163,10 @@ public:
 
     // ORB descriptor, each row associated to a keypoint.
     cv::Mat mDescriptors, mDescriptorsRight;
-
+    std::vector<MapPoint*> GetMvpMapPoints(){
+        std::unique_lock<std::mutex> lock(*mutex);
+        return mvpMapPoints;
+    }
     // MapPoints associated to keypoints, NULL pointer if no association.
     std::vector<MapPoint*> mvpMapPoints;
 
@@ -162,7 +180,8 @@ public:
 
     // Camera pose.
     cv::Mat mTcw;
-
+    cv::Mat mRwc;
+    cv::Mat mOw;
     // Current and Next Frame id.
     static long unsigned int nNextId;
     long unsigned int mnId;
@@ -186,7 +205,7 @@ public:
     static float mnMaxY;
 
     static bool mbInitialComputations;
-
+    
 
 private:
 
@@ -204,8 +223,9 @@ private:
     // Rotation, translation and camera center
     cv::Mat mRcw;
     cv::Mat mtcw;
-    cv::Mat mRwc;
-    cv::Mat mOw; //==mtwc
+    std::shared_ptr<std::mutex> mutex;
+
+    //==mtwc
 };
 
 }// namespace ORB_SLAM

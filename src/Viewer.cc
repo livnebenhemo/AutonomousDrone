@@ -22,7 +22,7 @@
 #include <pangolin/pangolin.h>
 
 #include <mutex>
-
+#include <unistd.h>
 namespace ORB_SLAM2
 {
 
@@ -58,10 +58,10 @@ void Viewer::Run()
 
     pangolin::CreateWindowAndBind("ORB-SLAM2: Map Viewer",1024,768);
 
-    // 3D Mouse handler requires depth testing to be enabled
+    // // 3D Mouse handler requires depth testing to be enabled
     glEnable(GL_DEPTH_TEST);
 
-    // Issue specific OpenGl we might need
+    // // Issue specific OpenGl we might need
     glEnable (GL_BLEND);
     glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
@@ -73,13 +73,13 @@ void Viewer::Run()
     pangolin::Var<bool> menuLocalizationMode("menu.Localization Mode",false,true);
     pangolin::Var<bool> menuReset("menu.Reset",false,false);
 
-    // Define Camera Render Object (for view / scene browsing)
+    // // Define Camera Render Object (for view / scene browsing)
     pangolin::OpenGlRenderState s_cam(
                 pangolin::ProjectionMatrix(1024,768,mViewpointF,mViewpointF,512,389,0.1,1000),
                 pangolin::ModelViewLookAt(mViewpointX,mViewpointY,mViewpointZ, 0,0,0,0.0,-1.0, 0.0)
                 );
 
-    // Add named OpenGL viewport to window and provide 3D Handler
+    // // Add named OpenGL viewport to window and provide 3D Handler
     pangolin::View& d_cam = pangolin::CreateDisplay()
             .SetBounds(0.0, 1.0, pangolin::Attach::Pix(175), 1.0, -1024.0f/768.0f)
             .SetHandler(new pangolin::Handler3D(s_cam));
@@ -92,7 +92,7 @@ void Viewer::Run()
     bool bFollow = true;
     bool bLocalizationMode = false;
 
-    while(1)
+    while(true)
     {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -195,8 +195,7 @@ bool Viewer::isFinished()
 void Viewer::RequestStop()
 {
     unique_lock<mutex> lock(mMutexStop);
-    if(!mbStopped)
-        mbStopRequested = true;
+    mbStopRequested = !mbStopped;
 }
 
 bool Viewer::isStopped()

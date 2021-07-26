@@ -36,8 +36,6 @@ public:
     static std::vector<cv::Mat> toDescriptorVector(const cv::Mat &Descriptors);
 
     static g2o::SE3Quat toSE3Quat(const cv::Mat &cvT);
-    static g2o::SE3Quat toSE3Quat(const g2o::Sim3 &gSim3);
-
     static cv::Mat toCvMat(const g2o::SE3Quat &SE3);
     static cv::Mat toCvMat(const g2o::Sim3 &Sim3);
     static cv::Mat toCvMat(const Eigen::Matrix<double,4,4> &m);
@@ -49,7 +47,7 @@ public:
     static Eigen::Matrix<double,3,1> toVector3d(const cv::Point3f &cvPoint);
     static Eigen::Matrix<double,3,3> toMatrix3d(const cv::Mat &cvMat3);
 
-    static std::vector<float> toQuaternion(const cv::Mat &M);
+    static std::vector<double> toQuaternion(const cv::Mat &M);
 };
 
 }// namespace ORB_SLAM

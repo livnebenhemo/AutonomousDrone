@@ -56,7 +56,6 @@
 #include <cmath>
 #include <opencv2/core/core.hpp>
 #include "Thirdparty/DBoW2/DUtils/Random.h"
-#include <algorithm>
 
 using namespace std;
 
@@ -79,32 +78,27 @@ PnPsolver::PnPsolver(const Frame &F, const vector<MapPoint*> &vpMapPointMatches)
     for(size_t i=0, iend=vpMapPointMatches.size(); i<iend; i++)
     {
         MapPoint* pMP = vpMapPointMatches[i];
-
         if(pMP)
         {
             if(!pMP->isBad())
             {
                 const cv::KeyPoint &kp = F.mvKeysUn[i];
-
                 mvP2D.push_back(kp.pt);
                 mvSigma2.push_back(F.mvLevelSigma2[kp.octave]);
-
                 cv::Mat Pos = pMP->GetWorldPos();
-                mvP3Dw.push_back(cv::Point3f(Pos.at<float>(0),Pos.at<float>(1), Pos.at<float>(2)));
-
+                mvP3Dw.emplace_back(cv::Point3f(Pos.at<float>(0),Pos.at<float>(1), Pos.at<float>(2)));
                 mvKeyPointIndices.push_back(i);
-                mvAllIndices.push_back(idx);               
-
+                mvAllIndices.push_back(idx);
                 idx++;
             }
         }
     }
 
     // Set camera calibration parameters
-    fu = F.fx;
-    fv = F.fy;
-    uc = F.cx;
-    vc = F.cy;
+    fu = Frame::fx;
+    fv = Frame::fy;
+    uc = Frame::cx;
+    vc = Frame::cy;
 
     SetRansacParameters();
 }
@@ -626,12 +620,6 @@ void PnPsolver::estimate_R_and_t(double R[3][3], double t[3])
   t[2] = pc0[2] - dot(R[2], pw0);
 }
 
-void PnPsolver::print_pose(const double R[3][3], const double t[3])
-{
-  cout << R[0][0] << " " << R[0][1] << " " << R[0][2] << " " << t[0] << endl;
-  cout << R[1][0] << " " << R[1][1] << " " << R[1][2] << " " << t[1] << endl;
-  cout << R[2][0] << " " << R[2][1] << " " << R[2][2] << " " << t[2] << endl;
-}
 
 void PnPsolver::solve_for_sign(void)
 {
@@ -950,36 +938,6 @@ void PnPsolver::qr_solve(CvMat * A, CvMat * b, CvMat * X)
 }
 
 
-
-void PnPsolver::relative_error(double & rot_err, double & transl_err,
-			  const double Rtrue[3][3], const double ttrue[3],
-			  const double Rest[3][3],  const double test[3])
-{
-  double qtrue[4], qest[4];
-
-  mat_to_quat(Rtrue, qtrue);
-  mat_to_quat(Rest, qest);
-
-  double rot_err1 = sqrt((qtrue[0] - qest[0]) * (qtrue[0] - qest[0]) +
-			 (qtrue[1] - qest[1]) * (qtrue[1] - qest[1]) +
-			 (qtrue[2] - qest[2]) * (qtrue[2] - qest[2]) +
-			 (qtrue[3] - qest[3]) * (qtrue[3] - qest[3]) ) /
-    sqrt(qtrue[0] * qtrue[0] + qtrue[1] * qtrue[1] + qtrue[2] * qtrue[2] + qtrue[3] * qtrue[3]);
-
-  double rot_err2 = sqrt((qtrue[0] + qest[0]) * (qtrue[0] + qest[0]) +
-			 (qtrue[1] + qest[1]) * (qtrue[1] + qest[1]) +
-			 (qtrue[2] + qest[2]) * (qtrue[2] + qest[2]) +
-			 (qtrue[3] + qest[3]) * (qtrue[3] + qest[3]) ) /
-    sqrt(qtrue[0] * qtrue[0] + qtrue[1] * qtrue[1] + qtrue[2] * qtrue[2] + qtrue[3] * qtrue[3]);
-
-  rot_err = min(rot_err1, rot_err2);
-
-  transl_err =
-    sqrt((ttrue[0] - test[0]) * (ttrue[0] - test[0]) +
-	 (ttrue[1] - test[1]) * (ttrue[1] - test[1]) +
-	 (ttrue[2] - test[2]) * (ttrue[2] - test[2])) /
-    sqrt(ttrue[0] * ttrue[0] + ttrue[1] * ttrue[1] + ttrue[2] * ttrue[2]);
-}
 
 void PnPsolver::mat_to_quat(const double R[3][3], double q[4])
 {

@@ -33,6 +33,7 @@ void Map::AddKeyFrame(KeyFrame *pKF)
 {
     unique_lock<mutex> lock(mMutexMap);
     mspKeyFrames.insert(pKF);
+    mspCurrentKeyFrames.insert(pKF);
     if(pKF->mnId>mnMaxKFid)
         mnMaxKFid=pKF->mnId;
 }
@@ -41,13 +42,14 @@ void Map::AddMapPoint(MapPoint *pMP)
 {
     unique_lock<mutex> lock(mMutexMap);
     mspMapPoints.insert(pMP);
+    mspCurrentMapPoints.insert(pMP);
 }
 
 void Map::EraseMapPoint(MapPoint *pMP)
 {
     unique_lock<mutex> lock(mMutexMap);
     mspMapPoints.erase(pMP);
-
+    mspCurrentMapPoints.erase(pMP);
     // TODO: This only erase the pointer.
     // Delete the MapPoint
 }
@@ -56,7 +58,7 @@ void Map::EraseKeyFrame(KeyFrame *pKF)
 {
     unique_lock<mutex> lock(mMutexMap);
     mspKeyFrames.erase(pKF);
-
+    mspCurrentKeyFrames.erase(pKF);
     // TODO: This only erase the pointer.
     // Delete the MapPoint
 }
@@ -117,17 +119,33 @@ long unsigned int Map::GetMaxKFid()
 
 void Map::clear()
 {
-    for(set<MapPoint*>::iterator sit=mspMapPoints.begin(), send=mspMapPoints.end(); sit!=send; sit++)
+    for(auto sit=mspMapPoints.begin(), send=mspMapPoints.end(); sit!=send; sit++)
         delete *sit;
 
-    for(set<KeyFrame*>::iterator sit=mspKeyFrames.begin(), send=mspKeyFrames.end(); sit!=send; sit++)
+
+    for(auto sit=mspKeyFrames.begin(), send=mspKeyFrames.end(); sit!=send; sit++)
         delete *sit;
+
 
     mspMapPoints.clear();
     mspKeyFrames.clear();
     mnMaxKFid = 0;
     mvpReferenceMapPoints.clear();
     mvpKeyFrameOrigins.clear();
+    clearCurrent();
+}
+
+void Map::clearCurrent()
+{
+    mspCurrentKeyFrames.clear();
+    mspCurrentMapPoints.clear();
+}
+
+
+void Map::EraseCurrentMapPoint()
+{
+    unique_lock<mutex> lock(mMutexMap);
+    mspCurrentMapPoints.clear();
 }
 
 } //namespace ORB_SLAM

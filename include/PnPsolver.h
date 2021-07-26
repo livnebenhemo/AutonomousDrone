@@ -84,11 +84,6 @@ class PnPsolver {
 
   double compute_pose(double R[3][3], double T[3]);
 
-  void relative_error(double & rot_err, double & transl_err,
-              const double Rtrue[3][3], const double ttrue[3],
-              const double Rest[3][3],  const double test[3]);
-
-  void print_pose(const double R[3][3], const double t[3]);
   double reprojection_error(const double R[3][3], const double t[3]);
 
   void choose_control_points(void);
@@ -132,7 +127,6 @@ class PnPsolver {
   int number_of_correspondences;
 
   double cws[4][3], ccs[4][3];
-  double cws_determinant;
 
   vector<MapPoint*> mvpMapPointMatches;
 
@@ -149,7 +143,6 @@ class PnPsolver {
   // Current Estimation
   double mRi[3][3];
   double mti[3];
-  cv::Mat mTcwi;
   vector<bool> mvbInliersi;
   int mnInliersi;
 
@@ -182,8 +175,6 @@ class PnPsolver {
   // RANSAC expected inliers/total ratio
   float mRansacEpsilon;
 
-  // RANSAC Threshold inlier/outlier. Max error e = dist(P1,T_12*P2)^2
-  float mRansacTh;
 
   // RANSAC Minimun Set used at each iteration
   int mRansacMinSet;

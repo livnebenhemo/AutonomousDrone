@@ -19,12 +19,12 @@
 */
 
 #include "LocalMapping.h"
-#include "LoopClosing.h"
+#include "MyLoopClosing.h"
 #include "ORBmatcher.h"
 #include "Optimizer.h"
 
 #include<mutex>
-
+#include <unistd.h>
 namespace ORB_SLAM2
 {
 
@@ -187,7 +187,7 @@ void LocalMapping::MapPointCulling()
         {
             lit = mlpRecentAddedMapPoints.erase(lit);
         }
-        else if(pMP->GetFoundRatio()<0.25f )
+        else if(pMP->GetFoundRatio()<0.25f)
         {
             pMP->SetBadFlag();
             lit = mlpRecentAddedMapPoints.erase(lit);
@@ -454,9 +454,7 @@ void LocalMapping::CreateNewMapPoints()
 void LocalMapping::SearchInNeighbors()
 {
     // Retrieve neighbor keyframes
-    int nn = 10;
-    if(mbMonocular)
-        nn=20;
+    int nn = 20;
     const vector<KeyFrame*> vpNeighKFs = mpCurrentKeyFrame->GetBestCovisibilityKeyFrames(nn);
     vector<KeyFrame*> vpTargetKFs;
     for(vector<KeyFrame*>::const_iterator vit=vpNeighKFs.begin(), vend=vpNeighKFs.end(); vit!=vend; vit++)

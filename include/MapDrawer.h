@@ -20,12 +20,11 @@
 
 #ifndef MAPDRAWER_H
 #define MAPDRAWER_H
-
 #include"Map.h"
 #include"MapPoint.h"
 #include"KeyFrame.h"
 #include<pangolin/pangolin.h>
-
+#include "Point.h"
 #include<mutex>
 
 namespace ORB_SLAM2
@@ -42,11 +41,14 @@ public:
     void DrawKeyFrames(const bool bDrawKF, const bool bDrawGraph);
     void DrawCurrentCamera(pangolin::OpenGlMatrix &Twc);
     void SetCurrentCameraPose(const cv::Mat &Tcw);
-    void SetReferenceKeyFrame(KeyFrame *pKF);
     void GetCurrentOpenGLCameraMatrix(pangolin::OpenGlMatrix &M);
-
+    void SetDestination(Point point){destination = point;}
+    void SetPolygonEdges(std::vector<Point> points){polygonEdges = points;}
+    void ClearDestinationPoint(){destination = Point(1000,1000,1000);}
+    void ClearPolygonEdgesPoint(){polygonEdges = std::vector<Point>{};}
 private:
-
+    Point destination;
+    std::vector<Point> polygonEdges;
     float mKeyFrameSize;
     float mKeyFrameLineWidth;
     float mGraphLineWidth;

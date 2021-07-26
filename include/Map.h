@@ -50,6 +50,7 @@ public:
 
     std::vector<KeyFrame*> GetAllKeyFrames();
     std::vector<MapPoint*> GetAllMapPoints();
+    void EraseCurrentMapPoint();                   // delete
     std::vector<MapPoint*> GetReferenceMapPoints();
 
     long unsigned int MapPointsInMap();
@@ -58,6 +59,7 @@ public:
     long unsigned int GetMaxKFid();
 
     void clear();
+    void clearCurrent();
 
     vector<KeyFrame*> mvpKeyFrameOrigins;
 
@@ -69,7 +71,8 @@ public:
 protected:
     std::set<MapPoint*> mspMapPoints;
     std::set<KeyFrame*> mspKeyFrames;
-
+    std::set<KeyFrame*> mspCurrentKeyFrames;
+    std::set<MapPoint *> mspCurrentMapPoints; // Current map points
     std::vector<MapPoint*> mvpReferenceMapPoints;
 
     long unsigned int mnMaxKFid;

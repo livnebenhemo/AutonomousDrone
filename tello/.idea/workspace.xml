@@ -18,22 +18,65 @@
     </expand>
     <select />
   </component>
+  <component name="CMakeRunConfigurationManager" shouldGenerate="true" shouldDeleteObsolete="true">
+    <generated />
+  </component>
+  <component name="CMakeSettings">
+    <configurations>
+      <configuration PROFILE_NAME="Debug" CONFIG_NAME="Debug" />
+    </configurations>
+  </component>
   <component name="ChangeListManager">
     <list default="true" id="0f3031d1-5c56-43b1-af73-a387d3b32a71" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/AutonomousDrone.cpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/AutonomousDrone.h" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Frame.cpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Frame.h" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Point.cpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Point.h" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Room.cpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Room.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/../.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/../CMakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Examples/ROS/ORB_SLAM2/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/../Examples/ROS/ORB_SLAM2/CMakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../Examples/ROS/ORB_SLAM2/src/ros_stereo.cc" beforeDir="false" afterPath="$PROJECT_DIR$/../Examples/ROS/ORB_SLAM2/src/ros_stereo.cc" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../build.sh" beforeDir="false" afterPath="$PROJECT_DIR$/../build.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../include/Frame.h" beforeDir="false" afterPath="$PROJECT_DIR$/../include/Frame.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../include/Initializer.h" beforeDir="false" afterPath="$PROJECT_DIR$/../include/Initializer.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../include/KeyFrame.h" beforeDir="false" afterPath="$PROJECT_DIR$/../include/KeyFrame.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../include/Map.h" beforeDir="false" afterPath="$PROJECT_DIR$/../include/Map.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../include/MapPoint.h" beforeDir="false" afterPath="$PROJECT_DIR$/../include/MapPoint.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../include/System.h" beforeDir="false" afterPath="$PROJECT_DIR$/../include/System.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../include/Tracking.h" beforeDir="false" afterPath="$PROJECT_DIR$/../include/Tracking.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../src/Frame.cc" beforeDir="false" afterPath="$PROJECT_DIR$/../src/Frame.cc" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../src/FrameDrawer.cc" beforeDir="false" afterPath="$PROJECT_DIR$/../src/FrameDrawer.cc" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../src/Initializer.cc" beforeDir="false" afterPath="$PROJECT_DIR$/../src/Initializer.cc" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../src/KeyFrame.cc" beforeDir="false" afterPath="$PROJECT_DIR$/../src/KeyFrame.cc" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../src/KeyFrameDatabase.cc" beforeDir="false" afterPath="$PROJECT_DIR$/../src/KeyFrameDatabase.cc" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../src/LocalMapping.cc" beforeDir="false" afterPath="$PROJECT_DIR$/../src/LocalMapping.cc" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../src/LoopClosing.cc" beforeDir="false" afterPath="$PROJECT_DIR$/../src/LoopClosing.cc" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../src/Map.cc" beforeDir="false" afterPath="$PROJECT_DIR$/../src/Map.cc" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../src/MapPoint.cc" beforeDir="false" afterPath="$PROJECT_DIR$/../src/MapPoint.cc" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../src/ORBmatcher.cc" beforeDir="false" afterPath="$PROJECT_DIR$/../src/ORBmatcher.cc" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../src/System.cc" beforeDir="false" afterPath="$PROJECT_DIR$/../src/System.cc" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../src/Tracking.cc" beforeDir="false" afterPath="$PROJECT_DIR$/../src/Tracking.cc" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../src/Viewer.cc" beforeDir="false" afterPath="$PROJECT_DIR$/../src/Viewer.cc" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/scan_rect/.idea/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/scan_rect/.idea/inspectionProfiles/profiles_settings.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/scan_rect/.idea/misc.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/scan_rect/.idea/modules.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/scan_rect/.idea/scan_rect.iml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/scan_rect/.idea/vcs.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/scan_rect/dror/.idea/workspace.xml" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ClangdSettings">
+    <option name="formatViaClangd" value="false" />
   </component>
   <component name="FileTemplateManagerImpl">
     <option name="RECENT_TEMPLATES">
@@ -53,7 +96,17 @@
   </component>
   <component name="PropertiesComponent">
     <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$" />
+    <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
+    <property name="WebServerToolWindowFactoryState" value="false" />
+    <property name="cf.first.check.clang-format" value="false" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/.." />
+  </component>
+  <component name="RunManager">
+    <configuration default="true" type="GradleAppRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" PASS_PARENT_ENVS_2="true">
+      <method v="2">
+        <option name="com.jetbrains.cidr.cpp.gradle.execution.GradleNativeBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
   </component>
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
@@ -63,8 +116,12 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1603618698410</updated>
+      <workItem from="1623740561136" duration="3075000" />
     </task>
     <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
   </component>
   <component name="Vcs.Log.Tabs.Properties">
     <option name="TAB_STATES">
@@ -76,5 +133,12 @@
         </entry>
       </map>
     </option>
+    <option name="oldMeFiltersMigrated" value="true" />
+  </component>
+  <component name="WindowStateProjectService">
+    <state x="426" y="96" width="424" height="492" key="FileChooserDialogImpl" timestamp="1623743630403">
+      <screen x="0" y="27" width="1280" height="649" />
+    </state>
+    <state x="426" y="96" width="424" height="492" key="FileChooserDialogImpl/0.27.1280.649@0.27.1280.649" timestamp="1623743630403" />
   </component>
 </project>

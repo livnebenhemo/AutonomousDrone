@@ -66,9 +66,6 @@ public:
     void IncreaseVisible(int n=1);
     void IncreaseFound(int n=1);
     float GetFoundRatio();
-    inline int GetFound(){
-        return mnFound;
-    }
 
     void ComputeDistinctiveDescriptors();
 
@@ -78,14 +75,13 @@ public:
 
     float GetMinDistanceInvariance();
     float GetMaxDistanceInvariance();
-    int PredictScale(const float &currentDist, KeyFrame*pKF);
-    int PredictScale(const float &currentDist, Frame* pF);
+    int PredictScale(const double &currentDist, KeyFrame*pKF);
+    int PredictScale(const double &currentDist, Frame* pF);
 
 public:
     long unsigned int mnId;
     static long unsigned int nNextId;
     long int mnFirstKFid;
-    long int mnFirstFrame;
     int nObs;
 
     // Variables used by the tracking
@@ -138,8 +134,8 @@ protected:
      MapPoint* mpReplaced;
 
      // Scale invariance distances
-     float mfMinDistance;
-     float mfMaxDistance;
+     double mfMinDistance;
+     double mfMaxDistance;
 
      Map* mpMap;
 

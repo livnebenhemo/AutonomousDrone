@@ -1,0 +1,33 @@
+//
+// Created by rbdstudent on 17/06/2021.
+//
+
+#include "Pizza.h"
+
+std::vector<Line> Pizza::createPizzaLines(Point center, int angle) {
+    std::vector<Line> lines;
+    int amountOfSlices = ceil(360 / angle);
+    double radianAngle = Auxiliary::angleToRadians(angle);
+    for (int i = 0; i < amountOfSlices; i++) {
+        double slope = tan(i * radianAngle);
+        lines.emplace_back(Line(center, slope));
+    }
+    return lines;
+}
+
+std::unordered_map<int, std::vector<std::pair<Point, double>>>
+Pizza::createPizzaSlices(Point pizzaCenter, std::vector<std::pair<Point, double>> pointsWithDistance, int angle) {
+    std::unordered_map<int, std::vector<std::pair<Point, double>>> slices;
+    for (auto pointWithDistance : pointsWithDistance) {
+        int degree = int(Auxiliary::radiansToAngle(
+                atan2(pointWithDistance.first.y - pizzaCenter.y, pointWithDistance.first.x - pizzaCenter.x)
+        ) + 360) % 360;
+        int sliceKey = int(degree / angle);
+        auto slice = slices.find(sliceKey);
+        if (slice == slices.end()) {
+            slices.insert({sliceKey, std::vector<std::pair<Point, double>>{}});
+        }
+        slices.at(sliceKey).push_back(pointWithDistance);
+    }
+    return slices;
+}

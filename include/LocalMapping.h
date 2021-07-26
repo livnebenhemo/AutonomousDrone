@@ -23,7 +23,7 @@
 
 #include "KeyFrame.h"
 #include "Map.h"
-#include "LoopClosing.h"
+#include "MyLoopClosing.h"
 #include "Tracking.h"
 #include "KeyFrameDatabase.h"
 

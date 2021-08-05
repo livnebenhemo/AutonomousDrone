@@ -181,7 +181,7 @@ namespace ORB_SLAM2 {
                 maxCommonWords=(*lit)->mnRelocWords;
         }
 
-        int minCommonWords = maxCommonWords*0.8f;
+        int minCommonWords = maxCommonWords*0.6f;
 
         list<pair<float,KeyFrame*> > lScoreAndMatch;
 
@@ -211,7 +211,7 @@ namespace ORB_SLAM2 {
         for(list<pair<float,KeyFrame*> >::iterator it=lScoreAndMatch.begin(), itend=lScoreAndMatch.end(); it!=itend; it++)
         {
             KeyFrame* pKFi = it->second;
-            vector<KeyFrame*> vpNeighs = pKFi->GetBestCovisibilityKeyFrames(10);
+            vector<KeyFrame*> vpNeighs = pKFi->GetBestCovisibilityKeyFrames(20);
 
             float bestScore = it->first;
             float accScore = bestScore;
@@ -236,7 +236,7 @@ namespace ORB_SLAM2 {
         }
 
         // Return all those keyframes with a score higher than 0.75*bestScore
-        float minScoreToRetain = 0.75f*bestAccScore;
+        float minScoreToRetain = 0.6f*bestAccScore;
         set<KeyFrame*> spAlreadyAddedKF;
         vector<KeyFrame*> vpRelocCandidates;
         vpRelocCandidates.reserve(lAccScoreAndMatch.size());

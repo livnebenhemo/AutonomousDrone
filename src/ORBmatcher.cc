@@ -1200,18 +1200,16 @@ namespace ORB_SLAM2 {
 
         const cv::Mat tlc = Rlw * twc + tlw;
 
-        const bool bForward = tlc.at<float>(2) > CurrentFrame.mb && !bMono;
-        const bool bBackward = -tlc.at<float>(2) > CurrentFrame.mb && !bMono;
+        const bool bForward = !bMono && tlc.at<float>(2) > CurrentFrame.mb ;
+        const bool bBackward = !bMono && -tlc.at<float>(2) > CurrentFrame.mb;
 
         for (int i = 0; i < LastFrame.N; i++) {
             MapPoint *pMP = LastFrame.mvpMapPoints[i];
-
             if (pMP) {
                 if (!LastFrame.mvbOutlier[i]) {
                     // Project
                     cv::Mat x3Dw = pMP->GetWorldPos();
                     cv::Mat x3Dc = Rcw * x3Dw + tcw;
-
                     const float xc = x3Dc.at<float>(0);
                     const float yc = x3Dc.at<float>(1);
                     const double invzc = 1.0 / x3Dc.at<float>(2);
@@ -1234,18 +1232,17 @@ namespace ORB_SLAM2 {
 
                     vector<size_t> vIndices2;
 
-                    if (bForward)
+                    /*if (bForward)
                         vIndices2 = CurrentFrame.GetFeaturesInArea(u, v, radius, nLastOctave);
                     else if (bBackward)
                         vIndices2 = CurrentFrame.GetFeaturesInArea(u, v, radius, 0, nLastOctave);
-                    else
+                    else*/
                         vIndices2 = CurrentFrame.GetFeaturesInArea(u, v, radius, nLastOctave - 1, nLastOctave + 1);
 
                     if (vIndices2.empty())
                         continue;
 
                     const cv::Mat dMP = pMP->GetDescriptor();
-
                     int bestDist = 256;
                     int bestIdx2 = -1;
 
@@ -1255,12 +1252,12 @@ namespace ORB_SLAM2 {
                             if (CurrentFrame.mvpMapPoints[i2]->Observations() > 0)
                                 continue;
 
-                        if (CurrentFrame.mvuRight[i2] > 0) {
+                        /*if (CurrentFrame.mvuRight[i2] > 0) {
                             const double ur = u - CurrentFrame.mbf * invzc;
                             const double er = fabs(ur - CurrentFrame.mvuRight[i2]);
                             if (er > radius)
                                 continue;
-                        }
+                        }*/
 
                         const cv::Mat &d = CurrentFrame.mDescriptors.row(i2);
 
@@ -1283,7 +1280,7 @@ namespace ORB_SLAM2 {
                             int bin = round(rot * factor);
                             if (bin == HISTO_LENGTH)
                                 bin = 0;
-                            assert(bin >= 0 && bin < HISTO_LENGTH);
+                            //assert(bin >= 0 && bin < HISTO_LENGTH);
                             rotHist[bin].push_back(bestIdx2);
                         }
                     }
@@ -1336,11 +1333,9 @@ namespace ORB_SLAM2 {
                     //Project
                     cv::Mat x3Dw = pMP->GetWorldPos();
                     cv::Mat x3Dc = Rcw * x3Dw + tcw;
-
                     const float xc = x3Dc.at<float>(0);
                     const float yc = x3Dc.at<float>(1);
                     const double invzc = 1.0 / x3Dc.at<float>(2);
-
                     const double u = ORB_SLAM2::Frame::fx * xc * invzc + ORB_SLAM2::Frame::cx;
                     const double v = ORB_SLAM2::Frame::fy * yc * invzc + ORB_SLAM2::Frame::cy;
 
@@ -1402,7 +1397,7 @@ namespace ORB_SLAM2 {
                             int bin = round(rot * factor);
                             if (bin == HISTO_LENGTH)
                                 bin = 0;
-                            assert(bin >= 0 && bin < HISTO_LENGTH);
+                           // assert(bin >= 0 && bin < HISTO_LENGTH);
                             rotHist[bin].push_back(bestIdx2);
                         }
                     }

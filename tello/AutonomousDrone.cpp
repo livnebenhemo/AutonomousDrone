@@ -19,6 +19,7 @@ AutonomousDrone::AutonomousDrone(std::shared_ptr<ctello::Tello> drone,
     this->vocFilePath = vocabularyFilePath;
     this->yamlFilePath = cameraYamlPath;
     this->withPlot = withPlot;
+    weInAWrongScale = false;
     this->sizeOfFrameStack = sizeOfFrameStack;
     rooms = std::vector<Room>{};
     this->orbSlamPointer = nullptr;
@@ -31,9 +32,22 @@ AutonomousDrone::AutonomousDrone(std::shared_ptr<ctello::Tello> drone,
     this->chargerBluetoothAddress = chargerBluetoothAddress;
     this->arucoYamlPath = arucoYamlPath;
     this->droneWifiName = droneWifiName;
+    markers.emplace_back(std::pair<int, double>(4, 0.1815));
+    markers.emplace_back(std::pair<int, double>(5, 0.1815));
+    markers.emplace_back(std::pair<int, double>(6, 0.1815));
+    cameraParams = Charger::getCameraCalibration(arucoYamlPath);
+    dictionary = cv::aruco::getPredefinedDictionary(
+            cv::aruco::DICT_ARUCO_ORIGINAL);
 }
 
 void AutonomousDrone::getCameraFeed() {
+    char time_buf[21];
+    time_t now;
+    std::time(&now);
+    std::strftime(time_buf, 21, "%Y-%m-%dT%H:%S:%MZ", gmtime(&now));
+    std::cout << "outcpp" + std::string(time_buf) + ".avi" << std::endl;
+    cv::VideoWriter video("/tmp/outcpp" + std::string(time_buf) + ".avi", CV_FOURCC('M', 'J', 'P', 'G'), 10,
+                          cv::Size(960, 720));
     runCamera = true;
     while (runCamera) {
         if (!capture->isOpened() || *holdCamera) {
@@ -41,7 +55,9 @@ void AutonomousDrone::getCameraFeed() {
             continue;
         }
         capture->read(*currentImage);
+        video.write(*currentImage);
     }
+    video.release();
 }
 
 void AutonomousDrone::runOrbSlam() {
@@ -52,34 +68,30 @@ void AutonomousDrone::runOrbSlam() {
     double timeStamp = 0.2;
     int amountOfChanges = 0;
     while (orbSlamRunning) {
-        try {
-            if (!currentImage->empty()) {
-                canStart = true;
-                cv::Mat orbSlamCurrentPose = orbSlamPointer->TrackMonocular(*currentImage, timeStamp);
-                if (orbSlamCurrentPose.empty()) {
-                    localized = false;
-                    continue;
-                }
-                localized = true;
-                updateCurrentLocation(orbSlamCurrentPose);
-                auto orbSlamTracker = orbSlamPointer->GetTracker();
-                if (orbSlamTracker) {
-                    ORB_SLAM2::Frame orbFrame(orbSlamPointer->GetTracker()->mCurrentFrame);
-                    auto mvpMapPoints = orbFrame.GetMvpMapPoints();
-                    if (!mvpMapPoints.empty()) {
-                        updateCurrentFrame(orbFrame);
-                        int numberOfChanges = orbSlamPointer->GetMap() ? orbSlamPointer->GetMap()->GetLastBigChangeIdx()
-                                                                       : 0;
-                        if (amountOfChanges != numberOfChanges) {
-                            loopCloserHappened = true;
-                            amountOfChanges = numberOfChanges;
-                        }
+        if (!currentImage->empty()) {
+            canStart = true;
+            cv::Mat orbSlamCurrentPose = orbSlamPointer->TrackMonocular(*currentImage, timeStamp);
+            if (orbSlamCurrentPose.empty()) {
+                localized = false;
+                continue;
+            }
+            localized = true;
+            updateCurrentLocation(orbSlamCurrentPose);
+            auto orbSlamTracker = orbSlamPointer->GetTracker();
+            if (orbSlamTracker) {
+                ORB_SLAM2::Frame orbFrame(orbSlamPointer->GetTracker()->mCurrentFrame);
+                auto mvpMapPoints = orbFrame.GetMvpMapPoints();
+                if (!mvpMapPoints.empty()) {
+                    updateCurrentFrame(orbFrame);
+                    int numberOfChanges = orbSlamPointer->GetMap() ? orbSlamPointer->GetMap()->GetLastBigChangeIdx()
+                                                                   : 0;
+                    if (amountOfChanges != numberOfChanges) {
+                        loopCloserHappened = true;
+                        amountOfChanges = numberOfChanges;
                     }
                 }
-
             }
-        } catch (...) {
-            std::cout << "error in runOrbSlam" << std::endl;
+
         }
 
         //timeStamp += 0.1;
@@ -97,7 +109,7 @@ void AutonomousDrone::updateCurrentLocation(cv::Mat Tcw) {
 
 bool AutonomousDrone::updateCurrentFrame(ORB_SLAM2::Frame frame) {
     if (frame.getFrameId() != currentFrame.frameId) {
-        if (frame.mvKeys.empty()) {
+        if (!frame.N) {
             std::cout << "no mvKeys" << std::endl;
             return false;
         }
@@ -111,7 +123,7 @@ bool AutonomousDrone::updateCurrentFrame(ORB_SLAM2::Frame frame) {
         auto q = ORB_SLAM2::Converter::toQuaternion(Rwc);
         cv::Mat twc = -Rwc * Tcw.rowRange(0, 3).col(3);
         std::vector<Point> framePoints;
-        int amountOfKeyPoints = frame.mvKeys.size();
+        int amountOfKeyPoints = frame.N;
         for (auto p : frame.mvpMapPoints) {
             if (p && !p->isBad()) {
                 Eigen::Matrix<double, 3, 1> v = ORB_SLAM2::Converter::toVector3d(p->GetWorldPos());
@@ -187,32 +199,29 @@ void AutonomousDrone::saveMap(int fileNumber) {
 
 bool AutonomousDrone::manageDroneCommand(std::string command, int amountOfAttempt, int amountOfSleep) {
     if (!lowBattery) {
+        while (commandingDrone || statusingDrone) {
+            usleep(200);
+        }
         commandingDrone = true;
         while (amountOfAttempt--) {
-            while (true) {
-                if (!statusingDrone) {
-                    if (drone->SendCommandWithResponse(command)) {
-                        commandingDrone = false;
-                        if (amountOfSleep) {
-                            sleep(amountOfSleep);
-                        }
-                        return true;
-                    } else {
-                        break;
-                    }
+            if (drone->SendCommandWithResponse(command)) {
+                commandingDrone = false;
+                if (amountOfSleep) {
+                    sleep(amountOfSleep);
                 } else {
-                    usleep(200);
+                    usleep(400000);
                 }
+                return true;
             }
-            sleep(1);
         }
-        commandingDrone = false;
+        sleep(1);
     }
+    commandingDrone = false;
     return false;
 }
 
 bool AutonomousDrone::doTriangulation() {
-    return manageDroneCommand("forward 30", 3) && manageDroneCommand("back 30", 3);
+    return manageDroneCommand("back 30", 3) && manageDroneCommand("forward 30", 3);
 }
 
 void AutonomousDrone::rotateDrone(int angle, bool clockwise, bool buildMap) {
@@ -229,7 +238,7 @@ void AutonomousDrone::rotateDrone(int angle, bool clockwise, bool buildMap) {
         if (!localized) {
             int regainLocalizationAngle = angle;
             std::cout << "amount of points in frame:" << currentFrame.amountOfKeyPoints << std::endl;
-            if (currentFrame.amountOfKeyPoints < 1000) {
+            if (currentFrame.amountOfKeyPoints < 2000) {
                 manageDroneCommand("back 30", 1, 1);
             }
             while (!localized && !lowBattery) {
@@ -245,7 +254,7 @@ void AutonomousDrone::rotateDrone(int angle, bool clockwise, bool buildMap) {
                 }
             }
         }
-        if (buildMap || currentFrame.amountOfKeyPoints < 1000) {
+        if (buildMap || currentFrame.amountOfKeyPoints < 2000) {
             doTriangulation();
         }
         if (amountOfLostLocalizations) {
@@ -316,12 +325,96 @@ void AutonomousDrone::alertLowBattery() {
     }
 }
 
+bool AutonomousDrone::checkIfPointInFront(Point point, int minSamples, double eps) {
+    int amountOfClosePoints = 0;
+    for (auto framePoint : currentFrame.points) {
+        amountOfClosePoints += sqrt(pow(point.z - framePoint.z, 2) + pow(point.x - framePoint.x, 2)) < eps ? 1 : 0;
+        if (amountOfClosePoints == minSamples) {
+            std::cout << "point infront" << std::endl;
+            return true;
+        }
+    }
+    return false;
+}
+
+double AutonomousDrone::distanceToHome() {
+    std::vector<std::vector<cv::Point2f>> corners;
+    std::vector<int> ids;
+    cv::aruco::detectMarkers(*currentImage, dictionary, corners, ids);
+    if (!ids.empty()) {
+        bool isZeroId = false;
+        for (auto id : ids) {
+            std::cout << "we found:" << id << std::endl;
+            if (!id || isZeroId) {
+                isZeroId = true;
+                break;
+            }
+            for (auto marker : markers) {
+                if (id == marker.first) {
+                    isZeroId = false;
+                    break;
+                }
+                isZeroId = true;
+            }
+        }
+        if (!isZeroId) {
+            std::vector<cv::Vec3d> localRvecs, localTvecs;
+            cv::aruco::estimatePoseSingleMarkers(corners, 0.185, cameraParams[0], cameraParams[1],
+                                                 localRvecs,
+                                                 localTvecs);
+            cv::Mat rmat = cv::Mat::eye(3, 3, CV_64FC1);
+            try {
+                cv::Rodrigues(localRvecs[0], rmat);
+            } catch (...) {
+                return 0.0;
+            }
+            auto t = cv::Mat(-rmat.t() * cv::Mat(localTvecs[0]));
+            cv::Vec3d eulerAngles;
+            Charger::getEulerAngles(rmat, eulerAngles);
+            int currentLeftOverAngle = eulerAngles[0];
+            if (currentLeftOverAngle > 0) {
+                if (currentLeftOverAngle > 130 && currentLeftOverAngle < 165)
+                    return manageDroneCommand("cw " + std::to_string(180 - currentLeftOverAngle), 3, 1);
+                else if (currentLeftOverAngle > 10 && currentLeftOverAngle < 40)
+                    return manageDroneCommand("ccw " + std::to_string(currentLeftOverAngle), 3, 1);
+            } else {
+                currentLeftOverAngle =
+                        currentLeftOverAngle < -90 ? -1 * (-180 - currentLeftOverAngle) : -1 * currentLeftOverAngle;
+                if (currentLeftOverAngle > 10) {
+                    if (t.at<double>(0) < 0)
+                        return manageDroneCommand("ccw " + std::to_string(currentLeftOverAngle), 3, 1);
+                    else
+                        return manageDroneCommand("cw " + std::to_string(currentLeftOverAngle), 3, 1);
+                }
+
+            }
+            return t.at<double>(2);
+        }
+    }
+    return 0;
+}
+
+bool AutonomousDrone::findAndGoHome(int howClose, bool stopNavigation) {
+    double distance = distanceToHome();
+    if (distance) {
+        std::cout << "distance home:" << distance << std::endl;
+        stop = stopNavigation;
+        int forward = int((distance - 1.78) * howClose);
+        for (int i = 0; i < forward / 30; i++) {
+            manageDroneCommand("forward 30");
+        }
+        if (forward % 30 > 20) {
+            manageDroneCommand("forward " + std::to_string(int(forward % 30)), 3);
+        }
+        return true;
+    }
+    return false;
+}
+
 void AutonomousDrone::beginScan(bool findHome, int rotationAngle) {
     current_drone_mode = scanning;
     //manageDroneCommand("down 30", 1, 1);
-    const std::vector<cv::Mat> cameraParams = Charger::getCameraCalibration(arucoYamlPath);
-    const cv::Ptr<cv::aruco::Dictionary> dictionary = cv::aruco::getPredefinedDictionary(
-            cv::aruco::DICT_ARUCO_ORIGINAL);
+
     if (!localized) {
         doTriangulation();
     }
@@ -330,34 +423,19 @@ void AutonomousDrone::beginScan(bool findHome, int rotationAngle) {
             return;
         }
         if (findHome) {
-            std::vector<std::vector<cv::Point2f>> corners;
-            std::vector<int> ids;
-            cv::aruco::detectMarkers(*currentImage, dictionary, corners, ids);
-            if (!ids.empty()){
-                for (auto id : ids){
-                    std::cout << "we found:" << id << std::endl;
-                }
-                std::vector<cv::Vec3d> localRvecs, localTvecs;
-                cv::aruco::estimatePoseSingleMarkers(corners, 0.185, cameraParams[0], cameraParams[1],
-                                                     localRvecs,
-                                                     localTvecs);
-                cv::Mat rmat = cv::Mat::eye(3, 3, CV_64FC1);
-                try {
-                    cv::Rodrigues(localRvecs[0], rmat);
-                } catch (...) {
-                    std::cout << "coudlnot convert vector to mat" << std::endl;
-                    continue;
-                }
-                auto t = cv::Mat(-rmat.t() * cv::Mat(localTvecs[0]));
-                manageDroneCommand("forward "+std::to_string(t.at<double>(2)*80),3,2);
+            if (findAndGoHome(100, false)) {
                 home = currentLocation;
+                orbSlamPointer->GetMapDrawer()->SetCharger(home);
+                findHome = false;
             }
         }
         howToRotate(25, true, true);
-        usleep(500000);
         i -= localized ? 0 : 1;
     }
-    isMinusUp = true;
+    auto prevLocation = currentLocation;
+    manageDroneCommand("up 40", 3, 3);
+    isMinusUp = prevLocation.z > currentLocation.z;
+    manageDroneCommand("down 40", 3);
 }
 
 Point AutonomousDrone::convertFrameToPoint(Frame frame) {
@@ -370,24 +448,27 @@ void AutonomousDrone::getNavigationPoints(bool isExit) {
     currentRoom.points = std::vector<Point>{};
     currentRoom.points = getCurrentMap();
     std::cout << "we saved points" << std::endl;
-    Polygon polygon(currentRoom.points, isExit);
-    std::vector<Point> exitPoints = polygon.getExitPointsByPolygon(withPlot);
+    std::vector<Point> points(currentRoom.points);
+    Polygon polygon(points, home == Point() ? currentLocation : home, isExit);
+    std::vector<Point> exitPoints = polygon.getExitPointsByPolygon();
+    std::cout << "we saved exitPoints" << std::endl;
     int pointIndex = 0;
     for (auto point : exitPoints) {
         for (auto room : rooms) {
-            for (auto visitedExitPoint : room.visitedExitPoints) {
-                if (Auxiliary::calculateDistance(point, visitedExitPoint) <
-                    Auxiliary::calculateDistance(currentLocation, point) / 4.0) {
-                    exitPoints.erase(exitPoints.begin() + pointIndex);
+            if (!room.visitedExitPoints.empty())
+                for (auto visitedExitPoint : room.visitedExitPoints) {
+                    if (Auxiliary::calculateDistance(point, visitedExitPoint) <
+                        Auxiliary::calculateDistance(currentLocation, point) / 2.5) {
+                        exitPoints.erase(exitPoints.begin() + pointIndex);
+                    }
                 }
-            }
 
         }
         pointIndex += 1;
     }
     currentRoom.exitPoints = exitPoints;
     exitStayInTheAirLoop = true;
-    std::cout << "we got the polygon navigation points:" <<exitPoints.size() << std::endl;
+    std::cout << "we got the polygon navigation points:" << exitPoints.size() << std::endl;
 }
 
 std::pair<int, bool> AutonomousDrone::getRotationToFrameAngle(Point point) {
@@ -397,6 +478,7 @@ std::pair<int, bool> AutonomousDrone::getRotationToFrameAngle(Point point) {
     double currentYaw = atan2(2.0 * (currentPosition.qx * currentPosition.qw + currentPosition.qy * currentPosition.qz),
                               1 - 2 * (pow(currentPosition.qy, 2) + pow(currentPosition.qz, 2)));
     double angle = Auxiliary::radiansToAngle(desiredYaw) - Auxiliary::radiansToAngle(currentYaw);
+    std::cout << "raw quat angle:" << angle << std::endl;
     bool clockwise;
     if (angle < 0) {
         if (angle >= -180) {
@@ -464,6 +546,28 @@ void AutonomousDrone::maintainAngleToPoint(Point destination, bool rotateToFrame
         }
 
     }
+}
+
+Point AutonomousDrone::protectiveSphereByClosePoint(Point dronePosition, std::vector<Point> points, double sphereRadius,
+                                                    double epsilon,
+                                                    int minSamples) {
+    std::sort(points.begin(), points.end(), [&dronePosition](Point p1, Point p2) {
+        return Auxiliary::calculateDistance(p1, dronePosition) < Auxiliary::calculateDistance(p2, dronePosition);
+    });
+    for (Point point : points) {
+        if (Auxiliary::calculateDistance3D(point, dronePosition) < sphereRadius) {
+            int counter = 0;
+            for (Point point2 : points) {
+                if (counter == minSamples) {
+                    std::cout << "distance to close point:" << Auxiliary::calculateDistance3D(point, dronePosition)
+                              << std::endl;
+                    return point;
+                }
+                counter += Auxiliary::calculateDistance3D(point, point2) < epsilon ? 1 : 0;
+            }
+        }
+    }
+    return Point();
 }
 
 int
@@ -541,23 +645,26 @@ void AutonomousDrone::collisionDetector(Point destination) {
             if (localized) {
                 auto frame = frames.front();
                 auto lastKnownFrame = frames[int(sizeOfFrameStack / 2)];
-                int pointIndex = protectiveSphere(convertFrameToPoint(frame), frame.points, safetyThreshold);
-                if (pointIndex != -1) {
+                //int pointIndex = protectiveSphere(convertFrameToPoint(frame), frame.points, safetyThreshold);
+                auto closePoint = protectiveSphereByClosePoint(currentLocation, frame.points, safetyThreshold);
+                if (/*pointIndex != -1*/ !(closePoint == Point())) {
                     std::cout << "we are blocked" << std::endl;
                     Point lastKnownFrameAsPoint = convertFrameToPoint(lastKnownFrame);
                     auto[angle, clockwise, isUp] = checkMotion(lastKnownFrameAsPoint,
-                                                               convertFrameToPoint(frame), frame.points[pointIndex]);
+                                                               currentLocation, /*frame.points[pointIndex]*/closePoint);
                     if (angle > 0) {
                         isBlocked = true;
+
                         speed = 0;
                         drone->SendCommand("rc 0 0 0 0");
+                        manageDroneCommand("back 20", 3);
                         usleep(300000);
                         auto navigationVectors = getNavigationVector(lastKnownFrameAsPoint, destination);
                         auto rotationDirections = Auxiliary::getRotationToTargetInFront(navigationVectors.first,
                                                                                         navigationVectors.second);
-                        if (isUp == 1) {
+                        if (isUp == -1) {
                             manageDroneCommand("up 20", 3);
-                        } else if (isUp == -1) {
+                        } else if (isUp == 1) {
                             manageDroneCommand("down 20", 3);
                         }
                         if (rotationDirections.second == clockwise) {
@@ -565,14 +672,11 @@ void AutonomousDrone::collisionDetector(Point destination) {
                                 std::cout << "can avoid with navigate to destintion" << std::endl;
                                 howToRotate(rotationDirections.first, rotationDirections.second);
                             } else {
-
-                                if (angle > 60) {
-                                    std::cout << "same direction and blocked from sides" << std::endl;
-                                    if (clockwise) {
-                                        manageDroneCommand("left 20", 3);
-                                    } else {
-                                        manageDroneCommand("right 20", 3);
-                                    }
+                                std::cout << "same direction and blocked from sides" << std::endl;
+                                if (clockwise) {
+                                    manageDroneCommand("left 20", 3);
+                                } else {
+                                    manageDroneCommand("right 20", 3);
                                 }
                             }
                         } else {
@@ -591,28 +695,12 @@ void AutonomousDrone::collisionDetector(Point destination) {
                     }
                     speed = currentSpeed;
                     isBlocked = false;
+                    sleep(2);
                 }
             } else {
                 if (currentFrame.amountOfKeyPoints < 1000) {
                     manageDroneCommand("back 60", 3, 1);
-                    if (isMinusUp) {
-                        if (destination.z - closeThreshold > currentFrame.z) {
-                            drone->SendCommand("rc 0 0 -10 0");
-                            usleep(1500000);
-                        } else if (destination.z + closeThreshold < currentFrame.z) {
-                            drone->SendCommand("rc 0 0 -10 0");
-                            usleep(1500000);
-                        }
-                        drone->SendCommand("0 0 0 0");
-                    } else {
-                        if (destination.z + closeThreshold < currentFrame.z) {
-                            drone->SendCommand("rc 0 0 -15 0");
-                            sleep(2);
-                        } else if (destination.z - closeThreshold > currentFrame.z) {
-                            drone->SendCommand("rc 0 0 -15 0");
-                            sleep(2);
-                        }
-                    }
+                    goUpOrDown(destination);
                 } else {
                     manageDroneCommand("back 30", 3, 1);
                     manageDroneCommand("forward 30", 3, 1);
@@ -620,7 +708,23 @@ void AutonomousDrone::collisionDetector(Point destination) {
             }
         }
         isBlocked = false;
-        usleep(300000);
+        usleep(500000);
+    }
+}
+
+void AutonomousDrone::goUpOrDown(Point destination) {
+    if (isMinusUp) {
+        if (destination.z - closeThreshold > currentFrame.z) {
+            manageDroneCommand("down 30", 3, 1);
+        } else if (destination.z + closeThreshold < currentFrame.z) {
+            manageDroneCommand("up 30", 3, 1);
+        }
+    } else {
+        if (destination.z + closeThreshold < currentFrame.z) {
+            manageDroneCommand("down 30", 3, 1);
+        } else if (destination.z - closeThreshold > currentFrame.z) {
+            manageDroneCommand("up 30", 3, 1);
+        }
     }
 }
 
@@ -629,8 +733,10 @@ void AutonomousDrone::monitorDroneProgress(Point destination) {
     usleep(500000);
     int i = 0;
     int amountOfGettingFurther = 4;
-    closeThreshold = Auxiliary::calculateDistance(currentLocation, destination) / 4.0;
+    closeThreshold = Auxiliary::calculateDistance(currentLocation, destination) / 2.5;
     std::cout << "close threshold:" << closeThreshold << std::endl;
+    double expectedScale = closeThreshold * 0.005;
+    std::cout << "scale threshold:" << expectedScale << std::endl;
     std::vector<double> distances;
     while (!stop && !lowBattery) {
         try {
@@ -644,21 +750,26 @@ void AutonomousDrone::monitorDroneProgress(Point destination) {
                 std::cout << "reached to destination" << std::endl;
                 break;
             }
-            if (!droneRotate) {
+            if (!droneRotate && !isBlocked) {
                 if (distances.size() > 20) {
                     auto mean = Auxiliary::calculateMeanOfDistanceDifferences(distances);
                     if (!(i % 5)) {
                         std::cout << "mean of distances: " << mean << std::endl;
                     }
-                    safetyThreshold = mean * 3;//gettingCloser ? mean * 3 : mean * 2;
-                    weInAWrongScale = mean < (gettingCloser ? 0.0007 / 2 : 0.0007);
+                    safetyThreshold = mean * 5;//gettingCloser ? mean * 3 : mean * 2;
+                    weInAWrongScale = mean < (gettingCloser ? expectedScale / 2 : expectedScale);
                     distances.erase(distances.begin());
                 }
                 distances.emplace_back(distance);
-                gettingCloser = distance <= closeThreshold * 1.5;
+                if (distance <= closeThreshold * 1.2) {
+                    gettingCloser = true;
+                    goUpOrDown(destination);
+                    speed = 15;
+                }
                 if (!isTurning && (distance - previousDistance) > 0.01 && !isBlocked && !droneRotate) {
                     speed = 20;
                     std::cout << "getting further" << std::endl;
+                    distances = std::vector<double>{};
                     gettingFurther = --amountOfGettingFurther < 0;
                     orbSlamPointer->GetFrameDrawer()->ClearDestinationPoint();
                 } else {
@@ -666,10 +777,13 @@ void AutonomousDrone::monitorDroneProgress(Point destination) {
                     orbSlamPointer->GetFrameDrawer()->SetDestination(navigationDestination);
                     //speed = distance > 1 ? 30 : 20;
                     gettingFurther = false;
+                    speed = distance > closeThreshold * 1.8 ? 20 : 20;
                 }
+            } else {
+                distances = std::vector<double>{};
             }
             previousDistance = distance;
-            usleep(500000);
+            usleep(450000);
             i++;
         } catch (std::exception e) {
             std::cout << e.what() << " in monitorDroneProgress" << std::endl;
@@ -686,25 +800,26 @@ bool AutonomousDrone::navigateDrone(Point destination, bool rotateToFrameAngle) 
     stop = false;
     loopCloserHappened = false;
     weInAWrongScale = false;
-    double distanceToPoint = Auxiliary::calculateDistance(currentLocation, destination);
-    std::cout << "distance to point:" << distanceToPoint << std::endl;
-    if (distanceToPoint < closeThreshold) {
+    if (Auxiliary::calculateDistance(destination, currentLocation) < closeThreshold) {
+        std::cout << "we are close to the point" << std::endl;
         return true;
     }
     std::thread collisionDetectorThread(&AutonomousDrone::collisionDetector, this, destination);
     std::thread maintainAngleToPointThread(&AutonomousDrone::maintainAngleToPoint, this, destination,
                                            rotateToFrameAngle);
     std::thread monitorDroneProgressThread(&AutonomousDrone::monitorDroneProgress, this, destination);
+    bool areWeNavigatingHome = destination == home;
     while (!stop && !loopCloserHappened && !lowBattery) {
-        try {
-            if (!droneRotate && !isBlocked) {
-                drone->SendCommand("rc 0 " + std::to_string(!gettingCloser ? speed : 15)
-                                   + " 0 0");
+        if (!droneRotate && !isBlocked) {
+            drone->SendCommand("rc 0 " + std::to_string(speed)
+                               + " 0 0");
+            if (areWeNavigatingHome) {
+                if (findAndGoHome(90, true)) {
+                    break;
+                }
+                usleep(1500000);
+                continue;
             }
-        } catch (std::exception e) {
-            std::cout << e.what() << std::endl;
-        } catch (...) {
-
         }
         sleep(2);
     }
@@ -730,7 +845,7 @@ void AutonomousDrone::flyToNavigationPoints() {
     std::cout << currentRoom.exitPoints.size() << std::endl;
     for (Point point: currentRoom.exitPoints) {
         if (navigateDrone(point) && !loopCloserHappened && !lowBattery) {
-            if (Auxiliary::calculateDistance(home, currentLocation) > closeThreshold) {
+            if (!checkIfPointInFront(home)) {
                 howToRotate(180, true, true);
             }
             if (loopCloserHappened || lowBattery || weInAWrongScale) {
@@ -764,7 +879,8 @@ void AutonomousDrone::connectDrone() {
     while (true) {
         try {
             drone.reset(new ctello::Tello());
-            drone->Bind(dronePort--);
+            drone->Bind(dronePort--, dronePort - 1000);
+            dronePort--;
             manageDroneCommand("streamon");
             capture->release();
             sleep(2);
@@ -779,15 +895,23 @@ void AutonomousDrone::connectDrone() {
 }
 
 void AutonomousDrone::run() {
-    std::vector<std::pair<int, double>> markers;
-    markers.emplace_back(std::pair<int, double>(4, 0.1815));
-    markers.emplace_back(std::pair<int, double>(5, 0.1815));
+
     std::thread orbThread(&AutonomousDrone::runOrbSlam, this);
     while (true) {
         if (canStart) {
+            //manageDroneCommand("takeoff", 3, 3);
+            /*Charger charger(markers, chargerBluetoothAddress, capture, holdCamera, droneWifiName,
+                            arucoYamlPath, drone, currentImage, dronePort,
+                            false);
+            std::cout << "start running the charger" << std::endl;
+            //charger.run();
+            while(true){
+                charger.travelTo3Points();
+            }*/
             std::thread batteryThread(&AutonomousDrone::alertLowBattery, this);
             rooms.emplace_back(Room());
             currentRoom = rooms.back();
+            home = Point();
             manageDroneCommand("takeoff", 3, 3);
             /*beginScan();
             std::thread getNavigationPoints(&AutonomousDrone::getNavigationPoints, this, true);
@@ -796,7 +920,7 @@ void AutonomousDrone::run() {
             std::vector<Point> exitPoint{};
             exitPoint.emplace_back(currentRoom.exitPoints[0]);
             currentRoom.exitPoints = exitPoint;
-            while (currentRoom.visitedExitPoints.empty()){
+            while (currentRoom.visitedExitPoints.empty()) {
                 navigateDrone(currentRoom.exitPoints[0]);
             }
             home = exitPoint[0];*/
@@ -808,8 +932,13 @@ void AutonomousDrone::run() {
                     getNavigationPoints.join();
                     flyToNavigationPoints();
                     if (weInAWrongScale && !lowBattery) {
+                        std::cout << "going back to base" << std::endl;
+                        if (!checkIfPointInFront(home)) {
+                            howToRotate(180, true, true);
+                        }
+                        navigateDrone(home, false);
                         orbSlamPointer->Reset();
-                        beginScan();
+                        beginScan(true);
                     }
                 }
                 if (lowBattery) {
@@ -817,12 +946,14 @@ void AutonomousDrone::run() {
                     batteryThread.join();
                     lowBattery = false;
                     if (Auxiliary::calculateDistance(Point(), currentLocation) > closeThreshold * 1.2) {
-                        howToRotate(180, true);
+                        if (!checkIfPointInFront(home)) {
+                            howToRotate(180, true, true);
+                        }
                         navigateDrone(home, false);
 
                     }
                     Charger charger(markers, chargerBluetoothAddress, capture, holdCamera, droneWifiName,
-                                    arucoYamlPath, drone, currentImage,
+                                    arucoYamlPath, drone, currentImage, dronePort,
                                     false);
                     std::cout << "start running the charger" << std::endl;
                     //charger.run();

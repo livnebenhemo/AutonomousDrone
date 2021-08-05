@@ -10,9 +10,9 @@ int main() {
     while (!drone->SendCommandWithResponse("streamon"));
 
     AutonomousDrone autonomousDrone(drone, "/home/rbdstudent/ORB_SLAM2/ORB_SLAM2/Vocabulary/ORBvoc.txt",
-                                    "/home/rbdstudent/ORB_SLAM2/ORB_SLAM2/Examples/Monocular/tello.yaml",
-                                    "/home/rbdstudent/ORB_SLAM2/ORB_SLAM2/Examples/Monocular/tello_aruco.yaml",
-                                    "TELLO-9F5EC2", 20, false);
+                                    "/home/rbdstudent/ORB_SLAM2/ORB_SLAM2/Examples/Monocular/tello_5BFA7F.yaml",
+                                    "/home/rbdstudent/ORB_SLAM2/ORB_SLAM2/Examples/Monocular/tello_aruco_5BFA7F.yaml",
+                                    "TELLO-5BFA7F", 20, false);
     autonomousDrone.run();
 
 }

@@ -54,7 +54,6 @@ add_library(${PROJECT_NAME}
         src/System.cc
         src/Tracking.cc
         src/LocalMapping.cc
-        src/MyLoopClosing.cc
         src/ORBextractor.cc
         src/ORBmatcher.cc
         src/FrameDrawer.cc
@@ -67,7 +66,6 @@ add_library(${PROJECT_NAME}
         src/PnPsolver.cc
         src/Frame.cc
         src/KeyFrameDatabase.cc
-        src/MySim3Solver.cc
         src/Initializer.cc
         src/Viewer.cc
         tello/DBSCAN.cpp
@@ -89,7 +87,7 @@ target_link_libraries(${PROJECT_NAME}
         ${Pangolin_LIBRARIES}
         ${PROJECT_SOURCE_DIR}/Thirdparty/DBoW2/lib/libDBoW2.so
         ${PROJECT_SOURCE_DIR}/Thirdparty/g2o/lib/libg2o.so
-        -lpthread ctello /usr/local/lib/libspdlog.so.1 ${PYTHON_LIBRARIES} -lbluetooth
+        -lpthread ctello spdlog ${PYTHON_LIBRARIES} -lbluetooth
         )
 
 # Build examples
@@ -109,7 +107,6 @@ target_link_libraries(testPolygon ${PROJECT_NAME})
 target_compile_options(tello PRIVATE -Wno-deprecated-declarations)
 add_executable(runAutonomousDrone tello/runAutonomousDrone.cpp)
 target_link_libraries(runAutonomousDrone ${PROJECT_NAME})
-target_compile_options(tello PRIVATE -Wno-deprecated-declarations)
 add_executable(offline_orb_slam
         Examples/Monocular/offline_orb_slam.cc)
 target_link_libraries(offline_orb_slam ${PROJECT_NAME})

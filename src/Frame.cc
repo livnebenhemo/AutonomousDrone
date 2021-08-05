@@ -336,7 +336,6 @@ namespace ORB_SLAM2 {
                 const vector<size_t> vCell = mGrid[ix][iy];
                 if (vCell.empty())
                     continue;
-
                 for (size_t j = 0, jend = vCell.size(); j < jend; j++) {
                     const cv::KeyPoint &kpUn = mvKeysUn[vCell[j]];
                     if (bCheckLevels) {

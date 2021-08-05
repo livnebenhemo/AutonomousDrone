@@ -16,7 +16,7 @@
 
 class Polygon {
 public:
-    Polygon(std::vector<Point> points,bool isExit = false);
+    Polygon(std::vector<Point> points, Point polygonCenter, bool isExit = false);
 
     std::vector<Point> getExitPointsByPolygon(bool isDebug = false);
 
@@ -33,9 +33,11 @@ private:
 
     std::vector<Point> points;
 
-    std::vector<Point> getNavigationPoints(std::vector<Point> goodPoints, int minSamples = 25);
+    std::vector<Point> getNavigationPoints(std::vector<Point> goodPoints, int minSamples = 15);
 
     std::vector<Point> filterCheckpoints(std::vector<Point> rawNavigationPoints, int minAngleDistance = 20);
+
+    Point getNavigationPointFromCluster(std::vector<Point> cluster);
 
     std::vector<Point>
     filterPointsByVariances(std::vector<std::pair<double, std::vector<Point>>> slices, double epsilon);

@@ -126,7 +126,7 @@ namespace ORB_SLAM2 {
             SetBadFlag();
     }
 
-    map<KeyFrame *, size_t> MapPoint::GetObservations() {
+    std::unordered_map<KeyFrame *, size_t> MapPoint::GetObservations() {
         unique_lock<mutex> lock(mMutexFeatures);
         return mObservations;
     }
@@ -137,7 +137,7 @@ namespace ORB_SLAM2 {
     }
 
     void MapPoint::SetBadFlag() {
-        map<KeyFrame *, size_t> obs;
+        std::unordered_map<KeyFrame *, size_t> obs;
         {
             unique_lock<mutex> lock1(mMutexFeatures);
             unique_lock<mutex> lock2(mMutexPos);
@@ -163,7 +163,7 @@ namespace ORB_SLAM2 {
             return;
 
         int nvisible, nfound;
-        map<KeyFrame *, size_t> obs;
+        std::unordered_map<KeyFrame *, size_t> obs;
         {
             unique_lock<mutex> lock1(mMutexFeatures);
             unique_lock<mutex> lock2(mMutexPos);
@@ -214,7 +214,7 @@ namespace ORB_SLAM2 {
         // Retrieve all observed descriptors
         vector<cv::Mat> vDescriptors;
 
-        map<KeyFrame *, size_t> observations;
+        std::unordered_map<KeyFrame *, size_t> observations;
 
         {
             unique_lock<mutex> lock1(mMutexFeatures);
@@ -286,7 +286,7 @@ namespace ORB_SLAM2 {
     }
 
     void MapPoint::UpdateNormalAndDepth() {
-        map<KeyFrame *, size_t> observations;
+        std::unordered_map<KeyFrame *, size_t> observations;
         KeyFrame *pRefKF;
         cv::Mat Pos;
         if (mObservations.empty())

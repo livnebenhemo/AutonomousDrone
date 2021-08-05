@@ -35,6 +35,11 @@ private:
     protectiveSphere(Point dronePosition, std::vector<Point> points, double sphereRadius = 0.4, double epsilon = 0.125,
                      int minSamples = 15);
 
+    Point
+    protectiveSphereByClosePoint(Point dronePosition, std::vector<Point> points, double sphereRadius = 0.4,
+                                 double epsilon = 0.125,
+                                 int minSamples = 15);
+
     void runOrbSlam();
 
     void areWeInWrongScale(std::vector<Frame> frames);
@@ -56,6 +61,8 @@ private:
     void howToRotate(int angle, bool clockwise, bool buildMap = false);
 
     void rotateDrone(int angle, bool clockwise, bool buildMap = false);
+
+    bool checkIfPointInFront(Point point, int minSamples = 15, double eps = 0.125);
 
     void beginScan(bool findHome = false, int rotationAngle = 25);
 
@@ -84,7 +91,13 @@ private:
 
     void flyToNavigationPoints();
 
+    double distanceToHome();
+
     bool navigateDrone(Point destination, bool rotateToFrameAngle = true);
+
+    void goUpOrDown(Point destination);
+
+    bool findAndGoHome(int howClose, bool stopNavigation = false);
 
     enum drone_modes {
         scanning, navigation, noBattery
@@ -99,6 +112,8 @@ private:
     std::shared_ptr<ctello::Tello> drone;
     std::shared_ptr<cv::Mat> currentImage;
     std::shared_ptr<cv::VideoCapture> capture;
+    std::vector<cv::Mat> cameraParams;
+    cv::Ptr<cv::aruco::Dictionary> dictionary;
     std::shared_ptr<bool> holdCamera;
     std::string droneWifiName;
     bool withPlot = false;
@@ -130,13 +145,15 @@ private:
     bool gettingFurther = false;
     bool gettingCloser = false;
     Frame currentFrame;
+    std::vector<std::pair<int, double>> markers;
     std::vector<Frame> lastFrames;
     int sizeOfFrameStack;
     double closeThreshold = 0.4;
     bool isTurning = false;
-    double safetyThreshold = 0.05;
+    double safetyThreshold = 0.01;
     bool exitStayInTheAirLoop;
     bool weInAWrongScale;
+
 };
 
 #endif //TELLO_AUTONOMOUSDRONE_H

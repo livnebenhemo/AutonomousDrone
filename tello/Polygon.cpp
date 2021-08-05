@@ -4,13 +4,14 @@
 
 #include "Polygon.h"
 
-Polygon::Polygon(std::vector<Point> points, bool isExit) {
+Polygon::Polygon(std::vector<Point> points,Point polygonCenter, bool isExit) {
     this->points = points;
     this->isExit = isExit;
+    this->polygonCenter = polygonCenter;
 }
 
 std::vector<Point> Polygon::getExitPointsByPolygon(bool isDebug) {
-    polygonCenter = Auxiliary::GetCenterOfMass(points);
+    //polygonCenter = Auxiliary::GetCenterOfMass(points);
     createPointsWithDistance();
     std::vector<std::pair<Point, double>> rawExitPoints = getRawPolygonCorners();
     double epsilon = 0.0;
@@ -35,15 +36,18 @@ std::vector<Point> Polygon::getExitPointsByPolygon(bool isDebug) {
         Auxiliary::showCloudPoint(vertices, withOutVariances);
         Auxiliary::showCloudPoint(vertices, goodPoints);
     }
-    auto rawNavigationPoints = getNavigationPoints(goodPoints);
+    int minSamples = 25;
+    auto rawNavigationPoints =std::vector<Point>{};
+    while (rawNavigationPoints.empty() && minSamples > 0){
+        rawNavigationPoints = getNavigationPoints(goodPoints,minSamples);
+        minSamples-=5;
+    }
     if (isDebug) {
-        std::cout << "amount of raw navigationPoints" << rawNavigationPoints.size() << std::endl;
         Auxiliary::showCloudPoint(rawNavigationPoints, points);
     }
     auto navigationPoints = filterCheckpoints(rawNavigationPoints);
-
+    std::cout << "amount of navigationPoints " << navigationPoints.size() << std::endl;
     if (isDebug) {
-        std::cout << "amount of navigationPoints" << navigationPoints.size() << std::endl;
         Auxiliary::showCloudPoint(navigationPoints, points);
     }
     if (isExit) {
@@ -56,10 +60,6 @@ std::vector<Point> Polygon::getExitPointsByPolygon(bool isDebug) {
 }
 
 std::vector<Point> Polygon::filterCheckpoints(std::vector<Point> rawNavigationPoints, int minAngleDistance) {
-    auto polygonCenterCopy = polygonCenter;
-    /*std::sort(rawNavigationPoints.begin(),rawNavigationPoints.end(),[polygonCenterCopy](Point point1,Point point2){
-        return Auxiliary::calculateDistance(polygonCenterCopy,point1) > Auxiliary::calculateDistance(polygonCenterCopy,point2);
-    });*/
     std::vector<std::pair<double, Point>> pointsWithAngles;
     for (Point point : rawNavigationPoints) {
         double angle = Auxiliary::getAngleFromSlope((point.y - polygonCenter.y) / (point.x - polygonCenter.x));
@@ -92,13 +92,11 @@ std::vector<Point> Polygon::filterCheckpoints(std::vector<Point> rawNavigationPo
 std::vector<Point> Polygon::getNavigationPoints(std::vector<Point> goodPoints, int minSamples) {
     auto dbscan = DBSCAN(minSamples, 0.15, goodPoints);
     int numberOfClusters = dbscan.run();
-    if (numberOfClusters == 1) {
-        dbscan.setMinPoints(10);
-        numberOfClusters = dbscan.run();
+    if (!numberOfClusters){
+        return std::vector<Point>{};
     }
     std::vector<Point> clusteredPoints = dbscan.getPoints();
     std::vector<Point> navigationPoints;
-
     std::sort(clusteredPoints.begin(), clusteredPoints.end(), [](Point point1, Point point2) {
         return point1.label < point2.label;
     });
@@ -112,27 +110,28 @@ std::vector<Point> Polygon::getNavigationPoints(std::vector<Point> goodPoints, i
         if (point.label == currentLabel) {
             cluster.push_back(point);
         } else {
-            double maxDistanceToPolygon = -1;
-            for (Point clusterPoint : cluster) {
-                double distanceToPolygon = Auxiliary::getDistanceToClosestSegment(clusterPoint, edges);
-                if (maxDistanceToPolygon < distanceToPolygon) {
-                    maxDistanceToPolygon = distanceToPolygon;
-                    if (navigationPoints.size() < currentLabel) {
-                        navigationPoints.insert(navigationPoints.begin() + currentLabel - 1, Point(clusterPoint));
-                    } else {
-                        navigationPoints[currentLabel - 1] = Point(clusterPoint);
-                    }
-                }
-            }
+            navigationPoints.push_back(getNavigationPointFromCluster(cluster));
             currentLabel += 1;
             cluster.clear();
             cluster.push_back(point);
         }
     }
-
+    //get from the last cluster
+    navigationPoints.push_back(getNavigationPointFromCluster(cluster));
     return navigationPoints;
 }
-
+Point Polygon::getNavigationPointFromCluster(std::vector<Point> cluster){
+    double maxDistanceToPolygon = -1;
+    Point bestPoint;
+    for (Point clusterPoint : cluster) {
+        double distanceToPolygon = Auxiliary::getDistanceToClosestSegment(clusterPoint, edges);
+        if (maxDistanceToPolygon < distanceToPolygon) {
+            maxDistanceToPolygon = distanceToPolygon;
+            bestPoint = clusterPoint;
+        }
+    }
+    return bestPoint;
+}
 std::vector<Point>
 Polygon::filterPointsByVariances(std::vector<std::pair<double, std::vector<Point>>> slices, double epsilon) {
     std::vector<Point> goodPoints;

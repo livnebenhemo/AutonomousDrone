@@ -264,7 +264,7 @@ namespace ORB_SLAM2 {
     }
 
     void KeyFrame::UpdateConnections() {
-        map<KeyFrame *, int> KFcounter;
+        std::unordered_map<KeyFrame *, int> KFcounter;
 
         vector<MapPoint *> vpMP;
 
@@ -275,25 +275,18 @@ namespace ORB_SLAM2 {
 
         //For all map points in keyframe check in which other keyframes are they seen
         //Increase counter for those keyframes
-        for (auto pMP : vpMP){
+        for (auto pMP : vpMP) {
 
             if (!pMP || pMP->isBad())
                 continue;
 
-            map<KeyFrame *, size_t> observations = pMP->GetObservations();
-
-            for (map<KeyFrame *, size_t>::iterator mit = observations.begin(), mend = observations.end();
-                 mit != mend; mit++) {
-                if (mit->first->mnId == mnId)
+            std::unordered_map<KeyFrame *, size_t> observations = pMP->GetObservations();
+            for (auto mit : pMP->GetObservations()){
+                if (mit.first->mnId == mnId)
                     continue;
-                KFcounter[mit->first]++;
+                KFcounter[mit.first]++;
             }
         }
-        for (vector<MapPoint *>::iterator vit = vpMP.begin(), vend = vpMP.end(); vit != vend; vit++) {
-            MapPoint *pMP = *vit;
-
-        }
-
         // This should not happen
         if (KFcounter.empty())
             return;
@@ -306,22 +299,20 @@ namespace ORB_SLAM2 {
 
         vector<pair<int, KeyFrame *> > vPairs;
         vPairs.reserve(KFcounter.size());
-        for (map<KeyFrame *, int>::iterator mit = KFcounter.begin(), mend = KFcounter.end(); mit != mend; mit++) {
-            if (mit->second > nmax) {
-                nmax = mit->second;
-                pKFmax = mit->first;
+        for (auto kf: KFcounter) {
+            if (kf.second > nmax) {
+                nmax = kf.second;
+                pKFmax = kf.first;
             }
-            if (mit->second >= th) {
-                vPairs.push_back(make_pair(mit->second, mit->first));
-                (mit->first)->AddConnection(this, mit->second);
+            if (kf.second >= th) {
+                vPairs.push_back(make_pair(kf.second, kf.first));
+                (kf.first)->AddConnection(this, kf.second);
             }
         }
-
         if (vPairs.empty()) {
             vPairs.push_back(make_pair(nmax, pKFmax));
             pKFmax->AddConnection(this, nmax);
         }
-
         sort(vPairs.begin(), vPairs.end());
         list<KeyFrame *> lKFs;
         list<int> lWs;

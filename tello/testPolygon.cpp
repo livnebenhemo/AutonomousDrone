@@ -33,9 +33,9 @@ std::vector<Point> getPointsFromFile(std::string fileName){
 
 }
 int main(){
-    std::vector<Point> points = getPointsFromFile("/tmp/pointData0.csv");
+    std::vector<Point> points = getPointsFromFile("/tmp/pointData1.csv");
     auto start = std::chrono::high_resolution_clock::now();
-    Polygon polygon(points);
+    Polygon polygon(points,Point(),true);
     polygon.getExitPointsByPolygon(true);
     auto stop = std::chrono::high_resolution_clock::now();
     auto duration= std::chrono::duration_cast<std::chrono::microseconds>(stop - start);

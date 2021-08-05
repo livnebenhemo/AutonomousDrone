@@ -23,10 +23,16 @@
 #define SIM3SOLVER_H
 
 #include <opencv2/opencv.hpp>
+
+
 #include <vector>
+#include <cmath>
+#include <opencv2/core/core.hpp>
 
 #include "KeyFrame.h"
+#include "ORBmatcher.h"
 
+#include "Thirdparty/DBoW2/DUtils/Random.h"
 
 
 namespace ORB_SLAM2

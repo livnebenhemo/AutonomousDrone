@@ -7,7 +7,7 @@
 Charger::Charger(std::vector<std::pair<int, double>> markers, std::string chargerBluetoothAddress,
                  std::shared_ptr<cv::VideoCapture> capture, std::shared_ptr<bool> holdCamera, std::string droneWifiName,
                  std::string telloYamlFilePath,
-                 std::shared_ptr<ctello::Tello> drone, std::shared_ptr<cv::Mat> frame, bool withImShow,
+                 std::shared_ptr<ctello::Tello> drone, std::shared_ptr<cv::Mat> frame, int currentPort, bool withImShow,
                  int raspberryToTelloPinNumber,
                  double slowSpeedDistance,
                  double fastSpeedDistance,
@@ -28,6 +28,7 @@ Charger::Charger(std::vector<std::pair<int, double>> markers, std::string charge
     this->chargerBluetoothAddress = chargerBluetoothAddress;
     //this->capture = capture;
     this->frame = frame;
+    this->currentPort = currentPort--;
     this->telloYamlFilePath = telloYamlFilePath;
     this->drone = drone;
     this->raspberryToTelloPinNumber = raspberryToTelloPinNumber;
@@ -38,7 +39,7 @@ Charger::Charger(std::vector<std::pair<int, double>> markers, std::string charge
 }
 
 void Charger::resetTrackingGlobals() {
-    leftOverAngle = -1;
+    leftOverAngle = {-1, false};
 }
 
 void Charger::trackMarker() {
@@ -272,6 +273,18 @@ int Charger::getChargerSocket(std::string connectionAddr) {
     return s;
 }
 
+std::string Charger::getMovementInDepth(double forwardBackwards) {
+    std::string forwardText;
+    if (forwardBackwards > distanceFromWall) {
+        forwardText = getForwardSpeedText(forwardBackwards);
+    } else if (forwardBackwards < distanceToWall) {
+        forwardText = getBackwardsSpeedText(forwardBackwards);
+    } else {
+        forwardText = "0";
+    }
+    return forwardText;
+}
+
 bool Charger::chargerByEstimation() {
     int battery = 0;
     while (battery == 0) {
@@ -281,13 +294,16 @@ bool Charger::chargerByEstimation() {
     while (true) {
         turnDroneOnOrOff(5);
         std::cout << "drone is off" << std::endl;
+        std::cout << "sleeping for:" << 48 * (100 - battery) << std::endl;
         sleep(48 * (100 - battery));
         turnDroneOnOrOff();
         connectToDrone(droneWifiName);
         drone.reset(new ctello::Tello());
-        drone->Bind(8000);
+        drone->Bind(currentPort, currentPort - 1000);
+        currentPort--;
         battery = drone->GetBatteryStatus();
-        if (battery <= 10) {
+        std::cout << "battery after charge:" << battery << std::endl;
+        if (100 - battery <= 10) {
             break;
         }
     }
@@ -333,17 +349,15 @@ bool Charger::communicateWithCharger(int socket, bool closeSocket) {
     return true;
 }
 
-bool Charger::correctDroneAngle(double currentRightLeft, int currentLeftOverAngle) {
-    if (currentLeftOverAngle > 0) {
-        if (currentLeftOverAngle > 130 && currentLeftOverAngle < 165)
-            return manageDroneCommand("cw " + std::to_string(180 - currentLeftOverAngle), 3, 1);
-        else if (currentLeftOverAngle > 10 && currentLeftOverAngle < 40)
-            return manageDroneCommand("ccw " + std::to_string(currentLeftOverAngle), 3, 1);
-    } else {
-        if (currentLeftOverAngle < -130 && currentLeftOverAngle > -165)
-            return manageDroneCommand("cw " + std::to_string(-1 * (-180 - currentLeftOverAngle)), 3, 1);
-        else if (currentLeftOverAngle < -10 && currentLeftOverAngle > -40)
-            return manageDroneCommand("ccw " + std::to_string(-1 * currentLeftOverAngle), 3, 1);
+bool Charger::correctDroneAngle(std::pair<int, bool> currentLeftOverAngle) {
+    int angle = currentLeftOverAngle.first;
+    angle = angle < 0 ? angle < -90 ? -1 * (-180 - angle) : -1 * angle : angle > 90 ? 180 - angle : angle;
+    bool clockwise = currentLeftOverAngle.second;
+    if (angle > 15) {
+        if (clockwise)
+            return manageDroneCommand("cw " + std::to_string(angle), 3, 1);
+        else
+            return manageDroneCommand("ccw " + std::to_string(angle), 3, 1);
     }
     return false;
 }
@@ -394,6 +408,18 @@ std::string Charger::getRightSpeedText(double distance) {
     return "10";
 }
 
+void Charger::monitorDroneState() {
+    while (!stop) {
+        auto speed = drone->GetSpeedStatus();
+        auto acc = drone->GetAccelerationStatus();
+        auto height = drone->GetHeightStatus();
+        std::cout << "speed:" << speed << std::endl;
+        std::cout << "acc:" << acc << std::endl;
+        std::cout << "height:" << height << std::endl;
+        sleep(1);
+    }
+}
+
 double Charger::landDroneCarefully(float markerSize, int markerId) {
     std::cout << "starting navigation to:" << markerId << std::endl;
     currentMarkerSize = markerSize;
@@ -403,17 +429,12 @@ double Charger::landDroneCarefully(float markerSize, int markerId) {
     std::string forwardText = "0";
     std::string leftRightText = "0";
     std::string upDownText = "0";
-    int down = int(upDown * 100);
-    if (down > 19) {
-        manageDroneCommand("down " + std::to_string(down), 3, 3);
-    }
     drone->SendCommand("rc 0 0 0 0");
-    // correctDroneAngle(rightLeft, leftOverAngle > 10 ? leftOverAngle : 0);
     double localDistance = 0.0;
-    int localLeftOverAngle = -1;
+    std::pair<int, bool> localLeftOverAngle = {-1, false};
     bool goUp = true;
     while (!stop) {
-        if (leftOverAngle != -1) {
+        if (leftOverAngle.first != -1) {
             amountOfSearchTurns = 1;
             localDistance = forward;
             std::cout << "distance:" << localDistance << std::endl;
@@ -430,20 +451,23 @@ double Charger::landDroneCarefully(float markerSize, int markerId) {
             }
             double localRightLeft = rightLeft;
             std::cout << "right left:" << localRightLeft << std::endl;
-            if (localRightLeft < distanceRightFromArucoCenter) {
+            if (localRightLeft < distanceLeftFromArucoCenter) {
                 leftRightText = getRightSpeedText(localRightLeft);
-            } else if (localRightLeft > distanceLeftFromArucoCenter) {
+            } else if (localRightLeft > distanceRightFromArucoCenter) {
                 leftRightText = getLeftSpeedText(localRightLeft);
             } else {
                 leftRightText = "0";
             }
             //std::cout << localDistance << std::endl;
-            if (localDistance < 1.5) {
-                if (correctDroneAngle(localRightLeft, leftOverAngle)) {
+            if (localDistance < distanceFromWall * 2.5 && localDistance > distanceFromWall) {
+                if (correctDroneAngle(leftOverAngle)) {
                     localLeftOverAngle = leftOverAngle;
                 }
             } else if (localDistance > 2) {
-                manageDroneCommand("forward " + std::to_string(int((forward - distanceFromWall) * 100)), 3, 1);
+                if (correctDroneAngle(leftOverAngle)) {
+                    localLeftOverAngle = leftOverAngle;
+                }
+                manageDroneCommand("forward " + std::to_string(int((forward - distanceFromWall) * 80)), 3, 1);
             }
             if (upDown > distanceUpDownMarker) {
                 upDownText = "-10";
@@ -455,17 +479,14 @@ double Charger::landDroneCarefully(float markerSize, int markerId) {
             std::string commandText("rc " + leftRightText + " " + forwardText + " " + upDownText + " 0");
             drone->SendCommand(commandText);
             std::cout << commandText << std::endl;
-            usleep(250000);
+            usleep(300000);
         } else {
             leftRightText = "0";
-            std::string angleText =
-                    (localLeftOverAngle < 0 && localLeftOverAngle > -90) || localLeftOverAngle > 140 ? "cw 20"
-                                                                                                     : "ccw 20";
+            std::string angleText = localLeftOverAngle.second ? "ccw 20" : "cw 20";
             if (upDown <= -0.2) {
                 manageDroneCommand("up " + std::to_string(int(upDown * -100)));
             } else if (upDown >= 0.2) {
                 manageDroneCommand("down " + std::to_string(int(upDown * 100)));
-
             }
             upDown = 0;
             if (amountOfSearchTurns++ % 18 == 0) {
@@ -494,18 +515,14 @@ double Charger::landDroneCarefully(float markerSize, int markerId) {
     return localDistance;
 }
 
-int Charger::getLeftOverAngleFromRotationVector(cv::Vec<double, 3> rvec) {
+std::pair<int, bool> Charger::getLeftOverAngleFromRotationVector(cv::Vec<double, 3> rvec) {
     cv::Mat R33 = cv::Mat::eye(3, 3, CV_64FC1);
-    try {
-        cv::Rodrigues(rvec, R33);
-    } catch (...) {
-        return -10;
-    }
+    cv::Rodrigues(rvec, R33);
     cv::Vec3d eulerAngles;
     getEulerAngles(R33, eulerAngles);
     int yaw = eulerAngles[0];
-    //yaw *= yaw < 0 ? -1 : 1;
-    return yaw;
+    // std::cout << eulerAngles << std::endl;
+    return {yaw, eulerAngles[1] >= 0};
 }
 
 bool Charger::connectToDrone(std::string droneName) {
@@ -524,6 +541,47 @@ void Charger::turnDroneOnOrOff(int amountOfSleep) {
     sleep(amountOfSleep);
 }
 
+void Charger::travelTo3Points() {
+    stopCameraThread = false;
+    stop = false;
+    // manageDroneCommand("up 20");
+    //std::thread cameraThead(&Charger::getCameraFeed, this);
+    sleep(2);
+    std::thread trackerThead(&Charger::trackMarker, this);
+    //std::thread monitorDroneStateThead(&Charger::monitorDroneState, this);
+    stop = false;
+    double chargerDistanceFromWall = distanceFromWall;
+    distanceFromWall *= 2;
+    distanceToWall = distanceFromWall - 0.6;
+    distanceRightFromArucoCenter += 0.4;
+    distanceLeftFromArucoCenter -= 0.4;
+    manageDroneCommand("takeoff", 3, 3);
+
+    landDroneCarefully(markers[0].second, markers[0].first);
+    manageDroneCommand("cw 90", 3, 1);
+    manageDroneCommand("forward 200", 3, 1);
+    landDroneCarefully(markers[2].second, markers[2].first);
+    manageDroneCommand("cw 180", 3, 1);
+    manageDroneCommand("forward 350", 3, 1);
+    manageDroneCommand("cw 90", 3, 1);
+    distanceFromWall = chargerDistanceFromWall;
+    distanceToWall = distanceFromWall - 0.02;
+    distanceRightFromArucoCenter -= 0.4;
+    distanceLeftFromArucoCenter += 0.4;
+    landDroneCarefully(markers[0].second, markers[0].first);
+    manageDroneCommand("down 30", 3, 1);
+    landDroneCarefully(markers[1].second, markers[1].first);
+    drone->SendCommand("land");
+    sleep(5);
+    std::cout << "landed!" << std::endl;
+    *holdCamera = true;
+    stop = true;
+    stopCameraThread = true;
+    //monitorThead.join();
+    trackerThead.join();
+    chargerByEstimation();
+}
+
 void Charger::chargeByPaper() {
     stopCameraThread = false;
     stop = false;
@@ -533,7 +591,7 @@ void Charger::chargeByPaper() {
     std::thread trackerThead(&Charger::trackMarker, this);
     stop = false;
     landDroneCarefully(markers[0].second, markers[0].first);
-    sleep(1);
+    manageDroneCommand("down 30",3,1);
     landDroneCarefully(markers[1].second, markers[1].first);
     drone->SendCommand("land");
     sleep(5);

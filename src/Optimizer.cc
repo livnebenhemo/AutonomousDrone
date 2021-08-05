@@ -85,7 +85,7 @@ namespace ORB_SLAM2 {
             MapPoint *pMP = vpMP[i];
             if (pMP->isBad())
                 continue;
-            const map<KeyFrame *, size_t> observations = pMP->GetObservations();
+            const std::unordered_map<KeyFrame *, size_t> observations = pMP->GetObservations();
 
             int nEdges = observations.size();
             if (nEdges == 0) {

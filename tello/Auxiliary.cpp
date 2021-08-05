@@ -133,7 +133,7 @@ std::pair<int, bool> Auxiliary::getRotationToTargetInFront(Point point1, Point p
     Eigen::Vector3d unitVector2 = vector2 / vector2.norm();
     int angle = int(radiansToAngle(acos(unitVector1.dot(unitVector2))));
     bool clockwise = unitVector1.cross(unitVector2).z() <= 0;
-    if (angle > 100) {
+    if (angle > 90) {
         angle = 180 - angle;
         clockwise = !clockwise;
     }

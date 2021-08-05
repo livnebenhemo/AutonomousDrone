@@ -48,7 +48,7 @@ public:
     cv::Mat GetNormal();
     KeyFrame* GetReferenceKeyFrame();
 
-    std::map<KeyFrame*,size_t> GetObservations();
+    std::unordered_map<KeyFrame*,size_t> GetObservations();
     int Observations();
 
     void AddObservation(KeyFrame* pKF,size_t idx);
@@ -114,7 +114,7 @@ protected:
      cv::Mat mWorldPos;
 
      // Keyframes observing the point and associated index in keyframe
-     std::map<KeyFrame*,size_t> mObservations;
+     std::unordered_map<KeyFrame*,size_t> mObservations;
 
      // Mean viewing direction
      cv::Mat mNormalVector;

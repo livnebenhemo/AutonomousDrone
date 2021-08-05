@@ -43,11 +43,14 @@ public:
     void SetCurrentCameraPose(const cv::Mat &Tcw);
     void GetCurrentOpenGLCameraMatrix(pangolin::OpenGlMatrix &M);
     void SetDestination(Point point){destination = point;}
+    void SetCharger(Point point){charger = point;}
     void SetPolygonEdges(std::vector<Point> points){polygonEdges = points;}
     void ClearDestinationPoint(){destination = Point(1000,1000,1000);}
+    void ClearChargerPoint(){charger = Point(1000,1000,1000);}
     void ClearPolygonEdgesPoint(){polygonEdges = std::vector<Point>{};}
 private:
     Point destination;
+    Point charger;
     std::vector<Point> polygonEdges;
     float mKeyFrameSize;
     float mKeyFrameLineWidth;

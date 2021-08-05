@@ -35,7 +35,7 @@
 #include "MapDrawer.h"
 #include "Map.h"
 #include "LocalMapping.h"
-#include "MyLoopClosing.h"
+#include "LoopClosing.h"
 #include "KeyFrameDatabase.h"
 #include "ORBVocabulary.h"
 #include "Viewer.h"

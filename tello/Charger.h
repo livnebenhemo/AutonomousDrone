@@ -23,18 +23,24 @@ public:
     Charger(std::vector<std::pair<int, double>> markers, std::string chargerBluetoothAddress,
             std::shared_ptr<cv::VideoCapture> capture, std::shared_ptr<bool> holdCamera, std::string droneWifiName,
             std::string telloYamlFilePath, std::shared_ptr<ctello::Tello> drone, std::shared_ptr<cv::Mat> frame,
+            int currentPort,
             bool withImShow = false,
             int raspberryToTelloPinNumber = 26,
             double slowSpeedDistance = 0.15,
             double fastSpeedDistance = 1.0,
-            double distanceFromWall = 0.78,
-            double distanceToWall = 0.76,
-            double distanceUpDownMarker = 0.1,
-            double distanceRightFromArucoCenter = 0.03,
+            double distanceFromWall = 0.79,
+            double distanceToWall = 0.77,
+            double distanceUpDownMarker = 0.2,
+            double distanceRightFromArucoCenter = 0.02,
             double distanceLeftFromArucoCenter = 0.0, double almostStopSpeedDistance = 0.02);
 
     void chargeByPaper();
+
+    void travelTo3Points();
+
     static std::vector<cv::Mat> getCameraCalibration(std::string path);
+
+    void static getEulerAngles(cv::Mat &rotCameraMatrix, cv::Vec3d &eulerAngles);
 
     bool run();
 
@@ -53,6 +59,7 @@ private:
     double distanceUpDownMarker;
     double distanceRightFromArucoCenter;
     double distanceLeftFromArucoCenter;
+    int currentPort;
     std::shared_ptr<cv::VideoCapture> capture;
     bool stop = false;
     std::string droneWifiName;
@@ -61,7 +68,7 @@ private:
     double upDown = 0.0;
     double forward = 0.0;
     double rightLeft = 0.0;
-    int leftOverAngle = 0;
+    std::pair<int,bool> leftOverAngle {0, false};
     std::string telloYamlFilePath;
     bool cameraOpen = false;
     int currentMarker;
@@ -77,17 +84,16 @@ private:
     bool communicateWithCharger(int socket, bool closeSocket = false);
 
     bool chargerByEstimation();
+    void monitorDroneState();
+    std::string getMovementInDepth(double forwardBackwards);
 
-
-    void getEulerAngles(cv::Mat &rotCameraMatrix, cv::Vec3d &eulerAngles);
-
-    bool correctDroneAngle(double currentRightLeft, int currentLeftOverAngle);
+    bool correctDroneAngle( std::pair<int,bool> currentLeftOverAngle);
 
     int sendMsg(int socket, std::string msg, int amountOfAttempts);
 
     double landDroneCarefully(float markerSize, int markerId);
 
-    int getLeftOverAngleFromRotationVector(cv::Vec<double, 3> rvec);
+    std::pair<int,bool> getLeftOverAngleFromRotationVector(cv::Vec<double, 3> rvec);
 
     std::string getForwardSpeedText(double distance);
 

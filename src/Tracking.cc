@@ -210,8 +210,10 @@ namespace ORB_SLAM2 {
                         bOK = TrackReferenceKeyFrame();
                     } else {
                         bOK = TrackWithMotionModel();
-                        if (!bOK)
+                        if (!bOK) {
                             bOK = TrackReferenceKeyFrame();
+
+                        }
                     }
                 } else {
                     bOK = Relocalization();
@@ -545,12 +547,12 @@ namespace ORB_SLAM2 {
 
         // We perform first an ORB matching with the reference keyframe
         // If enough matches are found we setup a PnP solver
-        ORBmatcher matcher(0.7, true);
+        ORBmatcher matcher(0.65, true);
         vector<MapPoint *> vpMapPointMatches;
 
         int nmatches = matcher.SearchByBoW(mpReferenceKF, mCurrentFrame, vpMapPointMatches);
 
-        if (nmatches < 15)
+        if (nmatches < 10)
             return false;
 
         mCurrentFrame.mvpMapPoints = vpMapPointMatches;
@@ -564,14 +566,15 @@ namespace ORB_SLAM2 {
             if (mCurrentFrame.mvpMapPoints[i]) {
                 if (mCurrentFrame.mvbOutlier[i]) {
                     MapPoint *pMP = mCurrentFrame.mvpMapPoints[i];
-
                     mCurrentFrame.mvpMapPoints[i] = static_cast<MapPoint *>(nullptr);
                     mCurrentFrame.mvbOutlier[i] = false;
                     pMP->mbTrackInView = false;
                     pMP->mnLastFrameSeen = mCurrentFrame.mnId;
                     nmatches--;
-                } else if (mCurrentFrame.mvpMapPoints[i]->Observations() > 0)
+                } else if (mCurrentFrame.mvpMapPoints[i]->Observations() > 0) {
                     nmatchesMap++;
+                }
+
             }
         }
 
@@ -614,7 +617,7 @@ namespace ORB_SLAM2 {
             if (bCreateNew) {
                 cv::Mat x3D = mLastFrame.UnprojectStereo(i);
                 auto pNewMP = new MapPoint(x3D, mpMap, &mLastFrame, i);
-
+                free(mLastFrame.mvpMapPoints[i]);
                 mLastFrame.mvpMapPoints[i] = pNewMP;
 
                 mlpTemporalPoints.push_back(pNewMP);
@@ -626,7 +629,7 @@ namespace ORB_SLAM2 {
     }
 
     bool Tracking::TrackWithMotionModel() {
-        ORBmatcher matcher(0.9, true);
+
 
         // Update last frame pose according to its reference keyframe
         // Create "visual odometry" points if in Localization Mode
@@ -637,11 +640,13 @@ namespace ORB_SLAM2 {
         fill(mCurrentFrame.mvpMapPoints.begin(), mCurrentFrame.mvpMapPoints.end(), static_cast<MapPoint *>(nullptr));
 
         // Project points seen in previous frame
-        int th;
-        if (mSensor != System::STEREO)
-            th = 15;
-        else
-            th = 7;
+        int th = 30;
+        /* int th;
+         if (mSensor != System::STEREO)
+             th = 15;
+         else
+             th = 7;*/
+        ORBmatcher matcher(0.9, true);
         int nmatches = matcher.SearchByProjection(mCurrentFrame, mLastFrame, th, mSensor == System::MONOCULAR);
 
         // If few matches, uses a wider window search
@@ -651,8 +656,12 @@ namespace ORB_SLAM2 {
             nmatches = matcher.SearchByProjection(mCurrentFrame, mLastFrame, 2 * th, mSensor == System::MONOCULAR);
         }
 
-        if (nmatches < 20)
+        if (nmatches < 20) {
+            std::cout << "no matches on frame:" << mCurrentFrame.getFrameId() << " to frame" << mLastFrame.getFrameId()
+                      << std::endl;
             return false;
+        }
+
 
         // Optimize frame pose with all matches
         Optimizer::PoseOptimization(&mCurrentFrame);
@@ -938,7 +947,7 @@ namespace ORB_SLAM2 {
             if (mCurrentFrame.mvpMapPoints[i]) {
                 MapPoint *pMP = mCurrentFrame.mvpMapPoints[i];
                 if (!pMP->isBad()) {
-                    const map<KeyFrame *, size_t> observations = pMP->GetObservations();
+                    const std::unordered_map<KeyFrame *, size_t> observations = pMP->GetObservations();
                     for (auto it : observations)
                         keyframeCounter[it.first]++;
                 } else {

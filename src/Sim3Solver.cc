@@ -21,15 +21,6 @@
 
 #include "Sim3Solver.h"
 
-#include <vector>
-#include <cmath>
-#include <opencv2/core/core.hpp>
-
-#include "KeyFrame.h"
-#include "ORBmatcher.h"
-
-#include "Thirdparty/DBoW2/DUtils/Random.h"
-
 namespace ORB_SLAM2
 {
 
@@ -37,16 +28,12 @@ namespace ORB_SLAM2
     Sim3Solver::Sim3Solver(KeyFrame *pKF1, KeyFrame *pKF2, const vector<MapPoint *> &vpMatched12, const bool bFixScale):
             mnIterations(0), mnBestInliers(0), mbFixScale(bFixScale)
     {
-        mpKF1 = pKF1;
-        mpKF2 = pKF2;
-
         vector<MapPoint*> vpKeyFrameMP1 = pKF1->GetMapPointMatches();
 
         mN1 = vpMatched12.size();
 
         mvpMapPoints1.reserve(mN1);
         mvpMapPoints2.reserve(mN1);
-        mvpMatches12 = vpMatched12;
         mvnIndices1.reserve(mN1);
         mvX3Dc1.reserve(mN1);
         mvX3Dc2.reserve(mN1);
@@ -66,50 +53,40 @@ namespace ORB_SLAM2
                 MapPoint* pMP1 = vpKeyFrameMP1[i1];
                 MapPoint* pMP2 = vpMatched12[i1];
 
-                if(!pMP1)
-                    continue;
+            if(!pMP1 || (pMP1->isBad() || pMP2->isBad()))
+                continue;
 
-                if(pMP1->isBad() || pMP2->isBad())
-                    continue;
+            int indexKF1 = pMP1->GetIndexInKeyFrame(pKF1);
+            int indexKF2 = pMP2->GetIndexInKeyFrame(pKF2);
 
-                int indexKF1 = pMP1->GetIndexInKeyFrame(pKF1);
-                int indexKF2 = pMP2->GetIndexInKeyFrame(pKF2);
+            if(indexKF1<0 || indexKF2<0)
+                continue;
 
-                if(indexKF1<0 || indexKF2<0)
-                    continue;
+            const float sigmaSquare1 = pKF1->mvLevelSigma2[pKF1->mvKeysUn[indexKF1].octave];
+            const float sigmaSquare2 = pKF2->mvLevelSigma2[pKF2->mvKeysUn[indexKF2].octave];
 
-                const cv::KeyPoint &kp1 = pKF1->mvKeysUn[indexKF1];
-                const cv::KeyPoint &kp2 = pKF2->mvKeysUn[indexKF2];
+            mvnMaxError1.push_back(9.210*sigmaSquare1);
+            mvnMaxError2.push_back(9.210*sigmaSquare2);
 
-                const float sigmaSquare1 = pKF1->mvLevelSigma2[kp1.octave];
-                const float sigmaSquare2 = pKF2->mvLevelSigma2[kp2.octave];
+            mvpMapPoints1.push_back(pMP1);
+            mvpMapPoints2.push_back(pMP2);
+            mvnIndices1.push_back(i1);
 
-                mvnMaxError1.push_back(9.210*sigmaSquare1);
-                mvnMaxError2.push_back(9.210*sigmaSquare2);
-
-                mvpMapPoints1.push_back(pMP1);
-                mvpMapPoints2.push_back(pMP2);
-                mvnIndices1.push_back(i1);
-
-                cv::Mat X3D1w = pMP1->GetWorldPos();
-                mvX3Dc1.push_back(Rcw1*X3D1w+tcw1);
-
-                cv::Mat X3D2w = pMP2->GetWorldPos();
-                mvX3Dc2.push_back(Rcw2*X3D2w+tcw2);
-
-                mvAllIndices.push_back(idx);
-                idx++;
-            }
+            mvX3Dc1.push_back(Rcw1*pMP1->GetWorldPos()+tcw1);
+            mvX3Dc2.push_back(Rcw2*pMP2->GetWorldPos()+tcw2);
+            mvAllIndices.push_back(idx);
+            idx++;
         }
-
-        mK1 = pKF1->mK;
-        mK2 = pKF2->mK;
-
-        FromCameraToImage(mvX3Dc1,mvP1im1,mK1);
-        FromCameraToImage(mvX3Dc2,mvP2im2,mK2);
-
-        SetRansacParameters();
     }
+
+    mK1 = pKF1->mK;
+    mK2 = pKF2->mK;
+
+    FromCameraToImage(mvX3Dc1,mvP1im1,mK1);
+    FromCameraToImage(mvX3Dc2,mvP2im2,mK2);
+
+    SetRansacParameters();
+}
 
     void Sim3Solver::SetRansacParameters(double probability, int minInliers, int maxIterations)
     {
@@ -246,7 +223,7 @@ namespace ORB_SLAM2
 
         double N11, N12, N13, N14, N22, N23, N24, N33, N34, N44;
 
-        cv::Mat N(4,4,P1.type());
+        cv::Mat N1(4,4,P1.type());
 
         N11 = M.at<float>(0,0)+M.at<float>(1,1)+M.at<float>(2,2);
         N12 = M.at<float>(1,2)-M.at<float>(2,1);
@@ -259,7 +236,7 @@ namespace ORB_SLAM2
         N34 = M.at<float>(1,2)+M.at<float>(2,1);
         N44 = -M.at<float>(0,0)-M.at<float>(1,1)+M.at<float>(2,2);
 
-        N = (cv::Mat_<float>(4,4) << N11, N12, N13, N14,
+        N1 = (cv::Mat_<float>(4,4) << N11, N12, N13, N14,
                 N12, N22, N23, N24,
                 N13, N23, N33, N34,
                 N14, N24, N34, N44);
@@ -269,7 +246,7 @@ namespace ORB_SLAM2
 
         cv::Mat eval, evec;
 
-        cv::eigen(N,eval,evec); //evec[0] is the quaternion of the desired rotation
+        cv::eigen(N1,eval,evec); //evec[0] is the quaternion of the desired rotation
 
         cv::Mat vec(1,3,evec.type());
         (evec.row(0).colRange(1,4)).copyTo(vec); //extract imaginary part of the quaternion (sin*axis)

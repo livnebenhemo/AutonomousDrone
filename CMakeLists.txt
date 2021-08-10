@@ -57,6 +57,7 @@ add_library(${PROJECT_NAME}
         src/ORBextractor.cc
         src/ORBmatcher.cc
         src/FrameDrawer.cc
+        src/Sim3Solver.cc
         src/Converter.cc
         src/MapPoint.cc
         src/KeyFrame.cc
@@ -68,6 +69,7 @@ add_library(${PROJECT_NAME}
         src/KeyFrameDatabase.cc
         src/Initializer.cc
         src/Viewer.cc
+        src/LoopClosing.cc
         tello/DBSCAN.cpp
         tello/AutonomousDrone.cpp
         tello/Polygon.cpp

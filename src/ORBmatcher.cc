@@ -20,13 +20,6 @@
 
 #include "ORBmatcher.h"
 
-#include<limits.h>
-
-#include<opencv2/core/core.hpp>
-
-#include "Thirdparty/DBoW2/DBoW2/FeatureVector.h"
-
-#include<stdint-gcc.h>
 
 using namespace std;
 

@@ -21,7 +21,6 @@
 
 
 #include "System.h"
-#include "Converter.h"
 
 
 namespace ORB_SLAM2 {

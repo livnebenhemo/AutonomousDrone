@@ -27,19 +27,15 @@
 #include<opencv2/core/core.hpp>
 #include <thread>
 #include <pangolin/pangolin.h>
-#include <iomanip>
 #include <unistd.h>
-#include <stdlib.h>
-#include "Tracking.h"
-#include "FrameDrawer.h"
 #include "MapDrawer.h"
-#include "Map.h"
+#include "Tracking.h"
 #include "LocalMapping.h"
-#include "LoopClosing.h"
 #include "KeyFrameDatabase.h"
 #include "ORBVocabulary.h"
 #include "Viewer.h"
-
+#include "Converter.h"
+#include "LoopClosing.h"
 namespace ORB_SLAM2 {
 
     class Viewer;

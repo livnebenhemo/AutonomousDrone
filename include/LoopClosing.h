@@ -17,24 +17,13 @@
 * You should have received a copy of the GNU General Public License
 * along with ORB-SLAM2. If not, see <http://www.gnu.org/licenses/>.
 */
-#include "Optimizer.h"
+
 #ifndef LOOPCLOSING_H
 #define LOOPCLOSING_H
-#include "Sim3Solver.h"
-#include "Converter.h"
+#include "Optimizer.h"
 #include "ORBmatcher.h"
-#include <unistd.h>
-#include<mutex>
-#include<thread>
-#include "KeyFrame.h"
-#include "LocalMapping.h"
-#include "Map.h"
-#include "ORBVocabulary.h"
-#include "Tracking.h"
-
-#include "KeyFrameDatabase.h"
-#include "Thirdparty/g2o/g2o/types/types_seven_dof_expmap.h"
-
+#include "Sim3Solver.h"
+#include <thread>
 namespace ORB_SLAM2
 {
 

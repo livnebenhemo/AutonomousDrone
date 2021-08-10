@@ -22,21 +22,20 @@
 #define OPTIMIZER_H
 
 #include "Map.h"
-#include "MapPoint.h"
 #include "KeyFrame.h"
-#include "LoopClosing.h"
-#include "Frame.h"
 
 #include "Thirdparty/g2o/g2o/types/types_seven_dof_expmap.h"
 
 namespace ORB_SLAM2
 {
 
-class LoopClosing;
 
 class Optimizer
 {
 public:
+    typedef pair<set<KeyFrame*>,int> ConsistentGroup;
+    typedef map<KeyFrame*,g2o::Sim3,std::less<KeyFrame*>,
+            Eigen::aligned_allocator<std::pair<const KeyFrame*, g2o::Sim3> > > KeyFrameAndPose;
     void static BundleAdjustment(const std::vector<KeyFrame*> &vpKF, const std::vector<MapPoint*> &vpMP,
                                  int nIterations = 5, bool *pbStopFlag=nullptr, const unsigned long nLoopKF=0,
                                  const bool bRobust = true);
@@ -47,8 +46,8 @@ public:
 
     // if bFixScale is true, 6DoF optimization (stereo,rgbd), 7DoF otherwise (mono)
     void static OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* pCurKF,
-                                       const LoopClosing::KeyFrameAndPose &NonCorrectedSim3,
-                                       const LoopClosing::KeyFrameAndPose &CorrectedSim3,
+                                       const KeyFrameAndPose &NonCorrectedSim3,
+                                       const KeyFrameAndPose &CorrectedSim3,
                                        const map<KeyFrame *, set<KeyFrame *> > &LoopConnections,
                                        const bool &bFixScale);
 

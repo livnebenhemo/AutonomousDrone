@@ -900,14 +900,14 @@ void AutonomousDrone::run() {
     while (true) {
         if (canStart) {
             //manageDroneCommand("takeoff", 3, 3);
-            /*Charger charger(markers, chargerBluetoothAddress, capture, holdCamera, droneWifiName,
+            Charger charger(markers, holdCamera, droneWifiName,
                             arucoYamlPath, drone, currentImage, dronePort,
                             false);
             std::cout << "start running the charger" << std::endl;
             //charger.run();
             while(true){
                 charger.travelTo3Points();
-            }*/
+            }
             std::thread batteryThread(&AutonomousDrone::alertLowBattery, this);
             rooms.emplace_back(Room());
             currentRoom = rooms.back();
@@ -952,7 +952,7 @@ void AutonomousDrone::run() {
                         navigateDrone(home, false);
 
                     }
-                    Charger charger(markers, chargerBluetoothAddress, capture, holdCamera, droneWifiName,
+                    Charger charger(markers, holdCamera, droneWifiName,
                                     arucoYamlPath, drone, currentImage, dronePort,
                                     false);
                     std::cout << "start running the charger" << std::endl;

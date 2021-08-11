@@ -4,10 +4,10 @@
 
 #include "Charger.h"
 
-Charger::Charger(std::vector<std::pair<int, double>> markers, std::string chargerBluetoothAddress,
-                 std::shared_ptr<cv::VideoCapture> capture, std::shared_ptr<bool> holdCamera, std::string droneWifiName,
-                 std::string telloYamlFilePath,
-                 std::shared_ptr<ctello::Tello> drone, std::shared_ptr<cv::Mat> frame, int currentPort, bool withImShow,
+Charger::Charger(std::vector<std::pair<int, double>> markers, std::shared_ptr<bool> holdCamera, std::string droneWifiName,
+                 std::string telloYamlFilePath, std::shared_ptr<ctello::Tello> drone, std::shared_ptr<cv::Mat> frame,
+                 int currentPort, bool withImShow,
+                 std::string chargerBluetoothAddress,
                  int raspberryToTelloPinNumber,
                  double slowSpeedDistance,
                  double fastSpeedDistance,
@@ -544,6 +544,7 @@ void Charger::turnDroneOnOrOff(int amountOfSleep) {
 void Charger::travelTo3Points() {
     stopCameraThread = false;
     stop = false;
+    std::cout << "im here" << std::endl;
     // manageDroneCommand("up 20");
     //std::thread cameraThead(&Charger::getCameraFeed, this);
     sleep(2);
@@ -591,7 +592,7 @@ void Charger::chargeByPaper() {
     std::thread trackerThead(&Charger::trackMarker, this);
     stop = false;
     landDroneCarefully(markers[0].second, markers[0].first);
-    manageDroneCommand("down 30",3,1);
+    manageDroneCommand("down 30", 3, 1);
     landDroneCarefully(markers[1].second, markers[1].first);
     drone->SendCommand("land");
     sleep(5);

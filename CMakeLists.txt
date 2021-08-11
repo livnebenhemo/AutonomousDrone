@@ -109,6 +109,9 @@ target_link_libraries(testPolygon ${PROJECT_NAME})
 target_compile_options(tello PRIVATE -Wno-deprecated-declarations)
 add_executable(runAutonomousDrone tello/runAutonomousDrone.cpp)
 target_link_libraries(runAutonomousDrone ${PROJECT_NAME})
+
+add_executable(runCharger tello/runCharger.cpp)
+target_link_libraries(runCharger ${PROJECT_NAME})
 add_executable(offline_orb_slam
         Examples/Monocular/offline_orb_slam.cc)
 target_link_libraries(offline_orb_slam ${PROJECT_NAME})

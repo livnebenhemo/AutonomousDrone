@@ -20,11 +20,11 @@
 
 class Charger {
 public:
-    Charger(std::vector<std::pair<int, double>> markers, std::string chargerBluetoothAddress,
-            std::shared_ptr<cv::VideoCapture> capture, std::shared_ptr<bool> holdCamera, std::string droneWifiName,
+    Charger(std::vector<std::pair<int, double>> markers, std::shared_ptr<bool> holdCamera, std::string droneWifiName,
             std::string telloYamlFilePath, std::shared_ptr<ctello::Tello> drone, std::shared_ptr<cv::Mat> frame,
             int currentPort,
             bool withImShow = false,
+            std::string chargerBluetoothAddress="3C:61:05:03:81:E2",
             int raspberryToTelloPinNumber = 26,
             double slowSpeedDistance = 0.15,
             double fastSpeedDistance = 1.0,

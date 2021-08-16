@@ -893,37 +893,30 @@ void AutonomousDrone::connectDrone() {
         }
     }
 }
-
+void AutonomousDrone::exitRoom(){
+    beginScan();
+    std::thread getNavigationPoints(&AutonomousDrone::getNavigationPoints, this, true);
+    stayInTheAir();
+    getNavigationPoints.join();
+    std::vector<Point> exitPoint{};
+    exitPoint.emplace_back(currentRoom.exitPoints[0]);
+    currentRoom.exitPoints = exitPoint;
+    while (currentRoom.visitedExitPoints.empty()) {
+        navigateDrone(currentRoom.exitPoints[0]);
+    }
+    home = exitPoint[0];
+}
 void AutonomousDrone::run() {
 
     std::thread orbThread(&AutonomousDrone::runOrbSlam, this);
     while (true) {
         if (canStart) {
-            //manageDroneCommand("takeoff", 3, 3);
-            Charger charger(markers, holdCamera, droneWifiName,
-                            arucoYamlPath, drone, currentImage, dronePort,
-                            false);
-            std::cout << "start running the charger" << std::endl;
-            //charger.run();
-            while(true){
-                charger.travelTo3Points();
-            }
             std::thread batteryThread(&AutonomousDrone::alertLowBattery, this);
             rooms.emplace_back(Room());
             currentRoom = rooms.back();
             home = Point();
             manageDroneCommand("takeoff", 3, 3);
-            /*beginScan();
-            std::thread getNavigationPoints(&AutonomousDrone::getNavigationPoints, this, true);
-            stayInTheAir();
-            getNavigationPoints.join();
-            std::vector<Point> exitPoint{};
-            exitPoint.emplace_back(currentRoom.exitPoints[0]);
-            currentRoom.exitPoints = exitPoint;
-            while (currentRoom.visitedExitPoints.empty()) {
-                navigateDrone(currentRoom.exitPoints[0]);
-            }
-            home = exitPoint[0];*/
+            /*exitRoom()*/;
             beginScan(true);
             while (true) {
                 if (!lowBattery) {
@@ -956,7 +949,6 @@ void AutonomousDrone::run() {
                                     arucoYamlPath, drone, currentImage, dronePort,
                                     false);
                     std::cout << "start running the charger" << std::endl;
-                    //charger.run();
                     charger.chargeByPaper();
                     connectDrone();
                     batteryThread = std::thread(&AutonomousDrone::alertLowBattery, this);

@@ -28,6 +28,8 @@ void getCameraFeed() {
     }
 }
 
+
+
 int main() {
     std::shared_ptr<ctello::Tello> drone = std::make_shared<ctello::Tello>();
     drone->Bind();
@@ -37,14 +39,15 @@ int main() {
     while (!cameraOpen){
         usleep(5000000);
     }
-    std::cout << "im here" << std::endl;
     std::vector<std::pair<int, double>> markers;
     markers.emplace_back(std::pair<int, double>(4, 0.1815));
     markers.emplace_back(std::pair<int, double>(5, 0.1815));
     markers.emplace_back(std::pair<int, double>(6, 0.1815));
 
-    Charger charger(markers,holdCamera,"TELLO-5BFA7F","/home/rbdstudent/ORB_SLAM2/ORB_SLAM2/Examples/Monocular/tello_aruco_5BFA7F.yaml",
+    Charger charger(markers,holdCamera,"TELLO-9F5EC2","/home/rbdstudent/ORB_SLAM2/ORB_SLAM2/Examples/Monocular/tello_aruco_9F5EC2.yaml",
                     drone,frame,9000);
-    charger.travelTo3Points();
+    drone->SendCommandWithResponse("takeoff");
+    sleep(2);
+    charger.chargeByPaper();
     return 0;
 }

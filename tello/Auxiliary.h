@@ -24,18 +24,25 @@ public:
 
     static double angleToRadians(int angle);
 
+    static long myGcd(long a, long b);
+    static std::tuple<int,int,int> getRationalInverse(double input);
+
     static double getAngleFromSlope(double slope);
 
     static double radiansToAngle(double radian);
 
     static double calculateDistance(Point point1, Point point2);
+
     static double calculateDistance3D(Point point1, Point point2);
 
     static double getDistanceToClosestSegment(Point point, std::vector<Line> segments);
 
     static double getAngleBySlopes(Line line1, Line line2);
+
     static double calculateVariance(std::vector<double> distances);
+
     static double calculateMeanOfDistanceDifferences(std::vector<double> distances);
+
     static std::pair<int, bool> getRotationToTargetInFront(Point point1, Point point2);
 
     static std::pair<int, bool>

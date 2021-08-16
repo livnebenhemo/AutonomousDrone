@@ -139,6 +139,35 @@ std::pair<int, bool> Auxiliary::getRotationToTargetInFront(Point point1, Point p
     }
     return std::pair<int, bool>{angle, clockwise};
 }
+
+long Auxiliary::myGcd(long a, long b)
+{
+    if (a == 0)
+        return b;
+    else if (b == 0)
+        return a;
+
+    if (a < b)
+        return myGcd(a, b % a);
+    else
+        return myGcd(b, a % b);
+}
+std::tuple<int,int,int> Auxiliary::getRationalInverse(double input)
+{
+    double integral = std::floor(input);
+    double frac = input - integral;
+
+    const long precision = 1000000000; // This is the accuracy.
+
+    long myGcd_ = myGcd(std::round(frac * precision), precision);
+
+    long denominator = precision / myGcd_;
+    long numerator = round(frac * precision) / myGcd_;
+
+    std::cout << integral << " + ";
+    std::cout << numerator << " / " << denominator << std::endl;
+    return std::tuple(integral,numerator,denominator);
+}
 double Auxiliary::calculateMeanOfDistanceDifferences(std::vector<double> distances){
     double sumOfDistances = 0.0;
     for (int i = 0; i <distances.size()-1; ++i) {

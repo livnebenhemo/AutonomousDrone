@@ -99,6 +99,8 @@ private:
 
     bool findAndGoHome(int howClose, bool stopNavigation = false);
 
+    void exitRoom();
+
     enum drone_modes {
         scanning, navigation, noBattery
     };

@@ -16,7 +16,7 @@
 #include <opencv2/calib3d.hpp>
 #include <thread>
 //#include <wiringPi.h>
-
+#include "Auxiliary.h"
 
 class Charger {
 public:
@@ -24,15 +24,15 @@ public:
             std::string telloYamlFilePath, std::shared_ptr<ctello::Tello> drone, std::shared_ptr<cv::Mat> frame,
             int currentPort,
             bool withImShow = false,
-            std::string chargerBluetoothAddress="3C:61:05:03:81:E2",
+            std::string chargerBluetoothAddress = "3C:61:05:03:81:E2",
             int raspberryToTelloPinNumber = 26,
             double slowSpeedDistance = 0.15,
             double fastSpeedDistance = 1.0,
-            double distanceFromWall = 0.79,
+            double distanceFromWall = 0.80,
             double distanceToWall = 0.77,
             double distanceUpDownMarker = 0.2,
-            double distanceRightFromArucoCenter = 0.02,
-            double distanceLeftFromArucoCenter = 0.0, double almostStopSpeedDistance = 0.02);
+            double distanceRightFromArucoCenter = -0.02,
+            double distanceLeftFromArucoCenter = -0.05, double almostStopSpeedDistance = 0.02);
 
     void chargeByPaper();
 
@@ -68,14 +68,23 @@ private:
     double upDown = 0.0;
     double forward = 0.0;
     double rightLeft = 0.0;
-    std::pair<int,bool> leftOverAngle {0, false};
+    std::pair<int, bool> leftOverAngle{0, false};
     std::string telloYamlFilePath;
     bool cameraOpen = false;
     int currentMarker;
     float currentMarkerSize;
+    double leftRightError;
+    double forwardBackwardError;
+    double upDownError;
+    double amountOfUSleepForDroneRcCommand = 300000;
+    double amountOfUSleepForTrackMarker = 50000;
+    int amountOfMeasurement = floor(amountOfUSleepForDroneRcCommand / amountOfUSleepForTrackMarker);
+
     std::shared_ptr<ctello::Tello> drone;
     bool withImShow = false;
 
+    void
+    calculateAxisErrors(double rightLeftExpectation, double forwardBackwardsExpectation, double upDownExpectation);
 
     bool manageDroneCommand(std::string command, int amountOfAttempt = 2, int amountOfSleep = 0);
 
@@ -83,17 +92,21 @@ private:
 
     bool communicateWithCharger(int socket, bool closeSocket = false);
 
-    bool chargerByEstimation();
+    bool chargeByEstimation(int batteryAtStart);
+
     void monitorDroneState();
+
     std::string getMovementInDepth(double forwardBackwards);
 
-    bool correctDroneAngle( std::pair<int,bool> currentLeftOverAngle);
+    bool correctDroneAngle(std::pair<int, bool> currentLeftOverAngle);
 
     int sendMsg(int socket, std::string msg, int amountOfAttempts);
 
-    double landDroneCarefully(float markerSize, int markerId);
+    double navigateToMarker(float markerSize, int markerId);
 
-    std::pair<int,bool> getLeftOverAngleFromRotationVector(cv::Vec<double, 3> rvec);
+    double navigateToMarkerByExpectation(float markerSize, int markerId);
+
+    std::pair<int, bool> getLeftOverAngleFromRotationVector(cv::Vec<double, 3> rvec);
 
     std::string getForwardSpeedText(double distance);
 

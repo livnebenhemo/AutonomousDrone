@@ -17,7 +17,11 @@
 * You should have received a copy of the GNU General Public License
 * along with ORB-SLAM2. If not, see <http://www.gnu.org/licenses/>.
 */
-#include "System.h"
+
+#include <execution>
+#include "LoopClosing.h"
+#include "Sim3Solver.h"
+#include "Optimizer.h"
 
 
 namespace ORB_SLAM2 {
@@ -41,7 +45,7 @@ namespace ORB_SLAM2 {
     void LoopClosing::Run() {
         mbFinished = false;
 
-        while (true) {
+        while (1) {
             // Check if there are keyframes in the queue
             if (CheckNewKeyFrames()) {
                 // Detect loop candidates and check covisibility consistency
@@ -67,20 +71,19 @@ namespace ORB_SLAM2 {
     }
 
     void LoopClosing::InsertKeyFrame(KeyFrame *pKF) {
-        unique_lock<mutex> lock(mMutexLoopQueue);
+        std::unique_lock<std::mutex> lock(mMutexLoopQueue);
         if (pKF->mnId != 0)
             mlpLoopKeyFrameQueue.push_back(pKF);
     }
 
     bool LoopClosing::CheckNewKeyFrames() {
-        unique_lock<mutex> lock(mMutexLoopQueue);
+        std::unique_lock<std::mutex> lock(mMutexLoopQueue);
         return (!mlpLoopKeyFrameQueue.empty());
     }
 
-    bool LoopClosing::DetectLoop()
-    {
+    bool LoopClosing::DetectLoop() {
         {
-            unique_lock<mutex> lock(mMutexLoopQueue);
+            std::unique_lock<std::mutex> lock(mMutexLoopQueue);
             mpCurrentKF = mlpLoopKeyFrameQueue.front();
             mlpLoopKeyFrameQueue.pop_front();
             // Avoid that a keyframe can be erased while it is being process by this thread
@@ -88,7 +91,7 @@ namespace ORB_SLAM2 {
         }
 
         //If the map contains less than 10 KF or less than 10 KF have passed from last loop detection
-        if (mpCurrentKF->mnId < mLastLoopKFid + 2) {
+        if (mpCurrentKF->mnId < mLastLoopKFid + 10) {
             mpKeyFrameDB->add(mpCurrentKF);
             mpCurrentKF->SetErase();
             return false;
@@ -97,20 +100,22 @@ namespace ORB_SLAM2 {
         // Compute reference BoW similarity score
         // This is the lowest score to a connected keyframe in the covisibility graph
         // We will impose loop candidates to have a higher similarity than this
-        const vector<KeyFrame *> vpConnectedKeyFrames = mpCurrentKF->GetVectorCovisibleKeyFrames();
+        const std::vector<KeyFrame *> vpConnectedKeyFrames = mpCurrentKF->GetVectorCovisibleKeyFrames();
         const DBoW2::BowVector &CurrentBowVec = mpCurrentKF->mBowVec;
-        double minScore = 1;
-        for (auto pKF : vpConnectedKeyFrames) {
+        float minScore = 1;
+        for (auto pKF: vpConnectedKeyFrames) {
             if (pKF->isBad())
                 continue;
             const DBoW2::BowVector &BowVec = pKF->mBowVec;
 
-            double score = mpORBVocabulary->score(CurrentBowVec, BowVec);
-            minScore = score < minScore ? score : minScore;
+            float score = mpORBVocabulary->score(CurrentBowVec, BowVec);
+
+            if (score < minScore)
+                minScore = score;
         }
 
         // Query the database imposing the minimum score
-        vector<KeyFrame *> vpCandidateKFs = mpKeyFrameDB->DetectLoopCandidates(mpCurrentKF, minScore);
+        std::vector<KeyFrame *> vpCandidateKFs = mpKeyFrameDB->DetectLoopCandidates(mpCurrentKF, minScore);
 
         // If there are no loop candidates, just add new keyframe and return false
         if (vpCandidateKFs.empty()) {
@@ -126,20 +131,20 @@ namespace ORB_SLAM2 {
         // We must detect a consistent loop in several consecutive keyframes to accept it
         mvpEnoughConsistentCandidates.clear();
 
-        vector<ConsistentGroup> vCurrentConsistentGroups;
-        vector<bool> vbConsistentGroup(mvConsistentGroups.size(), false);
-        for (auto pCandidateKF : vpCandidateKFs) {
-            set<KeyFrame *> spCandidateGroup = pCandidateKF->GetConnectedKeyFrames();
+        std::vector<ConsistentGroup> vCurrentConsistentGroups;
+        std::vector<bool> vbConsistentGroup(mvConsistentGroups.size(), false);
+        for (auto pCandidateKF: vpCandidateKFs) {
+            std::set<KeyFrame *> spCandidateGroup = pCandidateKF->GetConnectedKeyFrames();
             spCandidateGroup.insert(pCandidateKF);
 
             bool bEnoughConsistent = false;
             bool bConsistentForSomeGroup = false;
-            for (unsigned long iG = 0, iendG = mvConsistentGroups.size(); iG < iendG; iG++) {
-                set<KeyFrame *> sPreviousGroup = mvConsistentGroups[iG].first;
+            for (size_t iG = 0, iendG = mvConsistentGroups.size(); iG < iendG; iG++) {
+                std::set<KeyFrame *> sPreviousGroup = mvConsistentGroups[iG].first;
 
                 bool bConsistent = false;
-                for (auto kf : spCandidateGroup) {
-                    if (sPreviousGroup.count(kf)) {
+                for (auto sit: spCandidateGroup) {
+                    if (sPreviousGroup.count(sit)) {
                         bConsistent = true;
                         bConsistentForSomeGroup = true;
                         break;
@@ -178,8 +183,9 @@ namespace ORB_SLAM2 {
         if (mvpEnoughConsistentCandidates.empty()) {
             mpCurrentKF->SetErase();
             return false;
+        } else {
+            return true;
         }
-        return true;
     }
 
     bool LoopClosing::ComputeSim3() {
@@ -191,13 +197,13 @@ namespace ORB_SLAM2 {
         // If enough matches are found, we setup a Sim3Solver
         ORBmatcher matcher(0.75, true);
 
-        vector<Sim3Solver *> vpSim3Solvers;
+        std::vector<Sim3Solver *> vpSim3Solvers;
         vpSim3Solvers.resize(nInitialCandidates);
 
-        vector<vector<MapPoint *> > vvpMapPointMatches;
+        std::vector<std::vector<MapPoint *> > vvpMapPointMatches;
         vvpMapPointMatches.resize(nInitialCandidates);
 
-        vector<bool> vbDiscarded;
+        std::vector<bool> vbDiscarded;
         vbDiscarded.resize(nInitialCandidates);
 
         int nCandidates = 0; //candidates with enough matches
@@ -239,7 +245,7 @@ namespace ORB_SLAM2 {
                 KeyFrame *pKF = mvpEnoughConsistentCandidates[i];
 
                 // Perform 5 Ransac Iterations
-                vector<bool> vbInliers;
+                std::vector<bool> vbInliers;
                 int nInliers;
                 bool bNoMore;
 
@@ -254,8 +260,8 @@ namespace ORB_SLAM2 {
 
                 // If RANSAC returns a Sim3, perform a guided matching and optimize with all correspondences
                 if (!Scm.empty()) {
-                    vector<MapPoint *> vpMapPointMatches(vvpMapPointMatches[i].size(),
-                                                         static_cast<MapPoint *>(nullptr));
+                    std::vector<MapPoint *> vpMapPointMatches(vvpMapPointMatches[i].size(),
+                                                              static_cast<MapPoint *>(nullptr));
                     for (size_t j = 0, jend = vbInliers.size(); j < jend; j++) {
                         if (vbInliers[j])
                             vpMapPointMatches[j] = vvpMapPointMatches[i][j];
@@ -264,7 +270,7 @@ namespace ORB_SLAM2 {
                     cv::Mat R = pSolver->GetEstimatedRotation();
                     cv::Mat t = pSolver->GetEstimatedTranslation();
                     const float s = pSolver->GetEstimatedScale();
-                    matcher.SearchBySim3(mpCurrentKF, pKF, vpMapPointMatches, s, R, t, 7.5);
+                    ORB_SLAM2::ORBmatcher::SearchBySim3(mpCurrentKF, pKF, vpMapPointMatches, s, R, t, 7.5);
 
                     g2o::Sim3 gScm(Converter::toMatrix3d(R), Converter::toVector3d(t), s);
                     const int nInliers = Optimizer::OptimizeSim3(mpCurrentKF, pKF, vpMapPointMatches, gScm, 10,
@@ -294,14 +300,12 @@ namespace ORB_SLAM2 {
         }
 
         // Retrieve MapPoints seen in Loop Keyframe and neighbors
-        vector<KeyFrame *> vpLoopConnectedKFs = mpMatchedKF->GetVectorCovisibleKeyFrames();
+        std::vector<KeyFrame *> vpLoopConnectedKFs = mpMatchedKF->GetVectorCovisibleKeyFrames();
         vpLoopConnectedKFs.push_back(mpMatchedKF);
         mvpLoopMapPoints.clear();
-        for (vector<KeyFrame *>::iterator vit = vpLoopConnectedKFs.begin(); vit != vpLoopConnectedKFs.end(); vit++) {
-            KeyFrame *pKF = *vit;
-            vector<MapPoint *> vpMapPoints = pKF->GetMapPointMatches();
-            for (size_t i = 0, iend = vpMapPoints.size(); i < iend; i++) {
-                MapPoint *pMP = vpMapPoints[i];
+        for (auto pKF: vpLoopConnectedKFs) {
+            std::vector<MapPoint *> vpMapPoints = pKF->GetMapPointMatches();
+            for (auto pMP: vpMapPoints) {
                 if (pMP) {
                     if (!pMP->isBad() && pMP->mnLoopPointForKF != mpCurrentKF->mnId) {
                         mvpLoopMapPoints.push_back(pMP);
@@ -312,12 +316,12 @@ namespace ORB_SLAM2 {
         }
 
         // Find more matches projecting with the computed Sim3
-        matcher.SearchByProjection(mpCurrentKF, mScw, mvpLoopMapPoints, mvpCurrentMatchedPoints, 10);
+        ORB_SLAM2::ORBmatcher::SearchByProjection(mpCurrentKF, mScw, mvpLoopMapPoints, mvpCurrentMatchedPoints, 10);
 
         // If enough matches accept Loop
         int nTotalMatches = 0;
-        for (size_t i = 0; i < mvpCurrentMatchedPoints.size(); i++) {
-            if (mvpCurrentMatchedPoints[i])
+        for (auto & mvpCurrentMatchedPoint : mvpCurrentMatchedPoints) {
+            if (mvpCurrentMatchedPoint)
                 nTotalMatches++;
         }
 
@@ -335,8 +339,9 @@ namespace ORB_SLAM2 {
 
     }
 
+
     void LoopClosing::CorrectLoop() {
-        cout << "Loop detected!" << endl;
+        std::cout << "Loop detected!" << std::endl;
 
         // Send a stop signal to Local Mapping
         // Avoid new keyframes are inserted while correcting the loop
@@ -344,10 +349,10 @@ namespace ORB_SLAM2 {
 
         // If a Global Bundle Adjustment is running, abort it
         if (isRunningGBA()) {
-            unique_lock<mutex> lock(mMutexGBA);
+            std::unique_lock<std::mutex> lock(mMutexGBA);
             mbStopGBA = true;
 
-            mnFullBAIdx++;
+            mnFullBAIdx = true;
 
             if (mpThreadGBA) {
                 mpThreadGBA->detach();
@@ -374,8 +379,8 @@ namespace ORB_SLAM2 {
 
         {
             // Get Map Mutex
-            unique_lock<mutex> lock(mpMap->mMutexMapUpdate);
-            for (auto pKFi : mvpCurrentConnectedKFs) {
+            std::unique_lock<std::mutex> lock(mpMap->mMutexMapUpdate);
+            for (auto pKFi: mvpCurrentConnectedKFs) {
                 if (pKFi) {
                     cv::Mat Tiw = pKFi->GetPose();
                     if (pKFi != mpCurrentKF) {
@@ -395,14 +400,14 @@ namespace ORB_SLAM2 {
                 }
             }
             // Correct all MapPoints obsrved by current keyframe and neighbors, so that they align with the other side of the loop
-            for (auto pKFi : CorrectedSim3) {
+            for (auto pKFi: CorrectedSim3) {
                 if (pKFi.first) {
                     g2o::Sim3 g2oCorrectedSiw = pKFi.second;
                     g2o::Sim3 g2oCorrectedSwi = g2oCorrectedSiw.inverse();
 
                     g2o::Sim3 g2oSiw = NonCorrectedSim3[pKFi.first];
 
-                    for (auto pMPi : pKFi.first->GetMapPointMatches()) {
+                    for (auto pMPi: pKFi.first->GetMapPointMatches()) {
                         if (!pMPi || pMPi->isBad() || pMPi->mnCorrectedByKF == mpCurrentKF->mnId)
                             continue;
 
@@ -447,16 +452,16 @@ namespace ORB_SLAM2 {
 
 
         // After the MapPoint fusion, new links in the covisibility graph will appear attaching both sides of the loop
-        map<KeyFrame *, set<KeyFrame *> > LoopConnections;
-        for (auto pKFi : mvpCurrentConnectedKFs) {
+        std::map<KeyFrame *, std::set<KeyFrame *> > LoopConnections;
+        for (auto pKFi: mvpCurrentConnectedKFs) {
             if (pKFi) {
                 // Update connections. Detect new links.
                 pKFi->UpdateConnections();
                 LoopConnections[pKFi] = pKFi->GetConnectedKeyFrames();
-                for (auto prev : pKFi->GetVectorCovisibleKeyFrames()) {
+                for (auto prev: pKFi->GetVectorCovisibleKeyFrames()) {
                     LoopConnections[pKFi].erase(prev);
                 }
-                for (auto prev : mvpCurrentConnectedKFs) {
+                for (auto prev: mvpCurrentConnectedKFs) {
                     LoopConnections[pKFi].erase(prev);
                 }
             }
@@ -474,7 +479,7 @@ namespace ORB_SLAM2 {
         // Launch a new thread to perform Global Bundle Adjustment
         mbRunningGBA = true;
         mbStopGBA = false;
-        mpThreadGBA = new thread(&LoopClosing::RunGlobalBundleAdjustment, this, mpCurrentKF->mnId);
+        mpThreadGBA = new std::thread(&LoopClosing::RunGlobalBundleAdjustment, this, mpCurrentKF->mnId);
 
         // Loop closed. Release Local Mapping.
         mpLocalMapper->Release();
@@ -484,13 +489,13 @@ namespace ORB_SLAM2 {
 
     void LoopClosing::SearchAndFuse(const KeyFrameAndPose &CorrectedPosesMap) {
         ORBmatcher matcher(0.8);
-        for (auto pKF : CorrectedPosesMap) {
+        for (auto pKF: CorrectedPosesMap) {
             g2o::Sim3 g2oScw = pKF.second;
             cv::Mat cvScw = Converter::toCvMat(g2oScw);
 
-            vector<MapPoint *> vpReplacePoints(mvpLoopMapPoints.size(), static_cast<MapPoint *>(nullptr));
-            matcher.Fuse(pKF.first, cvScw, mvpLoopMapPoints, 4, vpReplacePoints);
-            unique_lock<mutex> lock(mpMap->mMutexMapUpdate);
+            std::vector<MapPoint *> vpReplacePoints(mvpLoopMapPoints.size(), static_cast<MapPoint *>(nullptr));
+            ORB_SLAM2::ORBmatcher::Fuse(pKF.first, cvScw, mvpLoopMapPoints, 4, vpReplacePoints);
+            std::unique_lock<std::mutex> lock(mpMap->mMutexMapUpdate);
             const int nLP = mvpLoopMapPoints.size();
             for (int i = 0; i < nLP; i++) {
                 MapPoint *pRep = vpReplacePoints[i];
@@ -504,13 +509,13 @@ namespace ORB_SLAM2 {
 
     void LoopClosing::RequestReset() {
         {
-            unique_lock<mutex> lock(mMutexReset);
+            std::unique_lock<std::mutex> lock(mMutexReset);
             mbResetRequested = true;
         }
 
-        while (1) {
+        while (true) {
             {
-                unique_lock<mutex> lock2(mMutexReset);
+                std::unique_lock<std::mutex> lock2(mMutexReset);
                 if (!mbResetRequested)
                     break;
             }
@@ -519,7 +524,7 @@ namespace ORB_SLAM2 {
     }
 
     void LoopClosing::ResetIfRequested() {
-        unique_lock<mutex> lock(mMutexReset);
+        std::unique_lock<std::mutex> lock(mMutexReset);
         if (mbResetRequested) {
             mlpLoopKeyFrameQueue.clear();
             mLastLoopKFid = 0;
@@ -528,7 +533,7 @@ namespace ORB_SLAM2 {
     }
 
     void LoopClosing::RunGlobalBundleAdjustment(unsigned long nLoopKF) {
-        cout << "Starting Global Bundle Adjustment" << endl;
+        std::cout << "Starting Global Bundle Adjustment" << std::endl;
 
         int idx = mnFullBAIdx;
         Optimizer::GlobalBundleAdjustemnt(mpMap, 10, &mbStopGBA, nLoopKF, false);
@@ -538,13 +543,13 @@ namespace ORB_SLAM2 {
         // not included in the Global BA and they are not consistent with the updated map.
         // We need to propagate the correction through the spanning tree
         {
-            unique_lock<mutex> lock(mMutexGBA);
+            std::unique_lock<std::mutex> lock(mMutexGBA);
             if (idx != mnFullBAIdx)
                 return;
 
             if (!mbStopGBA) {
-                cout << "Global Bundle Adjustment finished" << endl;
-                cout << "Updating map ..." << endl;
+                std::cout << "Global Bundle Adjustment finished" << std::endl;
+                std::cout << "Updating map ..." << std::endl;
                 mpLocalMapper->RequestStop();
                 // Wait until Local Mapping has effectively stopped
 
@@ -553,17 +558,16 @@ namespace ORB_SLAM2 {
                 }
 
                 // Get Map Mutex
-                unique_lock<mutex> lock(mpMap->mMutexMapUpdate);
+                std::unique_lock<std::mutex> lock(mpMap->mMutexMapUpdate);
 
                 // Correct keyframes starting at map first keyframe
-                list<KeyFrame *> lpKFtoCheck(mpMap->mvpKeyFrameOrigins.begin(), mpMap->mvpKeyFrameOrigins.end());
+                std::list<KeyFrame *> lpKFtoCheck(mpMap->mvpKeyFrameOrigins.begin(), mpMap->mvpKeyFrameOrigins.end());
 
                 while (!lpKFtoCheck.empty()) {
                     KeyFrame *pKF = lpKFtoCheck.front();
-                    const set<KeyFrame *> sChilds = pKF->GetChilds();
+                    const std::set<KeyFrame *> sChilds = pKF->GetChilds();
                     cv::Mat Twc = pKF->GetPoseInverse();
-                    for (set<KeyFrame *>::const_iterator sit = sChilds.begin(); sit != sChilds.end(); sit++) {
-                        KeyFrame *pChild = *sit;
+                    for (auto pChild: sChilds) {
                         if (pChild->mnBAGlobalForKF != nLoopKF) {
                             cv::Mat Tchildc = pChild->GetPose() * Twc;
                             pChild->mTcwGBA = Tchildc * pKF->mTcwGBA;//*Tcorc*pKF->mTcwGBA;
@@ -579,11 +583,9 @@ namespace ORB_SLAM2 {
                 }
 
                 // Correct MapPoints
-                const vector<MapPoint *> vpMPs = mpMap->GetAllMapPoints();
+                const std::vector<MapPoint *> vpMPs = mpMap->GetAllMapPoints();
 
-                for (size_t i = 0; i < vpMPs.size(); i++) {
-                    MapPoint *pMP = vpMPs[i];
-
+                for (auto pMP: vpMPs) {
                     if (pMP->isBad())
                         continue;
 
@@ -615,29 +617,31 @@ namespace ORB_SLAM2 {
 
                 mpLocalMapper->Release();
 
-                cout << "Map updated!" << endl;
+                std::cout << "Map updated!" << std::endl;
             }
+
+            mbFinished = true;
             mbRunningGBA = false;
         }
     }
 
     void LoopClosing::RequestFinish() {
-        unique_lock<mutex> lock(mMutexFinish);
+        std::unique_lock<std::mutex> lock(mMutexFinish);
         mbFinishRequested = true;
     }
 
     bool LoopClosing::CheckFinish() {
-        unique_lock<mutex> lock(mMutexFinish);
+        std::unique_lock<std::mutex> lock(mMutexFinish);
         return mbFinishRequested;
     }
 
     void LoopClosing::SetFinish() {
-        unique_lock<mutex> lock(mMutexFinish);
+        std::unique_lock<std::mutex> lock(mMutexFinish);
         mbFinished = true;
     }
 
     bool LoopClosing::isFinished() {
-        unique_lock<mutex> lock(mMutexFinish);
+        std::unique_lock<std::mutex> lock(mMutexFinish);
         return mbFinished;
     }
 

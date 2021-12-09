@@ -1,4 +1,4 @@
- /**
+/**
 * This file is part of ORB-SLAM2.
 *
 * Copyright (C) 2014-2016 Raúl Mur-Artal <raulmur at unizar dot es> (University of Zaragoza)
@@ -48,7 +48,8 @@ g2o::SE3Quat Converter::toSE3Quat(const cv::Mat &cvT)
 
 cv::Mat Converter::toCvMat(const g2o::SE3Quat &SE3)
 {
-    return toCvMat(SE3.to_homogeneous_matrix());
+    Eigen::Matrix<double,4,4> eigMat = SE3.to_homogeneous_matrix();
+    return toCvMat(eigMat);
 }
 
 cv::Mat Converter::toCvMat(const g2o::Sim3 &Sim3)

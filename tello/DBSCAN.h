@@ -22,7 +22,7 @@ public:
     ~DBSCAN(){}
 
     int run();
-    std::vector<int> calculateCluster(Point point);
+    std::vector<int> calculateCluster(const Point& point);
     int expandCluster(Point point, int clusterID);
     std::vector<Point> getPoints(){return m_points;}
     void setMinPoints(int newMinPoints){m_minPoints = newMinPoints;}

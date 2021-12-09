@@ -10,9 +10,9 @@
 
 class Line {
 public:
-    Line(Point point1, Point point2);
+    Line(const Point& point1, const Point& point2);
 
-    Line(Point point, double slope);
+    Line(const Point& point, double slope);
     double getSlope(){
         return slope;
     }
@@ -22,10 +22,10 @@ public:
     Point getPoint1(){
         return point1;
     }
-    double getDistanceToPoint(Point point);
-    double getDistanceToSegment(Point point);
+    double getDistanceToPoint(const Point& point) const;
+    double getDistanceToSegment(const Point& point) const;
 
-    Point getLineIntersection(Line line);
+    Point getLineIntersection(const Line& line);
 
 private:
     Point point1;

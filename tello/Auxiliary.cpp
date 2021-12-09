@@ -4,20 +4,20 @@
 
 #include "Auxiliary.h"
 
-Point Auxiliary::GetCenterOfMass(std::vector<Point> points) {
+Point Auxiliary::GetCenterOfMass(const std::vector<Point> &points) {
     double x = 0.0;
     double y = 0.0;
     double z = 0.0;
-    for (Point point : points) {
+    for (const Point &point : points) {
         x += point.x;
         y += point.y;
         z += point.z;
     }
     int size = points.size();
-    return Point(x / size, y / size, z / size, 0, 0, 0, 0);
+    return {x / size, y / size, z / size, 0, 0, 0, 0};
 }
 
-double Auxiliary::det(Point point1, Point point2) {
+double Auxiliary::det(const Point& point1, const Point& point2) {
     return point1.x * point2.y - point1.y * point2.x;
 }
 
@@ -29,24 +29,24 @@ double Auxiliary::radiansToAngle(double radian) {
     return radian * (180 / M_PI);
 }
 
-std::vector<double> Auxiliary::getXValues(std::vector<Point> points) {
+std::vector<double> Auxiliary::getXValues(const std::vector<Point>& points) {
     std::vector<double> xValues;
-    for (Point point : points) {
+    for (const Point& point : points) {
         xValues.push_back(point.x);
     }
     return xValues;
 }
 
-std::vector<double> Auxiliary::getYValues(std::vector<Point> points) {
+std::vector<double> Auxiliary::getYValues(const std::vector<Point>& points) {
     std::vector<double> yValues;
-    for (Point point : points) {
+    for (const Point& point : points) {
         yValues.push_back(point.y);
     }
     return yValues;
 }
 
 //#ifdef NOTRPI
-void Auxiliary::showCloudPoint(std::vector<Point> redPoints, std::vector<Point> cloud) {
+void Auxiliary::showCloudPoint(const std::vector<Point>& redPoints, const std::vector<Point>& cloud) {
     matplotlibcpp::clf();
     matplotlibcpp::scatter(getXValues(cloud), getYValues(cloud), 2.0);
     matplotlibcpp::plot(getXValues(redPoints), getYValues(redPoints), "ro");
@@ -54,7 +54,7 @@ void Auxiliary::showCloudPoint(std::vector<Point> redPoints, std::vector<Point> 
 }
 
 //#endif
-double Auxiliary::distanceBetweenPointAndSegment(Point point, Line segment) {
+double Auxiliary::distanceBetweenPointAndSegment(const Point& point, Line segment) {
     auto point1 = segment.getPoint1();
     auto point2 = segment.getPoint2();
     Point segmentDifference(point2.x - point1.x, point2.y - point1.y, point2.z - point1.z);
@@ -78,9 +78,9 @@ double Auxiliary::distanceBetweenPointAndSegment(Point point, Line segment) {
     return calculateDistance(Point(point.x - distancePoint.x, point.y - distancePoint.y, 0), Point(0, 0, 0));
 }
 
-double Auxiliary::getDistanceToClosestSegment(Point point, std::vector<Line> segments) {
+double Auxiliary::getDistanceToClosestSegment(const Point& point, const std::vector<Line>& segments) {
     double minDistance = 10000;
-    for (auto segment : segments) {
+    for (const auto& segment : segments) {
         double distance = distanceBetweenPointAndSegment(point, segment);
         minDistance = minDistance > distance ? distance : minDistance;
     }
@@ -90,15 +90,15 @@ double Auxiliary::getDistanceToClosestSegment(Point point, std::vector<Line> seg
 double Auxiliary::getAngleFromSlope(double slope) {
     return radiansToAngle(atan(slope));
 }
-double Auxiliary::calculateDistance3D(Point point1, Point point2) {
+double Auxiliary::calculateDistance3D(const Point& point1, const Point& point2) {
     return sqrt(pow(point2.x - point1.x, 2) + pow(point2.y - point1.y, 2) + pow(point2.z - point1.z,2));
 }
-double Auxiliary::calculateDistance(Point point1, Point point2) {
+double Auxiliary::calculateDistance(const Point& point1, const Point& point2) {
     return sqrt(pow(point2.x - point1.x, 2) + pow(point2.y - point1.y, 2));
 }
 
 std::pair<int, bool>
-Auxiliary::getRotationToTargetInFront(Point previous, Point current, Point destination, bool isMinusUp) {
+Auxiliary::getRotationToTargetInFront(const Point& previous, const Point& current, const Point& destination, bool isMinusUp) {
     double PreviousToCurrent = atan2(previous.y - current.y, previous.x - current.x);
     double CurrentToDistance = atan2(destination.y - current.y, destination.x - current.x);
     double angle = Auxiliary::radiansToAngle(CurrentToDistance-PreviousToCurrent);
@@ -126,7 +126,7 @@ Auxiliary::getRotationToTargetInFront(Point previous, Point current, Point desti
     return std::pair<int, bool>{angle, clockwise};
 }
 
-std::pair<int, bool> Auxiliary::getRotationToTargetInFront(Point point1, Point point2) {
+std::pair<int, bool> Auxiliary::getRotationToTargetInFront(const Point& point1, const Point& point2) {
     Eigen::Vector3d vector1(point1.x, point1.y,0);
     Eigen::Vector3d vector2(point2.x, point2.y,0);
     Eigen::Vector3d unitVector1 = vector1 / vector1.norm();
@@ -175,7 +175,7 @@ double Auxiliary::calculateMeanOfDistanceDifferences(std::vector<double> distanc
     }
     return sumOfDistances/(distances.size()-1);
 }
-double Auxiliary::calculateVariance(std::vector<double> distances){
+double Auxiliary::calculateVariance(const std::vector<double>& distances){
     double sumOfDistances = 0.0;
     for (auto distance : distances)
     {

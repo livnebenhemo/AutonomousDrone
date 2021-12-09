@@ -123,7 +123,7 @@ namespace ORB_SLAM2 {
         // KeyPoint functions
         std::vector<size_t> GetFeaturesInArea(const double &x, const double &y, const double &r) const;
 
-        cv::Mat UnprojectStereo(int i);
+        [[maybe_unused]] cv::Mat UnprojectStereo(int i);
 
         // Image
         bool IsInImage(const double &x, const double &y) const;
@@ -158,7 +158,7 @@ namespace ORB_SLAM2 {
         const long unsigned int mnFrameId;
 
         const double mTimeStamp;
-
+        cv::Mat mTcp;
         // Grid (to speed up feature matching)
         const int mnGridCols;
         const int mnGridRows;

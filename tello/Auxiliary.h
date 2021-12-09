@@ -16,11 +16,11 @@
 //#endif
 class Auxiliary {
 public:
-    static Point GetCenterOfMass(std::vector<Point> points);
+    static Point GetCenterOfMass(const std::vector<Point> &points);
 
-    static double det(Point point1, Point point2);
+    static double det(const Point& point1, const Point& point2);
 
-    static double distanceBetweenPointAndSegment(Point point, Line segment);
+    static double distanceBetweenPointAndSegment(const Point& point, Line segment);
 
     static double angleToRadians(int angle);
 
@@ -31,29 +31,29 @@ public:
 
     static double radiansToAngle(double radian);
 
-    static double calculateDistance(Point point1, Point point2);
+    static double calculateDistance(const Point& point1, const Point& point2);
 
-    static double calculateDistance3D(Point point1, Point point2);
+    static double calculateDistance3D(const Point& point1, const Point& point2);
 
-    static double getDistanceToClosestSegment(Point point, std::vector<Line> segments);
+    static double getDistanceToClosestSegment(const Point& point, const std::vector<Line>& segments);
 
     static double getAngleBySlopes(Line line1, Line line2);
 
-    static double calculateVariance(std::vector<double> distances);
+    static double calculateVariance(const std::vector<double>& distances);
 
     static double calculateMeanOfDistanceDifferences(std::vector<double> distances);
 
-    static std::pair<int, bool> getRotationToTargetInFront(Point point1, Point point2);
+    static std::pair<int, bool> getRotationToTargetInFront(const Point& point1, const Point& point2);
 
     static std::pair<int, bool>
-    getRotationToTargetInFront(Point previous, Point current, Point destination, bool isMinusUp);
+    getRotationToTargetInFront(const Point& previous, const Point& current, const Point& destination, bool isMinusUp);
 
-    static std::vector<double> getXValues(std::vector<Point> points);
+    static std::vector<double> getXValues(const std::vector<Point>& points);
 
-    static std::vector<double> getYValues(std::vector<Point> points);
+    static std::vector<double> getYValues(const std::vector<Point>& points);
 
 //#ifdef NOTRPI
-    static void showCloudPoint(std::vector<Point> redPoints, std::vector<Point> cloud);
+    static void showCloudPoint(const std::vector<Point>& redPoints, const std::vector<Point>& cloud);
 //#endif
 };
 

@@ -38,7 +38,7 @@ public:
 
     void travelTo3Points();
 
-    static std::vector<cv::Mat> getCameraCalibration(std::string path);
+    static std::vector<cv::Mat> getCameraCalibration(const std::string& path);
 
     void static getEulerAngles(cv::Mat &rotCameraMatrix, cv::Vec3d &eulerAngles);
 
@@ -86,11 +86,11 @@ private:
     void
     calculateAxisErrors(double rightLeftExpectation, double forwardBackwardsExpectation, double upDownExpectation);
 
-    bool manageDroneCommand(std::string command, int amountOfAttempt = 2, int amountOfSleep = 0);
+    bool manageDroneCommand(const std::string& command, int amountOfAttempt = 2, int amountOfSleep = 0);
 
     void resetTrackingGlobals();
 
-    bool communicateWithCharger(int socket, bool closeSocket = false);
+    static bool communicateWithCharger(int socket, bool closeSocket = false);
 
     bool chargeByEstimation(int batteryAtStart);
 
@@ -100,21 +100,21 @@ private:
 
     bool correctDroneAngle(std::pair<int, bool> currentLeftOverAngle);
 
-    int sendMsg(int socket, std::string msg, int amountOfAttempts);
+    static int sendMsg(int socket, const std::string& msg, int amountOfAttempts);
 
     double navigateToMarker(float markerSize, int markerId);
 
     double navigateToMarkerByExpectation(float markerSize, int markerId);
 
-    std::pair<int, bool> getLeftOverAngleFromRotationVector(cv::Vec<double, 3> rvec);
+    static std::pair<int, bool> getLeftOverAngleFromRotationVector(const cv::Vec<double, 3>& rvec);
 
-    std::string getForwardSpeedText(double distance);
+    std::string getForwardSpeedText(double distance) const;
 
-    std::string getBackwardsSpeedText(double distance);
+    std::string getBackwardsSpeedText(double distance) const;
 
-    std::string getLeftSpeedText(double distance);
+    std::string getLeftSpeedText(double distance) const;
 
-    std::string getRightSpeedText(double distance);
+    std::string getRightSpeedText(double distance) const;
 
     void trackMarker();
 
@@ -122,17 +122,17 @@ private:
 
     void droneMonitor();
 
-    std::string readMsg(int socket);
+    static std::string readMsg(int socket);
 
-    int getChargerSocket(std::string connectionAddr);
+    static int getChargerSocket(std::string connectionAddr);
 
-    bool openCharger(int socket, bool closeSocket = true);
+    static bool openCharger(int socket, bool closeSocket = true);
 
-    bool closeCharger(int socket, bool closeSocket = true);
+    static bool closeCharger(int socket, bool closeSocket = true);
 
-    void turnDroneOnOrOff(int sleepAmount = 20);
+    static void turnDroneOnOrOff(int sleepAmount = 20);
 
-    bool connectToDrone(std::string droneName);
+    static bool connectToDrone(const std::string& droneName);
 
 
     bool communicateWithCharger(char connectionAddr[]);

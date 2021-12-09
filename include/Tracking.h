@@ -54,7 +54,7 @@ namespace ORB_SLAM2 {
 
     public:
         Tracking(System *pSys, ORBVocabulary *pVoc, FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer, Map *pMap,
-                 KeyFrameDatabase *pKFDB, const string &strSettingPath, const int sensor);
+                 KeyFrameDatabase *pKFDB, const std::string &strSettingPath, const int sensor);
 
         cv::Mat GrabImageMonocular(const cv::Mat &im, const double &timestamp);
 
@@ -97,10 +97,10 @@ namespace ORB_SLAM2 {
 
         // Lists used to recover the full camera trajectory at the end of the execution.
         // Basically we store the reference keyframe for each frame and its relative transformation
-        list<cv::Mat> mlRelativeFramePoses;
-        list<KeyFrame *> mlpReferences;
-        list<double> mlFrameTimes;
-        list<bool> mlbLost;
+        std::list<cv::Mat> mlRelativeFramePoses;
+        std::list<KeyFrame *> mlpReferences;
+        std::list<double> mlFrameTimes;
+        std::list<bool> mlbLost;
 
         // True if local mapping is deactivated and we are performing only localization
         bool mbOnlyTracking;
@@ -211,7 +211,7 @@ namespace ORB_SLAM2 {
         //Color order (true RGB, false BGR, ignored if grayscale)
         bool mbRGB;
 
-        list<MapPoint *> mlpTemporalPoints;
+        std::list<MapPoint *> mlpTemporalPoints;
     };
 
 } //namespace ORB_SLAM

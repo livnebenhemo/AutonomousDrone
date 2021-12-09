@@ -4,6 +4,8 @@
 
 #include "Charger.h"
 
+#include <utility>
+
 Charger::Charger(std::vector<std::pair<int, double>> markers, std::shared_ptr<bool> holdCamera,
                  std::string droneWifiName,
                  std::string telloYamlFilePath, std::shared_ptr<ctello::Tello> drone, std::shared_ptr<cv::Mat> frame,
@@ -24,17 +26,17 @@ Charger::Charger(std::vector<std::pair<int, double>> markers, std::shared_ptr<bo
     this->fastSpeedDistance = fastSpeedDistance;
     this->slowSpeedDistance = slowSpeedDistance;
     this->distanceUpDownMarker = distanceUpDownMarker;
-    this->markers = markers;
-    this->holdCamera = holdCamera;
-    this->chargerBluetoothAddress = chargerBluetoothAddress;
+    this->markers = std::move(markers);
+    this->holdCamera = std::move(holdCamera);
+    this->chargerBluetoothAddress = std::move(chargerBluetoothAddress);
     //this->capture = capture;
-    this->frame = frame;
+    this->frame = std::move(frame);
     this->currentPort = currentPort--;
-    this->telloYamlFilePath = telloYamlFilePath;
-    this->drone = drone;
+    this->telloYamlFilePath = std::move(telloYamlFilePath);
+    this->drone = std::move(drone);
     this->raspberryToTelloPinNumber = raspberryToTelloPinNumber;
     this->withImShow = withImShow;
-    this->droneWifiName = droneWifiName;
+    this->droneWifiName = std::move(droneWifiName);
     //wiringPiSetup();
     //pinMode(raspberryToTelloPinNumber,OUTPUT);
 }
@@ -121,7 +123,7 @@ void Charger::getCameraFeed() {
     }
 }
 
-std::vector<cv::Mat> Charger::getCameraCalibration(std::string path) {
+std::vector<cv::Mat> Charger::getCameraCalibration(const std::string& path) {
     cv::FileStorage fs(path, cv::FileStorage::READ);
     if (!fs.isOpened()) throw std::runtime_error("CameraParameters::readFromXMLFile could not open file:" + path);
     int w = -1, h = -1;
@@ -160,7 +162,7 @@ std::vector<cv::Mat> Charger::getCameraCalibration(std::string path) {
     return newCameraParams;
 }
 
-int Charger::sendMsg(int socket, std::string msg, int amountOfAttempts = 10) {
+int Charger::sendMsg(int socket, const std::string& msg, int amountOfAttempts = 10) {
     int status;
 
     do {
@@ -187,7 +189,7 @@ void Charger::getEulerAngles(cv::Mat &rotCameraMatrix, cv::Vec3d &eulerAngles) {
                               eulerAngles);
 }
 
-bool Charger::manageDroneCommand(std::string command, int amountOfAttempt, int amountOfSleep) {
+bool Charger::manageDroneCommand(const std::string& command, int amountOfAttempt, int amountOfSleep) {
     while (amountOfAttempt--) {
         if (drone->SendCommandWithResponse(command)) {
             if (amountOfSleep) {
@@ -204,7 +206,7 @@ std::string Charger::readMsg(int socket) {
     char buf[1024] = {0};
     recv(socket, buf, sizeof(buf), 0);
     fprintf(stdout, "%s", buf);
-    return std::string(buf);
+    return {buf};
 }
 
 bool Charger::closeCharger(int socket, bool closeSocket) {
@@ -363,7 +365,7 @@ bool Charger::correctDroneAngle(std::pair<int, bool> currentLeftOverAngle) {
     return false;
 }
 
-std::string Charger::getForwardSpeedText(double distance) {
+std::string Charger::getForwardSpeedText(double distance) const {
     if (distance < distanceFromWall + almostStopSpeedDistance) {
         return "4";
     } else if (distance < distanceFromWall + slowSpeedDistance) {
@@ -374,7 +376,7 @@ std::string Charger::getForwardSpeedText(double distance) {
     return "11";
 }
 
-std::string Charger::getBackwardsSpeedText(double distance) {
+std::string Charger::getBackwardsSpeedText(double distance) const {
     if (distance > distanceToWall - almostStopSpeedDistance) {
         return "-4";
     } else if (distance > distanceToWall - slowSpeedDistance) {
@@ -385,7 +387,7 @@ std::string Charger::getBackwardsSpeedText(double distance) {
     return "-12";
 }
 
-std::string Charger::getLeftSpeedText(double distance) {
+std::string Charger::getLeftSpeedText(double distance) const {
     if (distance < distanceLeftFromArucoCenter + almostStopSpeedDistance) {
         return "-4";
     }
@@ -397,7 +399,7 @@ std::string Charger::getLeftSpeedText(double distance) {
     return "-10";
 }
 
-std::string Charger::getRightSpeedText(double distance) {
+std::string Charger::getRightSpeedText(double distance) const {
     if (distance > distanceRightFromArucoCenter - almostStopSpeedDistance) {
         return "4";
     }
@@ -608,7 +610,7 @@ double Charger::navigateToMarker(float markerSize, int markerId) {
     return localDistance;
 }
 
-std::pair<int, bool> Charger::getLeftOverAngleFromRotationVector(cv::Vec<double, 3> rvec) {
+std::pair<int, bool> Charger::getLeftOverAngleFromRotationVector(const cv::Vec<double, 3>& rvec) {
     cv::Mat R33 = cv::Mat::eye(3, 3, CV_64FC1);
     cv::Rodrigues(rvec, R33);
     cv::Vec3d eulerAngles;
@@ -618,7 +620,7 @@ std::pair<int, bool> Charger::getLeftOverAngleFromRotationVector(cv::Vec<double,
     return {yaw, eulerAngles[1] >= 0};
 }
 
-bool Charger::connectToDrone(std::string droneName) {
+bool Charger::connectToDrone(const std::string& droneName) {
     std::string commandString = "nmcli c up " + droneName;
     const char *command = commandString.c_str();
     return system(command) == 0;

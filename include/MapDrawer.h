@@ -33,18 +33,18 @@ namespace ORB_SLAM2
 class MapDrawer
 {
 public:
-    MapDrawer(Map* pMap, const string &strSettingPath);
+    MapDrawer(Map* pMap, const std::string &strSettingPath);
 
     Map* mpMap;
 
-    void DrawMapPoints();
-    void DrawKeyFrames(const bool bDrawKF, const bool bDrawGraph);
-    void DrawCurrentCamera(pangolin::OpenGlMatrix &Twc);
+    void DrawMapPoints() const;
+    void DrawKeyFrames(bool bDrawKF, bool bDrawGraph) const;
+    void DrawCurrentCamera(pangolin::OpenGlMatrix &Twc) const;
     void SetCurrentCameraPose(const cv::Mat &Tcw);
     void GetCurrentOpenGLCameraMatrix(pangolin::OpenGlMatrix &M);
-    void SetDestination(Point point){destination = point;}
-    void SetCharger(Point point){charger = point;}
-    void SetPolygonEdges(std::vector<Point> points){polygonEdges = points;}
+    void SetDestination(const Point& point){destination = point;}
+    void SetCharger(const Point& point){charger = point;}
+    void SetPolygonEdges(const std::vector<Point> &points){polygonEdges = points;}
     void ClearDestinationPoint(){destination = Point(1000,1000,1000);}
     void ClearChargerPoint(){charger = Point(1000,1000,1000);}
     void ClearPolygonEdgesPoint(){polygonEdges = std::vector<Point>{};}

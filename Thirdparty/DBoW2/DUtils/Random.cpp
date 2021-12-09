@@ -11,13 +11,17 @@
 #include "Random.h"
 #include "Timestamp.h"
 #include <cstdlib>
-using namespace std;
 
 bool DUtils::Random::m_already_seeded = false;
 
 void DUtils::Random::SeedRand(){
 	Timestamp time;
 	time.setToCurrentTime();
+    std::cout << "Setting seed to time. " << std::endl;
+    std::cout << "Setting seed to time. " << std::endl;
+    std::cout << "Setting seed to time. " << std::endl;
+    std::cout << "Setting seed to time. " << std::endl;
+    std::cout << "Setting seed to time. " << std::endl;
 	srand((unsigned)time.getFloatTime()); 
 }
 

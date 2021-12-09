@@ -31,7 +31,7 @@
 
 namespace g2o {
 
-using namespace std;
+
 
 
 Vector2d project2d(const Vector3d& v)  {

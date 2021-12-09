@@ -70,7 +70,7 @@ int DBSCAN::expandCluster(Point point, int label)
     }
 }
 
-std::vector<int> DBSCAN::calculateCluster(Point point)
+std::vector<int> DBSCAN::calculateCluster(const Point& point)
 {
     int index = 0;
     std::vector<Point>::iterator iter;

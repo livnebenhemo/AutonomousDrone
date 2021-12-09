@@ -1,0 +1,8 @@
+{
+  "VocabularyPath": "/home/tzuk/AutonomousDroneCPP/Vocabulary/ORBvoc.bin",
+  "DroneYamlPathSlam": "/home/tzuk/AutonomousDroneCPP/config/tello_5BFA7F.yaml",
+  "DroneYamlPathAruco": "/home/tzuk/AutonomousDroneCPP/config/tello_aruco_5BFA7F.yaml",
+  "DroneName": "TELLO-5BFA7F",
+  "WithPlot": false,
+  "sizeOfFrameStack": 20
+}

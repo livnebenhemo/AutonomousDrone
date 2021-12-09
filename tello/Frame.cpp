@@ -3,6 +3,8 @@
 //
 
 #include "Frame.h"
+
+#include <utility>
 Frame::Frame() {
     this->x = 0;
     this->y = 0;
@@ -26,5 +28,5 @@ Frame::Frame(double x, double y, double z, double qx, double qy, double qz, doub
     this->qw = qw;
     this->frameId = frameId;
     this->amountOfKeyPoints = amountOfKeyPoints;
-    this->points = points;
+    this->points = std::move(points);
 }

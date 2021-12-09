@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8)
 project(ORB_SLAM2)
-
+find_package(nlohmann_json 3.2.0 REQUIRED)
 IF (NOT CMAKE_BUILD_TYPE)
     SET(CMAKE_BUILD_TYPE Release)
 ENDIF ()
@@ -102,18 +102,18 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/Monocular)
 # target_compile_options(mono_tello PRIVATE -Wno-deprecated-declarations) # -Wall -Werror -Wall -Wextra)
 
 add_executable(tello
-        Examples/Monocular/tello.cc)
+        exe/tello.cc)
 target_link_libraries(tello PUBLIC ${PROJECT_NAME})
-add_executable(testPolygon tello/testPolygon.cpp)
+add_executable(testPolygon exe/testPolygon.cpp)
 target_link_libraries(testPolygon ${PROJECT_NAME})
 target_compile_options(tello PRIVATE -Wno-deprecated-declarations)
-add_executable(runAutonomousDrone tello/runAutonomousDrone.cpp)
-target_link_libraries(runAutonomousDrone ${PROJECT_NAME})
+add_executable(runAutonomousDrone exe/runAutonomousDrone.cpp)
+target_link_libraries(runAutonomousDrone ${PROJECT_NAME} nlohmann_json::nlohmann_json)
 
-add_executable(runCharger tello/runCharger.cpp)
+add_executable(runCharger exe/runCharger.cpp)
 target_link_libraries(runCharger ${PROJECT_NAME})
 add_executable(offline_orb_slam
-        Examples/Monocular/offline_orb_slam.cc)
+        exe/offline_orb_slam.cc)
 target_link_libraries(offline_orb_slam ${PROJECT_NAME})
 
 #target_compile_options(offline_orb_slam PRIVATE -Wno-deprecated-declarations)

@@ -39,16 +39,16 @@ namespace ORB_SLAM2 {
 
     void Optimizer::GlobalBundleAdjustemnt(Map *pMap, int nIterations, bool *pbStopFlag, const unsigned long nLoopKF,
                                            const bool bRobust) {
-        vector<KeyFrame *> vpKFs = pMap->GetAllKeyFrames();
-        vector<MapPoint *> vpMP = pMap->GetAllMapPoints();
+        std::vector<KeyFrame *> vpKFs = pMap->GetAllKeyFrames();
+        std::vector<MapPoint *> vpMP = pMap->GetAllMapPoints();
         BundleAdjustment(vpKFs, vpMP, nIterations, pbStopFlag, nLoopKF, bRobust);
     }
 
 
-    void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<MapPoint *> &vpMP,
+    void Optimizer::BundleAdjustment(const std::vector<KeyFrame *> &vpKFs, const std::vector<MapPoint *> &vpMP,
                                      int nIterations, bool *pbStopFlag, const unsigned long nLoopKF,
                                      const bool bRobust) {
-        vector<bool> vbNotIncludedMP;
+        std::vector<bool> vbNotIncludedMP;
         vbNotIncludedMP.resize(vpMP.size());
 
         g2o::SparseOptimizer optimizer;
@@ -67,7 +67,7 @@ namespace ORB_SLAM2 {
         long unsigned int maxKFid = 0;
 
         // Set KeyFrame vertices
-        for (auto pKF : vpKFs) {
+        for (auto pKF: vpKFs) {
             if (pKF->isBad())
                 continue;
             auto vSE3 = new g2o::VertexSE3Expmap();
@@ -101,7 +101,7 @@ namespace ORB_SLAM2 {
             optimizer.addVertex(vPoint);
 
             //SET EDGES
-            for (auto observation : observations) {
+            for (auto observation: observations) {
                 KeyFrame *pKF = observation.first;
                 if (pKF->isBad() || pKF->mnId > maxKFid)
                     continue;
@@ -139,7 +139,7 @@ namespace ORB_SLAM2 {
         // Recover optimized data
 
         //Keyframes
-        for (auto pKF : vpKFs) {
+        for (auto pKF: vpKFs) {
             if (pKF->isBad())
                 continue;
             auto vSE3 = dynamic_cast<g2o::VertexSE3Expmap *>(optimizer.vertex(pKF->mnId));
@@ -199,14 +199,14 @@ namespace ORB_SLAM2 {
         // Set MapPoint vertices
         const int N = pFrame->N;
 
-        vector<g2o::EdgeSE3ProjectXYZOnlyPose *> vpEdgesMono;
-        vector<size_t> vnIndexEdgeMono;
+        std::vector<g2o::EdgeSE3ProjectXYZOnlyPose *> vpEdgesMono;
+        std::vector<size_t> vnIndexEdgeMono;
         vpEdgesMono.reserve(N);
         vnIndexEdgeMono.reserve(N);
 
         const double deltaMono = sqrt(5.991);
         {
-            unique_lock<mutex> lock(MapPoint::mGlobalMutex);
+            std::unique_lock<std::mutex> lock(MapPoint::mGlobalMutex);
 
             for (int i = 0; i < N; i++) {
                 MapPoint *pMP = pFrame->mvpMapPoints[i];
@@ -287,19 +287,19 @@ namespace ORB_SLAM2 {
 
     void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool *pbStopFlag, Map *pMap) {
         // Local KeyFrames: First Breath Search from Current Keyframe
-        list<KeyFrame *> lLocalKeyFrames;
+        std::list<KeyFrame *> lLocalKeyFrames;
 
         lLocalKeyFrames.push_back(pKF);
         pKF->mnBALocalForKF = pKF->mnId;
-        for (auto pKFi : pKF->GetVectorCovisibleKeyFrames()) {
+        for (auto pKFi: pKF->GetVectorCovisibleKeyFrames()) {
             pKFi->mnBALocalForKF = pKF->mnId;
             if (!pKFi->isBad())
                 lLocalKeyFrames.push_back(pKFi);
         }
         // Local MapPoints seen in Local KeyFrames
-        list<MapPoint *> lLocalMapPoints;
-        for (auto vpMPs : lLocalKeyFrames) {
-            for (auto pMP : vpMPs->GetMapPointMatches()) {
+        std::list<MapPoint *> lLocalMapPoints;
+        for (auto vpMPs: lLocalKeyFrames) {
+            for (auto pMP: vpMPs->GetMapPointMatches()) {
                 if (pMP)
                     if (!pMP->isBad())
                         if (pMP->mnBALocalForKF != pKF->mnId) {
@@ -309,9 +309,9 @@ namespace ORB_SLAM2 {
             }
         }
         // Fixed Keyframes. Keyframes that see Local MapPoints but that are not Local Keyframes
-        list<KeyFrame *> lFixedCameras;
-        for (auto lLocalMapPoint : lLocalMapPoints) {
-            for (auto observation : lLocalMapPoint->GetObservations()) {
+        std::list<KeyFrame *> lFixedCameras;
+        for (auto lLocalMapPoint: lLocalMapPoints) {
+            for (auto observation: lLocalMapPoint->GetObservations()) {
                 KeyFrame *pKFi = observation.first;
                 if (pKFi->mnBALocalForKF != pKF->mnId && pKFi->mnBAFixedForKF != pKF->mnId) {
                     pKFi->mnBAFixedForKF = pKF->mnId;
@@ -336,7 +336,7 @@ namespace ORB_SLAM2 {
 
         unsigned long maxKFid = 0;
         // Set Local KeyFrame vertices
-        for (auto pKFi : lLocalKeyFrames) {
+        for (auto pKFi: lLocalKeyFrames) {
             auto vSE3 = new g2o::VertexSE3Expmap();
             vSE3->setEstimate(Converter::toSE3Quat(pKFi->GetPose()));
             vSE3->setId(pKFi->mnId);
@@ -346,7 +346,7 @@ namespace ORB_SLAM2 {
         }
 
         // Set Fixed KeyFrame vertices
-        for (auto pKFi : lFixedCameras) {
+        for (auto pKFi: lFixedCameras) {
             auto vSE3 = new g2o::VertexSE3Expmap();
             vSE3->setEstimate(Converter::toSE3Quat(pKFi->GetPose()));
             vSE3->setId(pKFi->mnId);
@@ -359,17 +359,17 @@ namespace ORB_SLAM2 {
         // Set MapPoint vertices
         const unsigned long nExpectedSize = (lLocalKeyFrames.size() + lFixedCameras.size()) * lLocalMapPoints.size();
 
-        vector<g2o::EdgeSE3ProjectXYZ *> vpEdgesMono;
+        std::vector<g2o::EdgeSE3ProjectXYZ *> vpEdgesMono;
         vpEdgesMono.reserve(nExpectedSize);
 
-        vector<KeyFrame *> vpEdgeKFMono;
+        std::vector<KeyFrame *> vpEdgeKFMono;
         vpEdgeKFMono.reserve(nExpectedSize);
 
-        vector<MapPoint *> vpMapPointEdgeMono;
+        std::vector<MapPoint *> vpMapPointEdgeMono;
         vpMapPointEdgeMono.reserve(nExpectedSize);
 
         const double thHuberMono = sqrt(5.991);
-        for (auto pMP : lLocalMapPoints) {
+        for (auto pMP: lLocalMapPoints) {
             auto vPoint = new g2o::VertexSBAPointXYZ();
             vPoint->setEstimate(Converter::toVector3d(pMP->GetWorldPos()));
             int id = pMP->mnId + maxKFid + 1;
@@ -377,7 +377,7 @@ namespace ORB_SLAM2 {
             vPoint->setMarginalized(true);
             optimizer.addVertex(vPoint);
             //Set edges
-            for (auto observation : pMP->GetObservations()) {
+            for (auto observation: pMP->GetObservations()) {
                 KeyFrame *pKFi = observation.first;
                 if (!pKFi->isBad()) {
                     const cv::KeyPoint &kpUn = pKFi->mvKeysUn[observation.second];
@@ -433,7 +433,7 @@ namespace ORB_SLAM2 {
             optimizer.optimize(10);
         }
 
-        vector<pair<KeyFrame *, MapPoint *> > vToErase;
+        std::vector<std::pair<KeyFrame *, MapPoint *> > vToErase;
         vToErase.reserve(vpEdgesMono.size());
         // Check inlier observations
         for (size_t i = 0, iend = vpEdgesMono.size(); i < iend; i++) {
@@ -445,25 +445,25 @@ namespace ORB_SLAM2 {
 
             if (e->chi2() > 5.991 || !e->isDepthPositive()) {
                 KeyFrame *pKFi = vpEdgeKFMono[i];
-                vToErase.push_back(make_pair(pKFi, pMP));
+                vToErase.emplace_back(pKFi, pMP);
             }
         }
         // Get Map Mutex
-        unique_lock<mutex> lock(pMap->mMutexMapUpdate);
+        std::unique_lock<std::mutex> lock(pMap->mMutexMapUpdate);
         if (!vToErase.empty()) {
-            for (auto erase : vToErase) {
+            for (auto erase: vToErase) {
                 erase.first->EraseMapPointMatch(erase.second);
                 erase.second->EraseObservation(erase.first);
             }
         }
         // Recover optimized data
         //Keyframes
-        for (auto pKF : lLocalKeyFrames) {
+        for (auto pKF: lLocalKeyFrames) {
             auto vSE3 = dynamic_cast<g2o::VertexSE3Expmap *>(optimizer.vertex(pKF->mnId));
             pKF->SetPose(Converter::toCvMat(vSE3->estimate()));
         }
         //Points
-        for (auto pMP : lLocalMapPoints) {
+        for (auto pMP: lLocalMapPoints) {
             auto vPoint = dynamic_cast<g2o::VertexSBAPointXYZ *>(optimizer.vertex(
                     pMP->mnId + maxKFid + 1));
             pMP->SetWorldPos(Converter::toCvMat(vPoint->estimate()));
@@ -471,11 +471,10 @@ namespace ORB_SLAM2 {
         }
     }
 
-
     void Optimizer::OptimizeEssentialGraph(Map *pMap, KeyFrame *pLoopKF, KeyFrame *pCurKF,
-                                           const KeyFrameAndPose &NonCorrectedSim3,
-                                           const KeyFrameAndPose &CorrectedSim3,
-                                           const map<KeyFrame *, set<KeyFrame *> > &LoopConnections,
+                                           const LoopClosing::KeyFrameAndPose &NonCorrectedSim3,
+                                           const LoopClosing::KeyFrameAndPose &CorrectedSim3,
+                                           const std::map<KeyFrame *, std::set<KeyFrame *> > &LoopConnections,
                                            const bool &bFixScale) {
         // Setup optimizer
         g2o::SparseOptimizer optimizer;
@@ -488,18 +487,18 @@ namespace ORB_SLAM2 {
         solver->setUserLambdaInit(1e-16);
         optimizer.setAlgorithm(solver);
 
-        const vector<KeyFrame *> vpKFs = pMap->GetAllKeyFrames();
-        const vector<MapPoint *> vpMPs = pMap->GetAllMapPoints();
+        const std::vector<KeyFrame *> vpKFs = pMap->GetAllKeyFrames();
+        const std::vector<MapPoint *> vpMPs = pMap->GetAllMapPoints();
 
         const unsigned int nMaxKFid = pMap->GetMaxKFid();
 
-        vector<g2o::Sim3, Eigen::aligned_allocator<g2o::Sim3> > vScw(nMaxKFid + 1);
-        vector<g2o::Sim3, Eigen::aligned_allocator<g2o::Sim3> > vCorrectedSwc(nMaxKFid + 1);
-        vector<g2o::VertexSim3Expmap *> vpVertices(nMaxKFid + 1);
+        std::vector <g2o::Sim3, Eigen::aligned_allocator<g2o::Sim3>> vScw(nMaxKFid + 1);
+        std::vector <g2o::Sim3, Eigen::aligned_allocator<g2o::Sim3>> vCorrectedSwc(nMaxKFid + 1);
+        std::vector < g2o::VertexSim3Expmap * > vpVertices(nMaxKFid + 1);
 
         const int minFeat = 100;
         // Set KeyFrame vertices
-        for (auto pKF : vpKFs) {
+        for (auto pKF: vpKFs) {
             if (pKF->isBad())
                 continue;
             auto VSim3 = new g2o::VertexSim3Expmap();
@@ -529,17 +528,17 @@ namespace ORB_SLAM2 {
         }
 
 
-        set<pair<long unsigned int, long unsigned int> > sInsertedEdges;
+        std::set <std::pair<long unsigned int, long unsigned int>> sInsertedEdges;
 
         const Eigen::Matrix<double, 7, 7> matLambda = Eigen::Matrix<double, 7, 7>::Identity();
 
-        // Set Loop edges
+// Set Loop edges
         for (auto pKF: LoopConnections) {
             const long unsigned int nIDi = pKF.first->mnId;
-            const set<KeyFrame *> &spConnections = pKF.second;
+            const std::set<KeyFrame *> &spConnections = pKF.second;
             const g2o::Sim3 Siw = vScw[nIDi];
             const g2o::Sim3 Swi = Siw.inverse();
-            for (auto spConnection : spConnections) {
+            for (auto spConnection: spConnections) {
                 const long unsigned int nIDj = spConnection->mnId;
                 if ((nIDi != pCurKF->mnId || nIDj != pLoopKF->mnId) && pKF.first->GetWeight(spConnection) < minFeat)
                     continue;
@@ -554,10 +553,10 @@ namespace ORB_SLAM2 {
 
                 optimizer.addEdge(e);
 
-                sInsertedEdges.insert(make_pair(min(nIDi, nIDj), max(nIDi, nIDj)));
+                sInsertedEdges.insert(std::make_pair(std::min(nIDi, nIDj), std::max(nIDi, nIDj)));
             }
         }
-        // Set normal edges
+// Set normal edges
         for (auto pKF: vpKFs) {
             const int nIDi = pKF->mnId;
 
@@ -570,7 +569,7 @@ namespace ORB_SLAM2 {
             else
                 Swi = vScw[nIDi].inverse();
             KeyFrame *pParentKF = pKF->GetParent();
-            // Spanning tree edge
+// Spanning tree edge
             if (pParentKF) {
                 int nIDj = pParentKF->mnId;
                 g2o::Sim3 Sjw;
@@ -589,9 +588,9 @@ namespace ORB_SLAM2 {
                 optimizer.addEdge(e);
             }
 
-            // Loop edges
-            const set<KeyFrame *> sLoopEdges = pKF->GetLoopEdges();
-            for (auto pLKF : sLoopEdges) {
+// Loop edges
+            const std::set<KeyFrame *> sLoopEdges = pKF->GetLoopEdges();
+            for (auto pLKF: sLoopEdges) {
                 if (pLKF->mnId < pKF->mnId) {
                     g2o::Sim3 Slw;
 
@@ -611,11 +610,11 @@ namespace ORB_SLAM2 {
                     optimizer.addEdge(el);
                 }
             }
-            // Covisibility graph edges
-            for (auto pKFn : pKF->GetCovisiblesByWeight(minFeat)) {
+// Covisibility graph edges
+            for (auto pKFn: pKF->GetCovisiblesByWeight(minFeat)) {
                 if (pKFn && pKFn != pParentKF && !pKF->hasChild(pKFn) && !sLoopEdges.count(pKFn)) {
                     if (!pKFn->isBad() && pKFn->mnId < pKF->mnId) {
-                        if (sInsertedEdges.count(make_pair(min(pKF->mnId, pKFn->mnId), max(pKF->mnId, pKFn->mnId))))
+                        if (sInsertedEdges.count(std::make_pair(std::min(pKF->mnId, pKFn->mnId), std::max(pKF->mnId, pKFn->mnId))))
                             continue;
 
                         g2o::Sim3 Snw;
@@ -640,14 +639,14 @@ namespace ORB_SLAM2 {
             }
         }
 
-        // Optimize!
+// Optimize!
         optimizer.initializeOptimization();
         optimizer.optimize(20);
 
-        unique_lock<mutex> lock(pMap->mMutexMapUpdate);
+        std::unique_lock <std::mutex> lock(pMap->mMutexMapUpdate);
 
-        // SE3 Pose Recovering. Sim3:[sR t;0 1] -> SE3:[R t/s;0 1]
-        for (auto pKFi : vpKFs) {
+// SE3 Pose Recovering. Sim3:[sR t;0 1] -> SE3:[R t/s;0 1]
+        for (auto pKFi: vpKFs) {
             const unsigned long nIDi = pKFi->mnId;
             auto VSim3 = dynamic_cast<g2o::VertexSim3Expmap *>(optimizer.vertex(nIDi));
             g2o::Sim3 CorrectedSiw = VSim3->estimate();
@@ -662,8 +661,8 @@ namespace ORB_SLAM2 {
             pKFi->SetPose(Tiw);
         }
 
-        // Correct points. Transform to "non-optimized" reference keyframe pose and transform back with optimized pose
-        for (auto pMP : vpMPs) {
+// Correct points. Transform to "non-optimized" reference keyframe pose and transform back with optimized pose
+        for (auto pMP: vpMPs) {
             if (pMP->isBad())
                 continue;
 
@@ -685,7 +684,7 @@ namespace ORB_SLAM2 {
         }
     }
 
-    int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &vpMatches1, g2o::Sim3 &g2oS12,
+    int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, std::vector<MapPoint *> &vpMatches1, g2o::Sim3 &g2oS12,
                                 const float th2, const bool bFixScale) {
         g2o::SparseOptimizer optimizer;
         g2o::BlockSolverX::LinearSolverType *linearSolver;
@@ -725,10 +724,10 @@ namespace ORB_SLAM2 {
 
         // Set MapPoint vertices
         const int N = vpMatches1.size();
-        const vector<MapPoint *> vpMapPoints1 = pKF1->GetMapPointMatches();
-        vector<g2o::EdgeSim3ProjectXYZ *> vpEdges12;
-        vector<g2o::EdgeInverseSim3ProjectXYZ *> vpEdges21;
-        vector<size_t> vnIndexEdge;
+        const std::vector<MapPoint *> vpMapPoints1 = pKF1->GetMapPointMatches();
+        std::vector < g2o::EdgeSim3ProjectXYZ * > vpEdges12;
+        std::vector < g2o::EdgeInverseSim3ProjectXYZ * > vpEdges21;
+        std::vector <size_t> vnIndexEdge;
 
         vnIndexEdge.reserve(2 * N);
         vpEdges12.reserve(2 * N);

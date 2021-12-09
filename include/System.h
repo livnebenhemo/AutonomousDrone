@@ -62,7 +62,7 @@ namespace ORB_SLAM2 {
     public:
 
         // Initialize the SLAM system. It launches the Local Mapping, Loop Closing and Viewer threads.
-        System(const string &strVocFile, const string &strSettingsFile, const eSensor sensor,
+        System(const std::string &strVocFile, const std::string &strSettingsFile, const eSensor sensor,
                const bool bUseViewer = true);
 
 
@@ -97,7 +97,7 @@ namespace ORB_SLAM2 {
         // This method works for all sensor input.
         // Call first Shutdown()
         // See format details at: http://vision.in.tum.de/data/datasets/rgbd-dataset
-        void SaveKeyFrameTrajectoryTUM(const string &filename);
+        void SaveKeyFrameTrajectoryTUM(const std::string &filename);
 
         // Save camera trajectory in the KITTI dataset format.
         // Only for stereo and RGB-D. This method does not work for monocular.

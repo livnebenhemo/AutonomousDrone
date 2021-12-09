@@ -28,7 +28,7 @@
 #define G2O_SIM_3
 
 #include "se3_ops.h"
-#include <Eigen/Geometry>
+#include <eigen3/Eigen/Geometry>
 
 namespace g2o
 {
@@ -40,7 +40,6 @@ namespace g2o
 
   struct Sim3
   {
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
   protected:
     Quaterniond r;
@@ -49,6 +48,7 @@ namespace g2o
 
 
 public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     Sim3()
     {
       r.setIdentity();

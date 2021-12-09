@@ -4,7 +4,7 @@
 
 #include "Pizza.h"
 
-std::vector<Line> Pizza::createPizzaLines(Point center, int angle) {
+std::vector<Line> Pizza::createPizzaLines(const Point& center, int angle) {
     std::vector<Line> lines;
     int amountOfSlices = ceil(360 / angle);
     double radianAngle = Auxiliary::angleToRadians(angle);
@@ -16,9 +16,9 @@ std::vector<Line> Pizza::createPizzaLines(Point center, int angle) {
 }
 
 std::unordered_map<int, std::vector<std::pair<Point, double>>>
-Pizza::createPizzaSlices(Point pizzaCenter, std::vector<std::pair<Point, double>> pointsWithDistance, int angle) {
+Pizza::createPizzaSlices(const Point& pizzaCenter, const std::vector<std::pair<Point, double>>& pointsWithDistance, int angle) {
     std::unordered_map<int, std::vector<std::pair<Point, double>>> slices;
-    for (auto pointWithDistance : pointsWithDistance) {
+    for (const auto& pointWithDistance : pointsWithDistance) {
         int degree = int(Auxiliary::radiansToAngle(
                 atan2(pointWithDistance.first.y - pizzaCenter.y, pointWithDistance.first.x - pizzaCenter.x)
         ) + 360) % 360;

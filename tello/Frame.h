@@ -13,19 +13,7 @@ public:
     Frame();
     Frame(double x, double y, double z, double qx, double qy, double qz, double qw, int frameId,
           std::vector<Point> points,int amountOfKeyPoints);
-    Frame& operator = (const Frame& frame){
-        this->x = frame.x;
-        this->y = frame.y;
-        this->z = frame.z;
-        this->qx = frame.qx;
-        this->qy = frame.qy;
-        this->qz = frame.qz;
-        this->qw = frame.qw;
-        this->points = frame.points;
-        this->frameId = frame.frameId;
-        this->amountOfKeyPoints = frame.amountOfKeyPoints;
-        return *this;
-    }
+    Frame& operator = (const Frame& frame)= default;
     double x;
     double y;
     double z;

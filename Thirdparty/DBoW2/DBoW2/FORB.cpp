@@ -17,7 +17,6 @@
 
 #include "FORB.h"
 
-using namespace std;
 
 namespace DBoW2 {
 
@@ -39,7 +38,7 @@ void FORB::meanValue(const std::vector<FORB::pDescriptor> &descriptors,
   }
   else
   {
-    vector<int> sum(FORB::L * 8, 0);
+    std::vector<int> sum(FORB::L * 8, 0);
     
     for(size_t i = 0; i < descriptors.size(); ++i)
     {
@@ -104,7 +103,7 @@ int FORB::distance(const FORB::TDescriptor &a,
   
 std::string FORB::toString(const FORB::TDescriptor &a)
 {
-  stringstream ss;
+    std::stringstream ss;
   const unsigned char *p = a.ptr<unsigned char>();
   
   for(int i = 0; i < a.cols; ++i, ++p)
@@ -121,8 +120,8 @@ void FORB::fromString(FORB::TDescriptor &a, const std::string &s)
 {
   a.create(1, FORB::L, CV_8U);
   unsigned char *p = a.ptr<unsigned char>();
-  
-  stringstream ss(s);
+
+    std::stringstream ss(s);
   for(int i = 0; i < FORB::L; ++i, ++p)
   {
     int n;

@@ -66,7 +66,7 @@ public:
     void ComputeBoW();
 
     // Set the camera pose.
-    void SetPose(cv::Mat Tcw);
+    void SetPose(const cv::Mat &Tcw);
 
     // Computes rotation, translation and camera center matrices from the camera pose.
     void UpdatePoseMatrices();
@@ -99,9 +99,9 @@ public:
     bool isInFrustum(MapPoint* pMP, float viewingCosLimit);
 
     // Compute the cell of a keypoint (return false if outside the grid)
-    bool PosInGrid(const cv::KeyPoint &kp, int &posX, int &posY);
+    static bool PosInGrid(const cv::KeyPoint &kp, int &posX, int &posY);
 
-    vector<size_t> GetFeaturesInArea(const double &x, const double  &y, const double  &r, const int minLevel=-1, const int maxLevel=-1) const;
+    std::vector<size_t> GetFeaturesInArea(const double &x,const double  &y,const double  &r, int minLevel=-1, int maxLevel=-1) const;
 
     // Search a match for each keypoint in the left image to a keypoint in the right image.
     // If there is a match, depth is computed and the right coordinate associated to the left keypoint is stored.
@@ -193,10 +193,10 @@ public:
     int mnScaleLevels;
     float mfScaleFactor;
     float mfLogScaleFactor;
-    vector<float> mvScaleFactors;
-    vector<float> mvInvScaleFactors;
-    vector<float> mvLevelSigma2;
-    vector<float> mvInvLevelSigma2;
+    std::vector<float> mvScaleFactors;
+    std::vector<float> mvInvScaleFactors;
+    std::vector<float> mvLevelSigma2;
+    std::vector<float> mvInvLevelSigma2;
 
     // Undistorted Image Bounds (computed once).
     static float mnMinX;

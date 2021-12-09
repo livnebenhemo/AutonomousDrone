@@ -61,7 +61,7 @@ public:
     void clear();
     void clearCurrent();
 
-    vector<KeyFrame*> mvpKeyFrameOrigins;
+    std::vector<KeyFrame*> mvpKeyFrameOrigins;
 
     std::mutex mMutexMapUpdate;
 

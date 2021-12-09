@@ -31,9 +31,7 @@ namespace ORB_SLAM2 {
     float Frame::mnMinX, Frame::mnMinY, Frame::mnMaxX, Frame::mnMaxY;
     float Frame::mfGridElementWidthInv, Frame::mfGridElementHeightInv;
 
-    Frame::Frame() {
-        mutex = make_shared<std::mutex>();
-    }
+    Frame::Frame() = default;
 
 //Copy Constructor
     Frame::Frame(const Frame &frame)
@@ -49,8 +47,6 @@ namespace ORB_SLAM2 {
               mfScaleFactor(frame.mfScaleFactor), mfLogScaleFactor(frame.mfLogScaleFactor),
               mvScaleFactors(frame.mvScaleFactors), mvInvScaleFactors(frame.mvInvScaleFactors),
               mvLevelSigma2(frame.mvLevelSigma2), mvInvLevelSigma2(frame.mvInvLevelSigma2) {
-        mutex = make_shared<std::mutex>();
-
         for (int i = 0; i < FRAME_GRID_COLS; i++)
             for (int j = 0; j < FRAME_GRID_ROWS; j++)
                 mGrid[i][j] = frame.mGrid[i][j];
@@ -66,8 +62,6 @@ namespace ORB_SLAM2 {
             : mpORBvocabulary(voc), mpORBextractorLeft(extractorLeft), mpORBextractorRight(extractorRight),
               mTimeStamp(timeStamp), mK(K.clone()), mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth),
               mpReferenceKF(static_cast<KeyFrame *>(nullptr)) {
-        mutex = make_shared<std::mutex>();
-
         // Frame ID
         mnId = nNextId++;
 
@@ -81,8 +75,8 @@ namespace ORB_SLAM2 {
         mvInvLevelSigma2 = mpORBextractorLeft->GetInverseScaleSigmaSquares();
 
         // ORB extraction
-        thread threadLeft(&Frame::ExtractORB, this, 0, imLeft);
-        thread threadRight(&Frame::ExtractORB, this, 1, imRight);
+        std::thread threadLeft(&Frame::ExtractORB, this, 0, imLeft);
+        std::thread threadRight(&Frame::ExtractORB, this, 1, imRight);
         threadLeft.join();
         threadRight.join();
 
@@ -95,8 +89,8 @@ namespace ORB_SLAM2 {
 
         ComputeStereoMatches();
 
-        mvpMapPoints = vector<MapPoint *>(N, static_cast<MapPoint *>(nullptr));
-        mvbOutlier = vector<bool>(N, false);
+        mvpMapPoints = std::vector<MapPoint *>(N, static_cast<MapPoint *>(nullptr));
+        mvbOutlier = std::vector<bool>(N, false);
 
 
         // This is done only for the first Frame (or after a change in the calibration)
@@ -126,8 +120,6 @@ namespace ORB_SLAM2 {
             : mpORBvocabulary(voc), mpORBextractorLeft(extractor),
               mpORBextractorRight(static_cast<ORBextractor *>(nullptr)),
               mTimeStamp(timeStamp), mK(K.clone()), mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth) {
-        mutex = make_shared<std::mutex>();
-
         // Frame ID
         mnId = nNextId++;
 
@@ -152,8 +144,8 @@ namespace ORB_SLAM2 {
 
         ComputeStereoFromRGBD(imDepth);
 
-        mvpMapPoints = vector<MapPoint *>(N, static_cast<MapPoint *>(nullptr));
-        mvbOutlier = vector<bool>(N, false);
+        mvpMapPoints = std::vector<MapPoint *>(N, static_cast<MapPoint *>(nullptr));
+        mvbOutlier = std::vector<bool>(N, false);
 
         // This is done only for the first Frame (or after a change in the calibration)
         if (mbInitialComputations) {
@@ -183,8 +175,6 @@ namespace ORB_SLAM2 {
             : mpORBvocabulary(voc), mpORBextractorLeft(extractor),
               mpORBextractorRight(static_cast<ORBextractor *>(nullptr)),
               mTimeStamp(timeStamp), mK(K.clone()), mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth) {
-        mutex = make_shared<std::mutex>();
-
         // Frame ID
         mnId = nNextId++;
 
@@ -196,6 +186,7 @@ namespace ORB_SLAM2 {
         mvInvScaleFactors = mpORBextractorLeft->GetInverseScaleFactors();
         mvLevelSigma2 = mpORBextractorLeft->GetScaleSigmaSquares();
         mvInvLevelSigma2 = mpORBextractorLeft->GetInverseScaleSigmaSquares();
+
         // ORB extraction
         ExtractORB(0, imGray);
 
@@ -207,11 +198,11 @@ namespace ORB_SLAM2 {
         UndistortKeyPoints();
 
         // Set no stereo information
-        mvuRight = vector<float>(N, -1);
-        mvDepth = vector<float>(N, -1);
+        mvuRight = std::vector<float>(N, -1);
+        mvDepth = std::vector<float>(N, -1);
 
-        mvpMapPoints = vector<MapPoint *>(N, static_cast<MapPoint *>(nullptr));
-        mvbOutlier = vector<bool>(N, false);
+        mvpMapPoints = std::vector<MapPoint *>(N, static_cast<MapPoint *>(nullptr));
+        mvbOutlier = std::vector<bool>(N, false);
 
         // This is done only for the first Frame (or after a change in the calibration)
         if (mbInitialComputations) {
@@ -231,15 +222,15 @@ namespace ORB_SLAM2 {
         }
 
         mb = mbf / fx;
-        AssignFeaturesToGrid();
 
+        AssignFeaturesToGrid();
     }
 
     void Frame::AssignFeaturesToGrid() {
         int nReserve = 0.5f * N / (FRAME_GRID_COLS * FRAME_GRID_ROWS);
-        for (unsigned int i = 0; i < FRAME_GRID_COLS; i++)
-            for (unsigned int j = 0; j < FRAME_GRID_ROWS; j++)
-                mGrid[i][j].reserve(nReserve);
+        for (auto & i : mGrid)
+            for (auto & j : i)
+                j.reserve(nReserve);
 
         for (int i = 0; i < N; i++) {
             const cv::KeyPoint &kp = mvKeysUn[i];
@@ -257,7 +248,7 @@ namespace ORB_SLAM2 {
             (*mpORBextractorRight)(im, cv::Mat(), mvKeysRight, mDescriptorsRight);
     }
 
-    void Frame::SetPose(cv::Mat Tcw) {
+    void Frame::SetPose(const cv::Mat &Tcw) {
         mTcw = Tcw.clone();
         UpdatePoseMatrices();
     }
@@ -271,61 +262,80 @@ namespace ORB_SLAM2 {
 
     bool Frame::isInFrustum(MapPoint *pMP, float viewingCosLimit) {
         pMP->mbTrackInView = false;
+
         // 3D in absolute coordinates
         cv::Mat P = pMP->GetWorldPos();
+
         // 3D in camera coordinates
         const cv::Mat Pc = mRcw * P + mtcw;
-        auto &PcX = Pc.at<float>(0);
-        auto &PcY = Pc.at<float>(1);
-        auto &PcZ = Pc.at<float>(2);
+        const auto &PcX = Pc.at<float>(0);
+        const auto &PcY = Pc.at<float>(1);
+        const auto &PcZ = Pc.at<float>(2);
+
         // Check positive depth
         if (PcZ < 0.0f)
             return false;
+
         // Project in image and check it is not outside
         const float invz = 1.0f / PcZ;
         const float u = fx * PcX * invz + cx;
+        const float v = fy * PcY * invz + cy;
+
         if (u < mnMinX || u > mnMaxX)
             return false;
-        const float v = fy * PcY * invz + cy;
         if (v < mnMinY || v > mnMaxY)
             return false;
+
         // Check distance is in the scale invariance region of the MapPoint
+        const float maxDistance = pMP->GetMaxDistanceInvariance();
+        const float minDistance = pMP->GetMinDistanceInvariance();
         const cv::Mat PO = P - mOw;
-        auto dist = cv::norm(PO);
-        if (dist < pMP->GetMinDistanceInvariance() || dist > pMP->GetMaxDistanceInvariance())
+        const float dist = cv::norm(PO);
+
+        if (dist < minDistance || dist > maxDistance)
             return false;
+
         // Check viewing angle
-        auto viewCos = PO.dot(pMP->GetNormal()) / dist;
+        cv::Mat Pn = pMP->GetNormal();
+
+        const float viewCos = PO.dot(Pn) / dist;
+
         if (viewCos < viewingCosLimit)
             return false;
+
+        // Predict scale in the image
+        const int nPredictedLevel = pMP->PredictScale(dist, this);
+
         // Data used by the tracking
         pMP->mbTrackInView = true;
         pMP->mTrackProjX = u;
         pMP->mTrackProjXR = u - mbf * invz;
         pMP->mTrackProjY = v;
-        pMP->mnTrackScaleLevel = pMP->PredictScale(dist, this);
+        pMP->mnTrackScaleLevel = nPredictedLevel;
         pMP->mTrackViewCos = viewCos;
+
         return true;
     }
 
-    vector<size_t> Frame::GetFeaturesInArea(const double &x, const double &y, const double &r, const int minLevel,
-                                            const int maxLevel) const {
-        vector<size_t> vIndices;
+    std::vector<size_t>
+    Frame::GetFeaturesInArea(const double &x, const double &y, const double &r, int minLevel, int maxLevel) const {
+        std::vector<size_t> vIndices;
         vIndices.reserve(N);
 
-        const int nMinCellX = max(0, (int) floor((x - mnMinX - r) * mfGridElementWidthInv));
+        const int nMinCellX = std::max(0, (int) floor((x - mnMinX - r) * mfGridElementWidthInv));
         if (nMinCellX >= FRAME_GRID_COLS)
             return vIndices;
 
-        const int nMaxCellX = min((int) FRAME_GRID_COLS - 1, (int) ceil((x - mnMinX + r) * mfGridElementWidthInv));
+        const int nMaxCellX = std::min((int) FRAME_GRID_COLS - 1, (int) ceil((x - mnMinX + r) * mfGridElementWidthInv));
         if (nMaxCellX < 0)
             return vIndices;
 
-        const int nMinCellY = max(0, (int) floor((y - mnMinY - r) * mfGridElementHeightInv));
+        const int nMinCellY = std::max(0, (int) floor((y - mnMinY - r) * mfGridElementHeightInv));
         if (nMinCellY >= FRAME_GRID_ROWS)
             return vIndices;
 
-        const int nMaxCellY = min((int) FRAME_GRID_ROWS - 1, (int) ceil((y - mnMinY + r) * mfGridElementHeightInv));
+        const int nMaxCellY = std::min((int) FRAME_GRID_ROWS - 1,
+                                       (int) ceil((y - mnMinY + r) * mfGridElementHeightInv));
         if (nMaxCellY < 0)
             return vIndices;
 
@@ -333,11 +343,12 @@ namespace ORB_SLAM2 {
 
         for (int ix = nMinCellX; ix <= nMaxCellX; ix++) {
             for (int iy = nMinCellY; iy <= nMaxCellY; iy++) {
-                const vector<size_t> vCell = mGrid[ix][iy];
+                const std::vector<size_t> vCell = mGrid[ix][iy];
                 if (vCell.empty())
                     continue;
-                for (size_t j = 0, jend = vCell.size(); j < jend; j++) {
-                    const cv::KeyPoint &kpUn = mvKeysUn[vCell[j]];
+
+                for (unsigned long j : vCell) {
+                    const cv::KeyPoint &kpUn = mvKeysUn[j];
                     if (bCheckLevels) {
                         if (kpUn.octave < minLevel)
                             continue;
@@ -350,7 +361,7 @@ namespace ORB_SLAM2 {
                     const float disty = kpUn.pt.y - y;
 
                     if (fabs(distx) < r && fabs(disty) < r)
-                        vIndices.push_back(vCell[j]);
+                        vIndices.push_back(j);
                 }
             }
         }
@@ -363,17 +374,16 @@ namespace ORB_SLAM2 {
         posY = round((kp.pt.y - mnMinY) * mfGridElementHeightInv);
 
         //Keypoint's coordinates are undistorted, which could cause to go out of the image
-        return !(posX < 0 || posX >= FRAME_GRID_COLS || posY < 0 || posY >= FRAME_GRID_ROWS);
-        /*if ()
+        if (posX < 0 || posX >= FRAME_GRID_COLS || posY < 0 || posY >= FRAME_GRID_ROWS)
             return false;
 
-        return true;*/
+        return true;
     }
 
 
     void Frame::ComputeBoW() {
         if (mBowVec.empty()) {
-            vector<cv::Mat> vCurrentDesc = Converter::toDescriptorVector(mDescriptors);
+            std::vector<cv::Mat> vCurrentDesc = Converter::toDescriptorVector(mDescriptors);
             mpORBvocabulary->transform(vCurrentDesc, mBowVec, mFeatVec, 4);
         }
     }
@@ -423,10 +433,10 @@ namespace ORB_SLAM2 {
             cv::undistortPoints(mat, mat, mK, mDistCoef, cv::Mat(), mK);
             mat = mat.reshape(1);
 
-            mnMinX = min(mat.at<float>(0, 0), mat.at<float>(2, 0));
-            mnMaxX = max(mat.at<float>(1, 0), mat.at<float>(3, 0));
-            mnMinY = min(mat.at<float>(0, 1), mat.at<float>(1, 1));
-            mnMaxY = max(mat.at<float>(2, 1), mat.at<float>(3, 1));
+            mnMinX = std::min(mat.at<float>(0, 0), mat.at<float>(2, 0));
+            mnMaxX = std::max(mat.at<float>(1, 0), mat.at<float>(3, 0));
+            mnMinY = std::min(mat.at<float>(0, 1), mat.at<float>(1, 1));
+            mnMaxY = std::max(mat.at<float>(2, 1), mat.at<float>(3, 1));
 
         } else {
             mnMinX = 0.0f;
@@ -437,15 +447,15 @@ namespace ORB_SLAM2 {
     }
 
     void Frame::ComputeStereoMatches() {
-        mvuRight = vector<float>(N, -1.0f);
-        mvDepth = vector<float>(N, -1.0f);
+        mvuRight = std::vector<float>(N, -1.0f);
+        mvDepth = std::vector<float>(N, -1.0f);
 
         const int thOrbDist = (ORBmatcher::TH_HIGH + ORBmatcher::TH_LOW) / 2;
 
         const int nRows = mpORBextractorLeft->mvImagePyramid[0].rows;
 
         //Assign keypoints to row table
-        vector<vector<size_t> > vRowIndices(nRows, vector<size_t>());
+        std::vector<std::vector<size_t> > vRowIndices(nRows, std::vector<size_t>());
 
         for (int i = 0; i < nRows; i++)
             vRowIndices[i].reserve(200);
@@ -469,7 +479,7 @@ namespace ORB_SLAM2 {
         const float maxD = mbf / minZ;
 
         // For each left keypoint search a match in the right image
-        vector<pair<int, int> > vDistIdx;
+        std::vector<std::pair<int, int> > vDistIdx;
         vDistIdx.reserve(N);
 
         for (int iL = 0; iL < N; iL++) {
@@ -478,7 +488,7 @@ namespace ORB_SLAM2 {
             const float &vL = kpL.pt.y;
             const float &uL = kpL.pt.x;
 
-            const vector<size_t> &vCandidates = vRowIndices[vL];
+            const std::vector<size_t> &vCandidates = vRowIndices[vL];
 
             if (vCandidates.empty())
                 continue;
@@ -495,8 +505,7 @@ namespace ORB_SLAM2 {
             const cv::Mat &dL = mDescriptors.row(iL);
 
             // Compare descriptor to right keypoints
-            for (size_t iC = 0; iC < vCandidates.size(); iC++) {
-                const size_t iR = vCandidates[iC];
+            for (unsigned long iR : vCandidates) {
                 const cv::KeyPoint &kpR = mvKeysRight[iR];
 
                 if (kpR.octave < levelL - 1 || kpR.octave > levelL + 1)
@@ -535,7 +544,7 @@ namespace ORB_SLAM2 {
                 int bestDist = INT_MAX;
                 int bestincR = 0;
                 const int L = 5;
-                vector<float> vDists;
+                std::vector<float> vDists;
                 vDists.resize(2 * L + 1);
 
                 const float iniu = scaleduR0 + L - w;
@@ -584,7 +593,7 @@ namespace ORB_SLAM2 {
                     }
                     mvDepth[iL] = mbf / disparity;
                     mvuRight[iL] = bestuR;
-                    vDistIdx.push_back(pair<int, int>(bestDist, iL));
+                    vDistIdx.emplace_back(bestDist, iL);
                 }
             }
         }
@@ -605,8 +614,8 @@ namespace ORB_SLAM2 {
 
 
     void Frame::ComputeStereoFromRGBD(const cv::Mat &imDepth) {
-        mvuRight = vector<float>(N, -1);
-        mvDepth = vector<float>(N, -1);
+        mvuRight = std::vector<float>(N, -1);
+        mvDepth = std::vector<float>(N, -1);
 
         for (int i = 0; i < N; i++) {
             const cv::KeyPoint &kp = mvKeys[i];

@@ -42,7 +42,7 @@ class Sim3Solver
 {
 public:
 
-    Sim3Solver(KeyFrame* pKF1, KeyFrame* pKF2, const std::vector<MapPoint*> &vpMatched12, const bool bFixScale = true);
+    Sim3Solver(KeyFrame* pKF1, KeyFrame* pKF2, const std::vector<MapPoint*> &vpMatched12, bool bFixScale = true);
 
     void SetRansacParameters(double probability = 0.99, int minInliers = 6 , int maxIterations = 300);
 
@@ -52,19 +52,19 @@ public:
 
     cv::Mat GetEstimatedRotation();
     cv::Mat GetEstimatedTranslation();
-    float GetEstimatedScale();
+    [[nodiscard]] float GetEstimatedScale() const;
 
 
 protected:
 
-    void ComputeCentroid(cv::Mat &P, cv::Mat &Pr, cv::Mat &C);
+    static void ComputeCentroid(cv::Mat &P, cv::Mat &Pr, cv::Mat &C);
 
     void ComputeSim3(cv::Mat &P1, cv::Mat &P2);
 
     void CheckInliers();
 
-    void Project(const std::vector<cv::Mat> &vP3Dw, std::vector<cv::Mat> &vP2D, cv::Mat Tcw, cv::Mat K);
-    void FromCameraToImage(const std::vector<cv::Mat> &vP3Dc, std::vector<cv::Mat> &vP2D, cv::Mat K);
+    static void Project(const std::vector<cv::Mat> &vP3Dw, std::vector<cv::Mat> &vP2D, const cv::Mat& Tcw, cv::Mat K);
+    static void FromCameraToImage(const std::vector<cv::Mat> &vP3Dc, std::vector<cv::Mat> &vP2D, cv::Mat K);
 
 
 protected:

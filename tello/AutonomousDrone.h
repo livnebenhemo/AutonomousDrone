@@ -22,7 +22,7 @@
 class AutonomousDrone {
 public:
     AutonomousDrone(std::shared_ptr<ctello::Tello> drone,/*std::shared_ptr<cv::VideoCapture> capture,*/
-                    std::string vocabularyFilePath, std::string cameraYamlPath, std::string arucoYamlPath,
+                    std::string vocabularyFilePath, std::string cameraYamlPath, const std::string& arucoYamlPath,
                     std::string droneWifiName, int sizeOfFrameStack = 20,
                     bool withPlot = false, std::string chargerBluetoothAddress = "3C:61:05:03:81:E2");
 
@@ -31,22 +31,22 @@ public:
 private:
     bool updateCurrentFrame(ORB_SLAM2::Frame frame);
 
-    int
-    protectiveSphere(Point dronePosition, std::vector<Point> points, double sphereRadius = 0.4, double epsilon = 0.125,
+    static int
+    protectiveSphere(const Point& dronePosition, const std::vector<Point>& points, double sphereRadius = 0.4, double epsilon = 0.125,
                      int minSamples = 15);
 
-    Point
+    static Point
     protectiveSphereByClosePoint(Point dronePosition, std::vector<Point> points, double sphereRadius = 0.4,
                                  double epsilon = 0.125,
                                  int minSamples = 15);
 
     void runOrbSlam();
 
-    void areWeInWrongScale(std::vector<Frame> frames);
+    void areWeInWrongScale(const std::vector<Frame>& frames);
 
     std::vector<Point> getCurrentMap();
 
-    bool manageDroneCommand(std::string command, int amountOfAttempt = 3, int amountOfSleep = 0);
+    bool manageDroneCommand(const std::string& command, int amountOfAttempt = 3, int amountOfSleep = 0);
 
     bool doTriangulation();
 
@@ -62,40 +62,40 @@ private:
 
     void rotateDrone(int angle, bool clockwise, bool buildMap = false);
 
-    bool checkIfPointInFront(Point point, int minSamples = 15, double eps = 0.125);
+    bool checkIfPointInFront(const Point& point, int minSamples = 15, double eps = 0.125);
 
     void beginScan(bool findHome = false, int rotationAngle = 25);
 
     void getNavigationPoints(bool isExit = false);
 
-    std::pair<int, bool> getRotationToFrameAngle(Point point);
+    std::pair<int, bool> getRotationToFrameAngle(const Point& point);
 
-    std::pair<Point, Point> getNavigationVector(Point previousPosition, Point destination);
+    std::pair<Point, Point> getNavigationVector(const Point& previousPosition, const Point& destination);
 
-    void collisionDetector(Point destination);
+    void collisionDetector(const Point &mdestination);
 
-    void monitorDroneProgress(Point destination);
+    void monitorDroneProgress(const Point &destination);
 
-    void maintainAngleToPoint(Point destination, bool rotateToFrameAngle = true);
+    void maintainAngleToPoint(const Point &destination, bool rotateToFrameAngle = true);
 
     std::tuple<int, bool, int>
-    checkMotion(Point oldestPosition, Point currentPosition, Point closePoint, int angleRange = 90);
+    checkMotion(const Point& oldestPosition, const Point& currentPosition, const Point& closePoint, int angleRange = 90) const;
 
     void connectDrone();
 
     void saveMap(int fileNumber = 0);
 
-    Point convertFrameToPoint(Frame frame);
+    static Point convertFrameToPoint(const Frame& frame);
 
-    void updateCurrentLocation(cv::Mat Tcw);
+    void updateCurrentLocation(const cv::Mat& Tcw);
 
     void flyToNavigationPoints();
 
     double distanceToHome();
 
-    bool navigateDrone(Point destination, bool rotateToFrameAngle = true);
+    bool navigateDrone(const Point &destination, bool rotateToFrameAngle = true);
 
-    void goUpOrDown(Point destination);
+    void goUpOrDown(const Point& destination);
 
     bool findAndGoHome(int howClose, bool stopNavigation = false);
 

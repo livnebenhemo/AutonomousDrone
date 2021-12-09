@@ -26,29 +26,18 @@ public:
     Point(double x, double y, double z, double qx = 0, double qy = 0, double qz = 0, double qw = 0, int frameId = -1,
           int label = -1);
 
-    bool operator==(const Point &ref) {
+    bool operator==(const Point &ref) const {
         return this->x == ref.x && this->y == ref.y && this->z == ref.z;
     }
 
 
-    std::string to_string() {
+    [[nodiscard]] std::string to_string() const {
         std::ostringstream ss;
         ss << this->x << "," << this->y << "," << this->z << "," << this->label;
         return ss.str();
     }
 
-    Point &operator=(const Point &point) {
-        this->x = point.x;
-        this->y = point.y;
-        this->z = point.z;
-        this->qx = point.qx;
-        this->qy = point.qy;
-        this->qz = point.qz;
-        this->qw = point.qw;
-        this->label = point.label;
-        this->frameId = point.frameId;
-        return *this;
-    }
+    Point &operator=(const Point &point) = default;
 
     double x;
     double y;

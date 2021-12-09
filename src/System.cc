@@ -21,49 +21,52 @@
 
 
 #include "System.h"
-
+#include "Converter.h"
+#include <thread>
+#include <pangolin/pangolin.h>
+#include <iomanip>
 
 namespace ORB_SLAM2 {
 
-    System::System(const string &strVocFile, const string &strSettingsFile, const eSensor sensor,
+    System::System(const std::string &strVocFile, const std::string &strSettingsFile, const eSensor sensor,
                    const bool bUseViewer) : mSensor(sensor), mpViewer(static_cast<Viewer *>(nullptr)), mbReset(false),
                                             mbActivateLocalizationMode(false),
                                             mbDeactivateLocalizationMode(false) {
         // Output welcome message
-        cout << endl <<
-             "ORB-SLAM2 Copyright (C) 2014-2016 Raul Mur-Artal, University of Zaragoza." << endl <<
-             "This program comes with ABSOLUTELY NO WARRANTY;" << endl <<
-             "This is free software, and you are welcome to redistribute it" << endl <<
-             "under certain conditions. See LICENSE.txt." << endl << endl;
+        std::cout << std::endl <<
+                  "ORB-SLAM2 Copyright (C) 2014-2016 Raul Mur-Artal, University of Zaragoza." << std::endl <<
+                  "This program comes with ABSOLUTELY NO WARRANTY;" << std::endl <<
+                  "This is free software, and you are welcome to redistribute it" << std::endl <<
+                  "under certain conditions. See LICENSE.txt." << std::endl << std::endl;
 
-        cout << "Input sensor was set to: ";
+        std::cout << "Input sensor was set to: ";
 
         if (mSensor == MONOCULAR)
-            cout << "Monocular" << endl;
+            std::cout << "Monocular" << std::endl;
         else if (mSensor == STEREO)
-            cout << "Stereo" << endl;
+            std::cout << "Stereo" << std::endl;
         else if (mSensor == RGBD)
-            cout << "RGB-D" << endl;
+            std::cout << "RGB-D" << std::endl;
 
         //Check settings file
         cv::FileStorage fsSettings(strSettingsFile.c_str(), cv::FileStorage::READ);
         if (!fsSettings.isOpened()) {
-            cerr << "Failed to open settings file at: " << strSettingsFile << endl;
+            std::cerr << "Failed to open settings file at: " << strSettingsFile << std::endl;
             exit(-1);
         }
 
 
         //Load ORB Vocabulary
-        cout << endl << "Loading ORB Vocabulary. This could take a while..." << endl;
+        std::cout << std::endl << "Loading ORB Vocabulary. This could take a while..." << std::endl;
 
         mpVocabulary = new ORBVocabulary();
         bool bVocLoad = mpVocabulary->loadFromTextFile(strVocFile);
         if (!bVocLoad) {
-            cerr << "Wrong path to vocabulary. " << endl;
-            cerr << "Falied to open at: " << strVocFile << endl;
+            std::cerr << "Wrong path to vocabulary. " << std::endl;
+            std::cerr << "Falied to open at: " << strVocFile << std::endl;
             exit(-1);
         }
-        cout << "Vocabulary loaded!" << endl << endl;
+        std::cout << "Vocabulary loaded!" << std::endl << std::endl;
 
         //Create KeyFrame Database
         mpKeyFrameDatabase = new KeyFrameDatabase(*mpVocabulary);
@@ -82,16 +85,16 @@ namespace ORB_SLAM2 {
 
         //Initialize the Local Mapping thread and launch
         mpLocalMapper = new LocalMapping(mpMap, mSensor == MONOCULAR);
-        mptLocalMapping = new thread(&ORB_SLAM2::LocalMapping::Run, mpLocalMapper);
+        mptLocalMapping = new std::thread(&ORB_SLAM2::LocalMapping::Run, mpLocalMapper);
 
         //Initialize the Loop Closing thread and launch
         mpLoopCloser = new LoopClosing(mpMap, mpKeyFrameDatabase, mpVocabulary, mSensor != MONOCULAR);
-        mptLoopClosing = new thread(&ORB_SLAM2::LoopClosing::Run, mpLoopCloser);
+        mptLoopClosing = new std::thread(&ORB_SLAM2::LoopClosing::Run, mpLoopCloser);
 
         //Initialize the Viewer thread and launch
         if (bUseViewer) {
             mpViewer = new Viewer(this, mpFrameDrawer, mpMapDrawer, mpTracker, strSettingsFile);
-            mptViewer = new thread(&Viewer::Run, mpViewer);
+            mptViewer = new std::thread(&Viewer::Run, mpViewer);
             mpTracker->SetViewer(mpViewer);
         }
 
@@ -105,14 +108,16 @@ namespace ORB_SLAM2 {
         mpLoopCloser->SetTracker(mpTracker);
         mpLoopCloser->SetLocalMapper(mpLocalMapper);
     }
+
     cv::Mat System::TrackMonocular(const cv::Mat &im, const double &timestamp) {
         if (mSensor != MONOCULAR) {
-            mSensor = MONOCULAR;
+            std::cerr << "ERROR: you called TrackMonocular but input sensor was not set to Monocular." << std::endl;
+            exit(-1);
         }
 
         // Check mode change
         {
-            unique_lock<mutex> lock(mMutexMode);
+            std::unique_lock<std::mutex> lock(mMutexMode);
             if (mbActivateLocalizationMode) {
                 mpLocalMapper->RequestStop();
 
@@ -133,28 +138,33 @@ namespace ORB_SLAM2 {
 
         // Check reset
         {
-            unique_lock<mutex> lock(mMutexReset);
+            std::unique_lock<std::mutex> lock(mMutexReset);
             if (mbReset) {
                 mpTracker->Reset();
                 mbReset = false;
             }
         }
+
         cv::Mat Tcw = mpTracker->GrabImageMonocular(im, timestamp);
+
+        std::unique_lock<std::mutex> lock2(mMutexState);
+        mTrackedMapPoints = mpTracker->mCurrentFrame.mvpMapPoints;
         return Tcw;
     }
 
     void System::ActivateLocalizationMode() {
-        unique_lock<mutex> lock(mMutexMode);
+        std::unique_lock<std::mutex> lock(mMutexMode);
         mbActivateLocalizationMode = true;
     }
 
     void System::DeactivateLocalizationMode() {
-        unique_lock<mutex> lock(mMutexMode);
+        std::unique_lock<std::mutex> lock(mMutexMode);
         mbDeactivateLocalizationMode = true;
     }
 
+
     void System::Reset() {
-        unique_lock<mutex> lock(mMutexReset);
+        std::unique_lock<std::mutex> lock(mMutexReset);
         mbReset = true;
     }
 
@@ -175,44 +185,5 @@ namespace ORB_SLAM2 {
         if (mpViewer)
             pangolin::BindToContext("ORB-SLAM2: Map Viewer");
     }
-
-
-
-    void System::SaveKeyFrameTrajectoryTUM(const string &filename) {
-        cout << endl << "Saving keyframe trajectory to " << filename << " ..." << endl;
-
-        vector<KeyFrame *> vpKFs = mpMap->GetAllKeyFrames();
-        sort(vpKFs.begin(), vpKFs.end(), KeyFrame::lId);
-
-        // Transform all keyframes so that the first keyframe is at the origin.
-        // After a loop closure the first keyframe might not be at the origin.
-        //cv::Mat Two = vpKFs[0]->GetPoseInverse();
-
-        ofstream f;
-        f.open(filename.c_str());
-        f << fixed;
-
-        for (auto vpKF : vpKFs) {
-            KeyFrame *pKF = vpKF;
-
-            // pKF->SetPose(pKF->GetPose()*Two);
-
-            if (pKF->isBad())
-                continue;
-
-            cv::Mat R = pKF->GetRotation().t();
-            vector<double> q = Converter::toQuaternion(R);
-            cv::Mat t = pKF->GetCameraCenter();
-            f << setprecision(6) << pKF->mTimeStamp << setprecision(7) << " " << t.at<float>(0) << " " << t.at<float>(1)
-              << " " << t.at<float>(2)
-              << " " << q[0] << " " << q[1] << " " << q[2] << " " << q[3] << endl;
-
-        }
-
-        f.close();
-        cout << endl << "trajectory saved!" << endl;
-    }
-
-
-
+    
 } //namespace ORB_SLAM

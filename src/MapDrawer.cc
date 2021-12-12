@@ -81,7 +81,6 @@ namespace ORB_SLAM2 {
         const float z = w * 0.6;
 
         const std::vector<KeyFrame *> vpKFs = mpMap->GetAllKeyFrames();
-
         if (bDrawKF) {
             for (auto pKF : vpKFs) {
                 cv::Mat Twc = pKF->GetPoseInverse().t();

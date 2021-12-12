@@ -1,3 +1,5 @@
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "ArgumentSelectionDefects"
 //
 // Created by rbdstudent on 15/06/2021.
 //
@@ -81,10 +83,11 @@ void AutonomousDrone::runOrbSlam() {
             updateCurrentLocation(orbSlamCurrentPose);
             auto orbSlamTracker = orbSlamPointer->GetTracker();
             if (orbSlamTracker) {
-                ORB_SLAM2::Frame orbFrame(orbSlamPointer->GetTracker()->mCurrentFrame);
+                ORB_SLAM2::Frame orbFrame(orbSlamTracker->mCurrentFrame);
                 auto mvpMapPoints = orbFrame.GetMvpMapPoints();
                 if (!mvpMapPoints.empty()) {
                     updateCurrentFrame(orbFrame);
+
                     int numberOfChanges = orbSlamPointer->GetMap() ? orbSlamPointer->GetMap()->GetLastBigChangeIdx()
                                                                    : 0;
                     if (amountOfChanges != numberOfChanges) {
@@ -95,8 +98,6 @@ void AutonomousDrone::runOrbSlam() {
             }
 
         }
-
-        //timeStamp += 0.1;
     }
     orbSlamPointer->Shutdown();
     cvDestroyAllWindows();
@@ -118,7 +119,6 @@ bool AutonomousDrone::updateCurrentFrame(ORB_SLAM2::Frame frame) {
         auto Rwc = frame.getCameraRotation();
         cv::Mat Tcw = frame.getCameraTranslation();
         if (Rwc.empty()) {
-            std::cout << "no Rwc" << std::endl;
             return false;
         }
         int frameId = frame.getFrameId();
@@ -126,18 +126,19 @@ bool AutonomousDrone::updateCurrentFrame(ORB_SLAM2::Frame frame) {
         cv::Mat twc = -Rwc * Tcw.rowRange(0, 3).col(3);
         std::vector<Point> framePoints;
         int amountOfKeyPoints = frame.N;
-        for (auto p: frame.mvpMapPoints) {
-            if (p && !p->isBad()) {
+        for (auto p: frame.GetMvpMapPoints()) {
+            if (p && !p->isBad() && !p->GetWorldPos().empty()) {
                 Eigen::Matrix<double, 3, 1> v = ORB_SLAM2::Converter::toVector3d(p->GetWorldPos());
                 framePoints.emplace_back(Point(v.x(), v.z(), v.y(), q[0], q[1], q[2], q[3], frameId));
             }
         }
-        auto newFrame = Frame((double) twc.at<float>(0), (double) twc.at<float>(2), (double) twc.at<float>(1),
-                              (double) q[0], (double) q[1],
-                              (double) q[2], (double) q[3], frameId,
-                              framePoints, amountOfKeyPoints);
-        currentFrame = newFrame;
-        lastFrames.insert(lastFrames.begin(), newFrame);
+        currentFrame = Frame(currentLocation.x, currentLocation.y, currentLocation.z,
+                             currentLocation.qx, currentLocation.qy,
+                             currentLocation.qz, currentLocation.qw, frameId,
+                             framePoints, amountOfKeyPoints);
+
+
+        lastFrames.insert(lastFrames.begin(), currentFrame);
         if (lastFrames.size() > sizeOfFrameStack) {
             lastFrames.pop_back();
         }
@@ -883,7 +884,7 @@ void AutonomousDrone::connectDrone() {
     while (true) {
         try {
             drone.reset(new ctello::Tello());
-            drone->Bind(dronePort--, dronePort - 1000);
+            drone->Bind(dronePort, dronePort - 1000);
             dronePort--;
             manageDroneCommand("streamon");
             capture->release();
@@ -977,3 +978,4 @@ void AutonomousDrone::run() {
     orbSlamRunning = false;
     sleep(10);
 }
+#pragma clang diagnostic pop

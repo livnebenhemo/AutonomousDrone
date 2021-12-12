@@ -31,7 +31,9 @@ namespace ORB_SLAM2 {
     float Frame::mnMinX, Frame::mnMinY, Frame::mnMaxX, Frame::mnMaxY;
     float Frame::mfGridElementWidthInv, Frame::mfGridElementHeightInv;
 
-    Frame::Frame() = default;
+    Frame::Frame() {
+        mutex = std::make_shared<std::mutex>();
+    };
 
 //Copy Constructor
     Frame::Frame(const Frame &frame)
@@ -50,9 +52,9 @@ namespace ORB_SLAM2 {
         for (int i = 0; i < FRAME_GRID_COLS; i++)
             for (int j = 0; j < FRAME_GRID_ROWS; j++)
                 mGrid[i][j] = frame.mGrid[i][j];
-
         if (!frame.mTcw.empty())
             SetPose(frame.mTcw);
+        mutex = std::make_shared<std::mutex>();
     }
 
 
@@ -64,6 +66,7 @@ namespace ORB_SLAM2 {
               mpReferenceKF(static_cast<KeyFrame *>(nullptr)) {
         // Frame ID
         mnId = nNextId++;
+        mutex = std::make_shared<std::mutex>();
 
         // Scale Level Info
         mnScaleLevels = mpORBextractorLeft->GetLevels();
@@ -113,6 +116,7 @@ namespace ORB_SLAM2 {
         mb = mbf / fx;
 
         AssignFeaturesToGrid();
+
     }
 
     Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeStamp, ORBextractor *extractor,
@@ -122,6 +126,7 @@ namespace ORB_SLAM2 {
               mTimeStamp(timeStamp), mK(K.clone()), mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth) {
         // Frame ID
         mnId = nNextId++;
+        mutex = std::make_shared<std::mutex>();
 
         // Scale Level Info
         mnScaleLevels = mpORBextractorLeft->GetLevels();
@@ -177,6 +182,7 @@ namespace ORB_SLAM2 {
               mTimeStamp(timeStamp), mK(K.clone()), mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth) {
         // Frame ID
         mnId = nNextId++;
+        mutex = std::make_shared<std::mutex>();
 
         // Scale Level Info
         mnScaleLevels = mpORBextractorLeft->GetLevels();
@@ -228,8 +234,8 @@ namespace ORB_SLAM2 {
 
     void Frame::AssignFeaturesToGrid() {
         int nReserve = 0.5f * N / (FRAME_GRID_COLS * FRAME_GRID_ROWS);
-        for (auto & i : mGrid)
-            for (auto & j : i)
+        for (auto &i: mGrid)
+            for (auto &j: i)
                 j.reserve(nReserve);
 
         for (int i = 0; i < N; i++) {
@@ -347,7 +353,7 @@ namespace ORB_SLAM2 {
                 if (vCell.empty())
                     continue;
 
-                for (unsigned long j : vCell) {
+                for (unsigned long j: vCell) {
                     const cv::KeyPoint &kpUn = mvKeysUn[j];
                     if (bCheckLevels) {
                         if (kpUn.octave < minLevel)
@@ -505,7 +511,7 @@ namespace ORB_SLAM2 {
             const cv::Mat &dL = mDescriptors.row(iL);
 
             // Compare descriptor to right keypoints
-            for (unsigned long iR : vCandidates) {
+            for (unsigned long iR: vCandidates) {
                 const cv::KeyPoint &kpR = mvKeysRight[iR];
 
                 if (kpR.octave < levelL - 1 || kpR.octave > levelL + 1)

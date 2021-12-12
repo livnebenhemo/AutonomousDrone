@@ -94,7 +94,7 @@ target_link_libraries(${PROJECT_NAME}
 
 # Build examples
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/Monocular)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/exe)
 
 # add_executable(mono_tello
 #         Examples/Monocular/mono_tello.cc)

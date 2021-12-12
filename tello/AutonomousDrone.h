@@ -106,7 +106,7 @@ private:
     };
     std::string vocFilePath;
     Point navigationDestination;
-    int dronePort = 8999;
+    int dronePort = 8000;
     std::string yamlFilePath;
     Point currentLocation;
     ORB_SLAM2::System *orbSlamPointer;

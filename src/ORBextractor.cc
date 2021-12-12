@@ -1,59 +1,3 @@
-/**
-* This file is part of ORB-SLAM2.
-* This file is based on the file orb.cpp from the OpenCV library (see BSD license below).
-*
-* Copyright (C) 2014-2016 Raúl Mur-Artal <raulmur at unizar dot es> (University of Zaragoza)
-* For more information see <https://github.com/raulmur/ORB_SLAM2>
-*
-* ORB-SLAM2 is free software: you can redistribute it and/or modify
-* it under the terms of the GNU General Public License as published by
-* the Free Software Foundation, either version 3 of the License, or
-* (at your option) any later version.
-*
-* ORB-SLAM2 is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-* GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License
-* along with ORB-SLAM2. If not, see <http://www.gnu.org/licenses/>.
-*/
-/**
-* Software License Agreement (BSD License)
-*
-*  Copyright (c) 2009, Willow Garage, Inc.
-*  All rights reserved.
-*
-*  Redistribution and use in source and binary forms, with or without
-*  modification, are permitted provided that the following conditions
-*  are met:
-*
-*   * Redistributions of source code must retain the above copyright
-*     notice, this list of conditions and the following disclaimer.
-*   * Redistributions in binary form must reproduce the above
-*     copyright notice, this list of conditions and the following
-*     disclaimer in the documentation and/or other materials provided
-*     with the distribution.
-*   * Neither the name of the Willow Garage nor the names of its
-*     contributors may be used to endorse or promote products derived
-*     from this software without specific prior written permission.
-*
-*  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-*  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-*  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
-*  FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
-*  COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
-*  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
-*  BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-*  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-*  CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-*  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
-*  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-*  POSSIBILITY OF SUCH DAMAGE.
-*
-*/
-
-
 
 #include "ORBextractor.h"
 
@@ -713,7 +657,7 @@ namespace ORB_SLAM2 {
     void ORBextractor::ComputeKeyPointsOctTree(std::vector<std::vector<cv::KeyPoint> > &allKeypoints) {
         allKeypoints.resize(nlevels);
 
-        const float W = 30;
+        const int W = 30;
 
         for (int level = 0; level < nlevels; ++level) {
             const int minBorderX = EDGE_THRESHOLD - 3;
@@ -724,8 +668,8 @@ namespace ORB_SLAM2 {
             std::vector<cv::KeyPoint> vToDistributeKeys;
             vToDistributeKeys.reserve(nfeatures * 10);
 
-            const float width = (maxBorderX - minBorderX);
-            const float height = (maxBorderY - minBorderY);
+            const int width = maxBorderX - minBorderX;
+            const int height = maxBorderY - minBorderY;
 
             const int nCols = width / W;
             const int nRows = height / W;
@@ -733,8 +677,8 @@ namespace ORB_SLAM2 {
             const int hCell = std::ceil(height / nRows);
 
             for (int i = 0; i < nRows; i++) {
-                const float iniY = minBorderY + i * hCell;
-                float maxY = iniY + hCell + 6;
+                const int iniY = minBorderY + i * hCell;
+                int maxY = iniY + hCell + 6;
 
                 if (iniY >= maxBorderY - 3)
                     continue;
@@ -742,8 +686,8 @@ namespace ORB_SLAM2 {
                     maxY = maxBorderY;
 
                 for (int j = 0; j < nCols; j++) {
-                    const float iniX = minBorderX + j * wCell;
-                    float maxX = iniX + wCell + 6;
+                    const int iniX = minBorderX + j * wCell;
+                    int maxX = iniX + wCell + 6;
                     if (iniX >= maxBorderX - 6)
                         continue;
                     if (maxX > maxBorderX)
@@ -882,4 +826,4 @@ namespace ORB_SLAM2 {
 
     }
 
-} //namespace ORB_SLAM
+}

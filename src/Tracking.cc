@@ -185,10 +185,7 @@ namespace ORB_SLAM2 {
         std::unique_lock<std::mutex> lock(mpMap->mMutexMapUpdate);
 
         if (mState == NOT_INITIALIZED) {
-            if (mSensor == System::STEREO || mSensor == System::RGBD)
-                StereoInitialization();
-            else
-                MonocularInitialization();
+            MonocularInitialization();
 
             mpFrameDrawer->Update(this);
 
@@ -369,55 +366,6 @@ namespace ORB_SLAM2 {
 
     }
 
-
-    void Tracking::StereoInitialization() {
-        if (mCurrentFrame.N > 500) {
-            // Set Frame pose to the origin
-            mCurrentFrame.SetPose(cv::Mat::eye(4, 4, CV_32F));
-
-            // Create KeyFrame
-            auto *pKFini = new KeyFrame(mCurrentFrame, mpMap, mpKeyFrameDB);
-
-            // Insert KeyFrame in the map
-            mpMap->AddKeyFrame(pKFini);
-
-            // Create MapPoints and asscoiate to KeyFrame
-            for (int i = 0; i < mCurrentFrame.N; i++) {
-                float z = mCurrentFrame.mvDepth[i];
-                if (z > 0) {
-                    cv::Mat x3D = mCurrentFrame.UnprojectStereo(i);
-                    auto *pNewMP = new MapPoint(x3D, pKFini, mpMap);
-                    pNewMP->AddObservation(pKFini, i);
-                    pKFini->AddMapPoint(pNewMP, i);
-                    pNewMP->ComputeDistinctiveDescriptors();
-                    pNewMP->UpdateNormalAndDepth();
-                    mpMap->AddMapPoint(pNewMP);
-
-                    mCurrentFrame.mvpMapPoints[i] = pNewMP;
-                }
-            }
-
-            std::cout << "New map created with " << mpMap->MapPointsInMap() << " points" << std::endl;
-
-            mpLocalMapper->InsertKeyFrame(pKFini);
-
-            mLastFrame = Frame(mCurrentFrame);
-            mnLastKeyFrameId = mCurrentFrame.mnId;
-            mvpLocalKeyFrames.push_back(pKFini);
-            mvpLocalMapPoints = mpMap->GetAllMapPoints();
-            mpReferenceKF = pKFini;
-            mCurrentFrame.mpReferenceKF = pKFini;
-
-            mpMap->SetReferenceMapPoints(mvpLocalMapPoints);
-
-            mpMap->mvpKeyFrameOrigins.push_back(pKFini);
-
-            mpMapDrawer->SetCurrentCameraPose(mCurrentFrame.mTcw);
-
-            mState = OK;
-        }
-    }
-
     void Tracking::MonocularInitialization() {
 
         if (!mpInitializer) {
@@ -528,9 +476,9 @@ namespace ORB_SLAM2 {
         pKFcur->UpdateConnections();
 
         // Bundle Adjustment
-        std::cout << "New Map created with " << mpMap->MapPointsInMap() << " points" << std::endl;
 
         Optimizer::GlobalBundleAdjustemnt(mpMap, 20);
+        // Bundle Adjustment
 
         // Set median depth to 1
         float medianDepth = pKFini->ComputeSceneMedianDepth(2);
@@ -555,7 +503,6 @@ namespace ORB_SLAM2 {
                 pMP->SetWorldPos(pMP->GetWorldPos() * invMedianDepth);
             }
         }
-
         mpLocalMapper->InsertKeyFrame(pKFini);
         mpLocalMapper->InsertKeyFrame(pKFcur);
 
@@ -661,7 +608,7 @@ namespace ORB_SLAM2 {
         // We insert all close points (depth<mThDepth)
         // If less than 100 close points, we insert the 100 closest ones.
         int nPoints = 0;
-        for (auto & j : vDepthIdx) {
+        for (auto &j: vDepthIdx) {
             int i = j.second;
 
             bool bCreateNew = false;
@@ -709,7 +656,8 @@ namespace ORB_SLAM2 {
 
         // If few matches, uses a wider window search
         if (nmatches < 20) {
-            fill(mCurrentFrame.mvpMapPoints.begin(), mCurrentFrame.mvpMapPoints.end(), static_cast<MapPoint *>(nullptr));
+            fill(mCurrentFrame.mvpMapPoints.begin(), mCurrentFrame.mvpMapPoints.end(),
+                 static_cast<MapPoint *>(nullptr));
             nmatches = matcher.SearchByProjection(mCurrentFrame, mLastFrame, 2 * th, mSensor == System::MONOCULAR);
         }
 
@@ -1277,6 +1225,7 @@ namespace ORB_SLAM2 {
 
         if (mpViewer)
             mpViewer->Release();
+        std::cout << "reset everything" << std::endl;
     }
 
     void Tracking::InformOnlyTracking(const bool &flag) {

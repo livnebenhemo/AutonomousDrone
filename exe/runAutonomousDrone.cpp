@@ -5,7 +5,7 @@
 #include <nlohmann/json.hpp>
 
 int main() {
-    std::ifstream programData("/home/tzuk/AI634Code/generalSettings.json");
+    std::ifstream programData("/home/tzuk/AutonomousDroneCPP/generalSettings.json");
     nlohmann::json data;
     programData >> data;
     programData.close();
@@ -20,6 +20,7 @@ int main() {
     std::string droneName = data["DroneName"];
     bool withPlot = data["WithPlot"];
     int sizeOfFrameStack = data["sizeOfFrameStack"];
+
     AutonomousDrone autonomousDrone(drone, vocPath, droneYamlPathSlam, droneYamlPathAruco, droneName, sizeOfFrameStack,
                                     withPlot);
     autonomousDrone.run();

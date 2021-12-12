@@ -60,7 +60,7 @@ namespace ORB_SLAM2 {
         std::cout << std::endl << "Loading ORB Vocabulary. This could take a while..." << std::endl;
 
         mpVocabulary = new ORBVocabulary();
-        bool bVocLoad = mpVocabulary->loadFromTextFile(strVocFile);
+        bool bVocLoad = mpVocabulary->loadFromBinaryFile(strVocFile);
         if (!bVocLoad) {
             std::cerr << "Wrong path to vocabulary. " << std::endl;
             std::cerr << "Falied to open at: " << strVocFile << std::endl;
@@ -146,7 +146,6 @@ namespace ORB_SLAM2 {
         }
 
         cv::Mat Tcw = mpTracker->GrabImageMonocular(im, timestamp);
-
         std::unique_lock<std::mutex> lock2(mMutexState);
         mTrackedMapPoints = mpTracker->mCurrentFrame.mvpMapPoints;
         return Tcw;

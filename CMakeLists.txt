@@ -70,16 +70,16 @@ add_library(${PROJECT_NAME}
         src/Initializer.cc
         src/Viewer.cc
         src/LoopClosing.cc
-        tello/DBSCAN.cpp
-        tello/AutonomousDrone.cpp
-        tello/Polygon.cpp
-        tello/Point.cpp
-        tello/Pizza.cpp
-        tello/Line.cpp
-        tello/Frame.cpp
-        tello/Room.cpp
-        tello/Auxiliary.cpp
-        tello/Charger.cpp
+        tello/src/DBSCAN.cpp
+        tello/src/AutonomousDrone.cpp
+        tello/src/Polygon.cpp
+        tello/src/Point.cpp
+        tello/src/Pizza.cpp
+        tello/src/Line.cpp
+        tello/src/Frame.cpp
+        tello/src/Room.cpp
+        tello/src/Auxiliary.cpp
+        tello/src/Charger.cpp
         )
 
 

@@ -2,7 +2,7 @@
 // Created by rbdstudent on 27/06/2021.
 //
 
-#include "Polygon.h"
+#include "tello/include/Polygon.h"
 #include<fstream>
 #include <chrono>
 std::vector<Point> getPointsFromFile(std::string fileName){

@@ -47,13 +47,13 @@ void Charger::resetTrackingGlobals() {
     leftOverAngle = {-1, false};
 }
 
-std::tuple<float,float,float> Charger::getArucoInfo(std::vector<cv::Point2f> corners) {
+std::tuple<float,float,cv::Point2f> Charger::getArucoInfo(std::vector<cv::Point2f> corners) {
 
     double leftNorm = cv::norm(cv::Point2f(corners[0].x - corners[3].x,corners[0].y -corners[3].y));
     double rightNorm = cv::norm(cv::Point2f(corners[1].x - corners[2].x,corners[1].y -corners[2].y));
-    double upNorm = cv::norm(cv::Point2f(corners[0].x - corners[3].x,corners[0].y -corners[3].y));
-    double downNorm = cv::norm(cv::Point2f(corners[0].x - corners[3].x,corners[0].y -corners[3].y));
-
+    double upNorm = cv::norm(cv::Point2f(corners[1].x - corners[0].x,corners[1].y -corners[0].y));
+    double downNorm = cv::norm(cv::Point2f(corners[2].x - corners[3].x,corners[2].y -corners[3].y));
+    return {leftNorm/rightNorm,(upNorm+downNorm)/2,(corners[0]+corners[1]+corners[2]+corners[3])/4};
 }
 
 void Charger::navigateToBox() {

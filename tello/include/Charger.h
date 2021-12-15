@@ -89,7 +89,7 @@ private:
     void
     calculateAxisErrors(double rightLeftExpectation, double forwardBackwardsExpectation, double upDownExpectation);
 
-    std::tuple<float,float,float> getArucoInfo(std::vector<cv::Point2f> corners);
+    std::tuple<float,float,cv::Point2f> getArucoInfo(std::vector<cv::Point2f> corners);
 
     bool manageDroneCommand(const std::string &command, int amountOfAttempt = 2, int amountOfSleep = 0);
 

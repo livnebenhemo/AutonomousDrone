@@ -31,7 +31,6 @@ Examples/Monocular/computeScaleFactor.cc
 Examples/Monocular/computingFunc.cc
 Examples/Monocular/gopro_gal.yaml
 *outpy.avi*
-*yaml
 *FrameTrajectory*
 Makefile
 *cmake*

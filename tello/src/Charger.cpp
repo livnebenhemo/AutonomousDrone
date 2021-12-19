@@ -19,7 +19,7 @@ Charger::Charger(std::vector<std::pair<int, double>> markers, std::shared_ptr<bo
                  double distanceUpDownMarker,
                  double distanceRightFromArucoCenter,
                  double distanceLeftFromArucoCenter, double almostStopSpeedDistance,
-                 std::vector<double> speedScaleFactor) {
+                 std::vector<double> speedScaleFactor,int sizeOfMovingAverageWindow,int distanceToBox) {
     this->distanceLeftFromArucoCenter = distanceLeftFromArucoCenter;
     this->distanceRightFromArucoCenter = distanceRightFromArucoCenter;
     this->distanceToWall = distanceToWall;
@@ -39,6 +39,8 @@ Charger::Charger(std::vector<std::pair<int, double>> markers, std::shared_ptr<bo
     this->withImShow = withImShow;
     this->droneWifiName = std::move(droneWifiName);
     this->speedScaleFactor = std::move(speedScaleFactor);
+    this->sizeOfMovingAverageWindow = sizeOfMovingAverageWindow;
+    this->distanceToBox = distanceToBox;
     //wiringPiSetup();
     //pinMode(raspberryToTelloPinNumber,OUTPUT);
 }
@@ -56,6 +58,32 @@ std::tuple<float,float,cv::Point2f> Charger::getArucoInfo(std::vector<cv::Point2
     return {leftNorm/rightNorm,(upNorm+downNorm)/2,(corners[0]+corners[1]+corners[2]+corners[3])/4};
 }
 
+void Charger::handleQueue(std::vector<double> queue,double newValue) const{
+    if(queue.size() == sizeOfMovingAverageWindow){
+        queue.pop_back();
+    }
+    queue.insert(queue.begin(),newValue);
+}
+void Charger::landInBox(std::tuple<float,float,cv::Point2f> info,double yawError,double upDownError,double leftRightError,double forwardBackwardError,std::vector<double> &yawErrorQueue,
+                        std::vector<double> &upDownQueue,std::vector<double> &leftRightQueue,std::vector<double> &forwardBackwardQueue,double factor = 1.0){
+    if(drone->GetHeightStatus() < 50){//TODO: check if this height sampling is correct
+        double errorYawEpsilon = 1.1 *factor;
+        double errorLeftRightEpsilon = 8*factor;
+        double errorForwardBackwardEpsilon = 8*factor;
+        double errorUpDownEpsilon = 10 *factor;
+        double errorSideEpsilon = 8.0;
+        double errorFactor = 5.0;
+        double speedFactor = 2.0;
+        if(std::abs(upDownError) < errorFactor*errorUpDownEpsilon && std::abs(yawError) < errorFactor*errorYawEpsilon && std::abs(leftRightError) < errorFactor*errorLeftRightEpsilon
+        && std::abs(forwardBackwardError) < errorFactor*errorForwardBackwardEpsilon){
+            speedFactor = 0.8;
+        }
+        double currentYawError = 70 *(1-std::get<0>(info));
+        currentYawError = std::accumulate(yawErrorQueue.begin(),yawErrorQueue.end(),currentYawError)/sizeOfMovingAverageWindow;
+
+    }
+
+}
 void Charger::navigateToBox() {
     double yawError, upDownError, leftRightError, forwardBackwardError, forwardBackwardMedianError;
     int amountOfGoodPosition = 0;
@@ -77,6 +105,7 @@ void Charger::navigateToBox() {
         }
         if (canContinue){
             auto info = getArucoInfo(corners[rightId]);
+
         }
     }
 

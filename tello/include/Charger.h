@@ -15,6 +15,7 @@
 #include <opencv2/videoio.hpp>
 #include <opencv2/calib3d.hpp>
 #include <thread>
+#include <queue>
 //#include <wiringPi.h>
 #include "Auxiliary.h"
 
@@ -33,7 +34,7 @@ public:
             double distanceUpDownMarker = 0.2,
             double distanceRightFromArucoCenter = -0.02,
             double distanceLeftFromArucoCenter = -0.05, double almostStopSpeedDistance = 0.02,
-            std::vector<double> speedScaleFactor = {0.35, 0.15, 1});
+            std::vector<double> speedScaleFactor = {0.35, 0.15, 1}, int sizeOfMovingAverageWindow = 5,int distanceToBox = 48);
 
     void chargeByPaper();
 
@@ -85,11 +86,12 @@ private:
     std::vector<double> speedScaleFactor;
     std::shared_ptr<ctello::Tello> drone;
     bool withImShow = false;
-
+    int sizeOfMovingAverageWindow;
+    int distanceToBox;
     void
     calculateAxisErrors(double rightLeftExpectation, double forwardBackwardsExpectation, double upDownExpectation);
 
-    std::tuple<float,float,cv::Point2f> getArucoInfo(std::vector<cv::Point2f> corners);
+    static std::tuple<float, float, cv::Point2f> getArucoInfo(std::vector<cv::Point2f> corners);
 
     bool manageDroneCommand(const std::string &command, int amountOfAttempt = 2, int amountOfSleep = 0);
 
@@ -142,4 +144,10 @@ private:
 
     bool communicateWithCharger(char connectionAddr[]);
 
+    void
+    landInBox(std::tuple<float, float, cv::Point2f> info, double yawError, double upDownError, double leftRightError,
+              double forwardBackwardError, std::vector<double> &yawErrorQueue, std::vector<double> &upDownQueue,
+              std::vector<double> &leftRightQueue, std::vector<double> &forwardBackwardQueue,double factor);
+
+    void handleQueue(std::vector<double> queue, double newValue) const;
 };

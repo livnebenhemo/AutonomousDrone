@@ -1096,8 +1096,8 @@ namespace DBoW2 {
             if (!v.empty() && !must) {
                 // unnecessary when normalizing
                 const double nd = v.size();
-                for (BowVector::iterator vit = v.begin(); vit != v.end(); vit++)
-                    vit->second /= nd;
+                for (auto & vit : v)
+                    vit.second /= nd;
             }
 
         } else // IDF || BINARY

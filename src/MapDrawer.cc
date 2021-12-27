@@ -19,27 +19,24 @@
 */
 
 #include "MapDrawer.h"
-#include "MapPoint.h"
-#include "KeyFrame.h"
-#include <pangolin/pangolin.h>
-#include <mutex>
+
 
 namespace ORB_SLAM2 {
 
 
     MapDrawer::MapDrawer(Map *pMap, const std::string &strSettingPath) : mpMap(pMap) {
         cv::FileStorage fSettings(strSettingPath, cv::FileStorage::READ);
-
+        destination = Point(1000, 1000, 1000);
+        charger = Point(1000, 1000, 1000);
         mKeyFrameSize = fSettings["Viewer.KeyFrameSize"];
         mKeyFrameLineWidth = fSettings["Viewer.KeyFrameLineWidth"];
         mGraphLineWidth = fSettings["Viewer.GraphLineWidth"];
         mPointSize = fSettings["Viewer.PointSize"];
         mCameraSize = fSettings["Viewer.CameraSize"];
         mCameraLineWidth = fSettings["Viewer.CameraLineWidth"];
-
     }
 
-    void MapDrawer::DrawMapPoints() const {
+    void MapDrawer::DrawMapPoints() {
         const std::vector<MapPoint *> &vpMPs = mpMap->GetAllMapPoints();
         const std::vector<MapPoint *> &vpRefMPs = mpMap->GetReferenceMapPoints();
 
@@ -64,23 +61,48 @@ namespace ORB_SLAM2 {
         glBegin(GL_POINTS);
         glColor3f(1.0, 0.0, 0.0);
 
-        for (auto spRefMP: spRefMPs) {
+        for (auto spRefMP : spRefMPs) {
             if (spRefMP->isBad())
                 continue;
             cv::Mat pos = spRefMP->GetWorldPos();
             glVertex3f(pos.at<float>(0), pos.at<float>(1), pos.at<float>(2));
 
         }
-
         glEnd();
+        if (charger.x != 1000) {
+            glPointSize(mPointSize * 20);
+            glBegin(GL_POINTS);
+            glColor3f(0.8, 0.5, 0.5);
+            glVertex3d(charger.x, charger.z, charger.y);
+            glEnd();
+        }
+        if (destination.x != 1000) {
+            if (!polygonEdges.empty()) {
+                glPointSize(mPointSize * 10);
+                glBegin(GL_POINTS);
+                glColor3f(0.0, 1.0, 0.0);
+                for (auto polygonEdge : polygonEdges) {
+                    if (!(polygonEdge == destination)) {
+                        glVertex3d(polygonEdge.x, polygonEdge.z, polygonEdge.y);
+                    }
+                }
+                glEnd();
+            }
+            glPointSize(mPointSize * 10);
+            glBegin(GL_POINTS);
+            glColor3f(1.0, 0.3, 0.5);
+            glVertex3d(destination.x, destination.z, destination.y);
+            glEnd();
+        }
     }
 
-    void MapDrawer::DrawKeyFrames(const bool bDrawKF, const bool bDrawGraph) const {
+    void MapDrawer::DrawKeyFrames(const bool bDrawKF, const bool bDrawGraph) {
         const float &w = mKeyFrameSize;
-        const float h = w * 0.75;
-        const float z = w * 0.6;
+        const double h = w * 0.75;
+        const double z = w * 0.6;
 
         const std::vector<KeyFrame *> vpKFs = mpMap->GetAllKeyFrames();
+
         if (bDrawKF) {
             for (auto pKF : vpKFs) {
                 cv::Mat Twc = pKF->GetPoseInverse().t();
@@ -123,12 +145,12 @@ namespace ORB_SLAM2 {
             glColor4f(0.0f, 1.0f, 0.0f, 0.6f);
             glBegin(GL_LINES);
 
-            for (auto vpKF: vpKFs) {
+            for (auto vpKF : vpKFs) {
                 // Covisibility Graph
                 const std::vector<KeyFrame *> vCovKFs = vpKF->GetCovisiblesByWeight(100);
                 cv::Mat Ow = vpKF->GetCameraCenter();
                 if (!vCovKFs.empty()) {
-                    for (auto vCovKF: vCovKFs) {
+                    for (auto vCovKF : vCovKFs) {
                         if (vCovKF->mnId < vpKF->mnId)
                             continue;
                         cv::Mat Ow2 = vCovKF->GetCameraCenter();
@@ -147,7 +169,7 @@ namespace ORB_SLAM2 {
 
                 // Loops
                 std::set<KeyFrame *> sLoopKFs = vpKF->GetLoopEdges();
-                for (auto sLoopKF: sLoopKFs) {
+                for (auto sLoopKF : sLoopKFs) {
                     if (sLoopKF->mnId < vpKF->mnId)
                         continue;
                     cv::Mat Owl = sLoopKF->GetCameraCenter();
@@ -160,7 +182,7 @@ namespace ORB_SLAM2 {
         }
     }
 
-    void MapDrawer::DrawCurrentCamera(pangolin::OpenGlMatrix &Twc) const {
+    void MapDrawer::DrawCurrentCamera(pangolin::OpenGlMatrix &Twc) {
         const float &w = mCameraSize;
         const float h = w * 0.75;
         const float z = w * 0.6;

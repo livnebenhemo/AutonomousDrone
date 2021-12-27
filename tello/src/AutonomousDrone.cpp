@@ -83,11 +83,31 @@ void AutonomousDrone::runOrbSlam() {
             updateCurrentLocation(orbSlamCurrentPose);
             auto orbSlamTracker = orbSlamPointer->GetTracker();
             if (orbSlamTracker) {
-                ORB_SLAM2::Frame orbFrame(orbSlamTracker->mCurrentFrame);
-                auto mvpMapPoints = orbFrame.GetMvpMapPoints();
+                auto mvpMapPoints = orbSlamTracker->mCurrentFrame.GetMvpMapPoints();
                 if (!mvpMapPoints.empty()) {
-                    updateCurrentFrame(orbFrame);
+                    //updateCurrentFrame(orbSlamTracker->mCurrentFrame);
+                    if (orbSlamTracker->mCurrentFrame.getFrameId() != currentFrame.frameId) {
+                        int frameId = orbSlamTracker->mCurrentFrame.getFrameId();
+                        std::vector<Point> framePoints;
+                        for (auto &p: orbSlamTracker->mCurrentFrame.GetMvpMapPoints()) {
+                            if (p && !p->isBad()) {
+                                Eigen::Matrix<double, 3, 1> v = ORB_SLAM2::Converter::toVector3d(p->GetWorldPos());
+                                framePoints.emplace_back(
+                                        Point(v.x(), v.z(), v.y(), currentLocation.qx, currentLocation.qy, currentLocation.qz,
+                                              currentLocation.qw, frameId));
+                            }
+                        }
+                        currentFrame = Frame(currentLocation.x, currentLocation.y, currentLocation.z,
+                                             currentLocation.qx, currentLocation.qy,
+                                             currentLocation.qz, currentLocation.qw, frameId,
+                                             framePoints, framePoints.size());
 
+
+                        lastFrames.insert(lastFrames.begin(), currentFrame);
+                        if (lastFrames.size() > sizeOfFrameStack) {
+                            lastFrames.pop_back();
+                        }
+                    }
                     int numberOfChanges = orbSlamPointer->GetMap() ? orbSlamPointer->GetMap()->GetLastBigChangeIdx()
                                                                    : 0;
                     if (amountOfChanges != numberOfChanges) {
@@ -112,23 +132,20 @@ void AutonomousDrone::updateCurrentLocation(const cv::Mat &Tcw) {
 
 bool AutonomousDrone::updateCurrentFrame(ORB_SLAM2::Frame frame) {
     if (frame.getFrameId() != currentFrame.frameId) {
-        if (!frame.N) {
-            std::cout << "no mvKeys" << std::endl;
-            return false;
-        }
         int frameId = frame.getFrameId();
         std::vector<Point> framePoints;
-        int amountOfKeyPoints = frame.N;
         for (auto p: frame.GetMvpMapPoints()) {
-            if (p && !p->isBad() && !p->GetWorldPos().empty()) {
+            if (p && !p->isBad()) {
                 Eigen::Matrix<double, 3, 1> v = ORB_SLAM2::Converter::toVector3d(p->GetWorldPos());
-                framePoints.emplace_back(Point(v.x(), v.z(), v.y(),currentLocation.qx, currentLocation.qy,currentLocation.qz, currentLocation.qw, frameId));
+                framePoints.emplace_back(
+                        Point(v.x(), v.z(), v.y(), currentLocation.qx, currentLocation.qy, currentLocation.qz,
+                              currentLocation.qw, frameId));
             }
         }
         currentFrame = Frame(currentLocation.x, currentLocation.y, currentLocation.z,
                              currentLocation.qx, currentLocation.qy,
                              currentLocation.qz, currentLocation.qw, frameId,
-                             framePoints, amountOfKeyPoints);
+                             framePoints, framePoints.size());
 
 
         lastFrames.insert(lastFrames.begin(), currentFrame);
@@ -217,7 +234,7 @@ bool AutonomousDrone::manageDroneCommand(const std::string &command, int amountO
 }
 
 bool AutonomousDrone::doTriangulation() {
-    return manageDroneCommand("back 30", 3) && manageDroneCommand("forward 30", 3);
+    return manageDroneCommand("back 30", 3,1) && manageDroneCommand("forward 30", 3,1);
 }
 
 void AutonomousDrone::rotateDrone(int angle, bool clockwise, bool buildMap) {
@@ -392,7 +409,7 @@ double AutonomousDrone::distanceToHome() {
 
 bool AutonomousDrone::findAndGoHome(int howClose, bool stopNavigation) {
     double distance = distanceToHome();
-    if (distance) {
+    if (distance != 0.0) {
         std::cout << "distance home:" << distance << std::endl;
         stop = stopNavigation;
         int forward = int((distance - 1.78) * howClose);
@@ -414,7 +431,7 @@ void AutonomousDrone::beginScan(bool findHome, int rotationAngle) {
     if (!localized) {
         doTriangulation();
     }
-    for (int i = 0; i < ceil(360 / rotationAngle) + 2; i++) {
+    for (int i = 0; i < std::ceil(360 / rotationAngle) + 2; i++) {
         if (lowBattery) {
             return;
         }
@@ -652,7 +669,6 @@ void AutonomousDrone::collisionDetector(const Point &destination) {
                                                                currentLocation, /*frame.points[pointIndex]*/closePoint);
                     if (angle > 0) {
                         isBlocked = true;
-
                         speed = 0;
                         drone->SendCommand("rc 0 0 0 0");
                         manageDroneCommand("back 20", 3);
@@ -809,8 +825,10 @@ bool AutonomousDrone::navigateDrone(const Point &destination, bool rotateToFrame
     bool areWeNavigatingHome = destination == home;
     while (!stop && !loopCloserHappened && !lowBattery) {
         if (!droneRotate && !isBlocked) {
-            drone->SendCommand("rc 0 " + std::to_string(speed)
-                               + " 0 0");
+            drone->RcCommand("rc 0 " + std::to_string(speed)
+                             + " 0 0");
+            /*drone->SendCommand("rc 0 " + std::to_string(speed)
+                                         + " 0 0");*/
             if (areWeNavigatingHome) {
                 if (findAndGoHome(90, true)) {
                     break;
@@ -917,6 +935,7 @@ void AutonomousDrone::run() {
             home = Point();
             manageDroneCommand("takeoff", 3, 3);
             /*exitRoom();*/
+            std::cout << drone->GetHeightStatus() << std::endl;
             beginScan(true);
             while (true) {
                 if (!lowBattery) {
@@ -971,4 +990,5 @@ void AutonomousDrone::run() {
     orbSlamRunning = false;
     sleep(10);
 }
+
 #pragma clang diagnostic pop

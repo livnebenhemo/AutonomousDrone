@@ -19,7 +19,7 @@ Charger::Charger(std::vector<std::pair<int, double>> markers, std::shared_ptr<bo
                  double distanceUpDownMarker,
                  double distanceRightFromArucoCenter,
                  double distanceLeftFromArucoCenter, double almostStopSpeedDistance,
-                 std::vector<double> speedScaleFactor,int sizeOfMovingAverageWindow,int distanceToBox) {
+                 std::vector<double> speedScaleFactor, int sizeOfMovingAverageWindow, int distanceToBox) {
     this->distanceLeftFromArucoCenter = distanceLeftFromArucoCenter;
     this->distanceRightFromArucoCenter = distanceRightFromArucoCenter;
     this->distanceToWall = distanceToWall;
@@ -41,6 +41,8 @@ Charger::Charger(std::vector<std::pair<int, double>> markers, std::shared_ptr<bo
     this->speedScaleFactor = std::move(speedScaleFactor);
     this->sizeOfMovingAverageWindow = sizeOfMovingAverageWindow;
     this->distanceToBox = distanceToBox;
+    widthForLanding = 360;
+    heightForLanding = 240;
     //wiringPiSetup();
     //pinMode(raspberryToTelloPinNumber,OUTPUT);
 }
@@ -49,63 +51,157 @@ void Charger::resetTrackingGlobals() {
     leftOverAngle = {-1, false};
 }
 
-std::tuple<float,float,cv::Point2f> Charger::getArucoInfo(std::vector<cv::Point2f> corners) {
+std::tuple<float, float, cv::Point2f> Charger::getArucoInfo(std::vector<cv::Point2f> corners) {
 
-    double leftNorm = cv::norm(cv::Point2f(corners[0].x - corners[3].x,corners[0].y -corners[3].y));
-    double rightNorm = cv::norm(cv::Point2f(corners[1].x - corners[2].x,corners[1].y -corners[2].y));
-    double upNorm = cv::norm(cv::Point2f(corners[1].x - corners[0].x,corners[1].y -corners[0].y));
-    double downNorm = cv::norm(cv::Point2f(corners[2].x - corners[3].x,corners[2].y -corners[3].y));
-    return {leftNorm/rightNorm,(upNorm+downNorm)/2,(corners[0]+corners[1]+corners[2]+corners[3])/4};
+    double leftNorm = cv::norm(cv::Point2f(corners[0].x - corners[3].x, corners[0].y - corners[3].y));
+    double rightNorm = cv::norm(cv::Point2f(corners[1].x - corners[2].x, corners[1].y - corners[2].y));
+    double upNorm = cv::norm(cv::Point2f(corners[1].x - corners[0].x, corners[1].y - corners[0].y));
+    double downNorm = cv::norm(cv::Point2f(corners[2].x - corners[3].x, corners[2].y - corners[3].y));
+    return {leftNorm / rightNorm, (upNorm + downNorm) / 2, (corners[0] + corners[1] + corners[2] + corners[3]) / 4};
 }
 
-void Charger::handleQueue(std::vector<double> queue,double newValue) const{
-    if(queue.size() == sizeOfMovingAverageWindow){
+void Charger::handleQueue(std::vector<double> queue, double newValue) const {
+    if (queue.size() == sizeOfMovingAverageWindow) {
         queue.pop_back();
     }
-    queue.insert(queue.begin(),newValue);
+    queue.insert(queue.begin(), newValue);
 }
-void Charger::landInBox(std::tuple<float,float,cv::Point2f> info,double yawError,double upDownError,double leftRightError,double forwardBackwardError,std::vector<double> &yawErrorQueue,
-                        std::vector<double> &upDownQueue,std::vector<double> &leftRightQueue,std::vector<double> &forwardBackwardQueue,double factor = 1.0){
-    if(drone->GetHeightStatus() < 50){//TODO: check if this height sampling is correct
-        double errorYawEpsilon = 1.1 *factor;
-        double errorLeftRightEpsilon = 8*factor;
-        double errorForwardBackwardEpsilon = 8*factor;
-        double errorUpDownEpsilon = 10 *factor;
-        double errorSideEpsilon = 8.0;
+
+std::tuple<int, int, int, int> Charger::landInBox(std::tuple<float, float, cv::Point2f> info,
+                                                  std::vector<double> &yawErrorQueue,
+                                                  std::vector<double> &upDownQueue, std::vector<double> &leftRightQueue,
+                                                  std::vector<double> &forwardBackwardQueue, double errorYawEpsilon,
+                                                  double errorLeftRightEpsilon, double errorForwardBackwardEpsilon,
+                                                  double errorUpDownEpsilon, double factor = 1.0) {
+    auto height = drone->GetHeightState();
+    std::cout << height << std::endl;
+    if (height < 50) {//TODO: check if this height sampling is correct
+        double lCharger = 60.0;
+        double aAruco = 30.0;
         double errorFactor = 5.0;
         double speedFactor = 2.0;
-        if(std::abs(upDownError) < errorFactor*errorUpDownEpsilon && std::abs(yawError) < errorFactor*errorYawEpsilon && std::abs(leftRightError) < errorFactor*errorLeftRightEpsilon
-        && std::abs(forwardBackwardError) < errorFactor*errorForwardBackwardEpsilon){
+        double leftRightError = leftRightQueue.front();
+        double forwardBackwardError = forwardBackwardQueue.front();
+        double upDownError = upDownQueue.front();
+        double yawError = yawErrorQueue.front();
+        if (std::abs(upDownError) < errorFactor * errorUpDownEpsilon &&
+            std::abs(yawError) < errorFactor * errorYawEpsilon &&
+            std::abs(leftRightError) < errorFactor * errorLeftRightEpsilon
+            && std::abs(forwardBackwardError) < errorFactor * errorForwardBackwardEpsilon) {
             speedFactor = 0.8;
         }
-        double currentYawError = 70 *(1-std::get<0>(info));
-        currentYawError = std::accumulate(yawErrorQueue.begin(),yawErrorQueue.end(),currentYawError)/sizeOfMovingAverageWindow;
+        double currentYawError = 70 * (1 - std::get<0>(info));
+        currentYawError = std::accumulate(yawErrorQueue.begin(), yawErrorQueue.end(), currentYawError) /
+                          sizeOfMovingAverageWindow;
+        std::cout << "current yaw error:" << currentYawError << std::endl;
+        int yawSpeed = std::floor((std::clamp(
+                speedScaleFactor[0] * currentYawError * 12 + speedScaleFactor[1] * (currentYawError - yawError) * 2,
+                -70.0, 70.0)));
+        double currentLeftRightError = (std::get<2>(info).x - std::round(widthForLanding / 2)) / 3;
+        currentLeftRightError = std::accumulate(leftRightQueue.begin(), leftRightQueue.end(), currentLeftRightError) /
+                                sizeOfMovingAverageWindow;
+        std::cout << "current left right error: " << currentLeftRightError << std::endl;
 
+        int leftRightSpeed = std::floor(std::clamp(2 * speedScaleFactor[0] * currentLeftRightError +
+                                                   speedScaleFactor[1] * (currentLeftRightError - leftRightError),
+                                                   -30.0, 30.0) * speedFactor);
+        double theta = std::atan((drone->GetHeightState() - aAruco) / lCharger);
+        double dCharger = lCharger / std::cos(theta);
+        double thetaNom = std::atan((30 - aAruco) / lCharger);
+        double dChargerNom = lCharger / std::cos(thetaNom);
+        double dRatio = dChargerNom / dCharger;
+        double currentUpDownError = (drone->GetHeightState() - 30) * 2;
+        currentUpDownError = (std::accumulate(upDownQueue.begin(), upDownQueue.end(), 0.0) + upDownError) /
+                             sizeOfMovingAverageWindow;
+        std::cout << "current up down error: " << currentUpDownError << std::endl;
+
+        int upDownSpeed = -5;//(-4 * speedScaleFactor[0]*currentUpDownError - speedScaleFactor[1]*(currentUpDownError - upDownError))*0.5
+        double currentForwardBackwardError = (std::get<1>(info) / dRatio - 48);
+        currentForwardBackwardError =
+                std::accumulate(forwardBackwardQueue.begin(), forwardBackwardQueue.end(), currentForwardBackwardError) /
+                sizeOfMovingAverageWindow;
+        std::cout << "current forward backward error: " << currentForwardBackwardError << std::endl;
+
+        int forwardBackwardSpeed = std::floor(std::clamp(-3 * (speedScaleFactor[0] * currentForwardBackwardError +
+                                                               speedScaleFactor[1] *
+                                                               (currentForwardBackwardError - forwardBackwardError) *
+                                                               2), -18 * speedFactor, 18 * speedFactor));
+        handleQueue(leftRightQueue, currentLeftRightError);
+        handleQueue(yawErrorQueue, currentYawError);
+        handleQueue(forwardBackwardQueue, currentForwardBackwardError);
+        handleQueue(upDownQueue, currentUpDownError);
+        return {leftRightSpeed, forwardBackwardSpeed,upDownSpeed,yawSpeed};
     }
+    return {0, 0, 0, 0};
 
 }
+
 void Charger::navigateToBox() {
-    double yawError, upDownError, leftRightError, forwardBackwardError, forwardBackwardMedianError;
-    int amountOfGoodPosition = 0;
+    std::vector<double> yawErrorQueue{10}, upDownQueue{10}, leftRightQueue{10}, forwardBackwardQueue{10};
     std::vector<std::vector<cv::Point2f>> corners;
     std::vector<int> ids;
-
+    int amountOfTimesInTheBox = 0;
+    double factor = 1.0;
+    double errorYawEpsilon = 1.1 * factor;
+    double errorLeftRightEpsilon = 8 * factor;
+    double errorForwardBackwardEpsilon = 8 * factor;
+    double errorUpDownEpsilon = 10 * factor;
+    double errorSideEpsilon = 8.0;
     const cv::Ptr<cv::aruco::Dictionary> dictionary = cv::aruco::getPredefinedDictionary(
-            cv::aruco::DICT_ARUCO_ORIGINAL);
+            cv::aruco::DICT_6X6_250);
     while (!stop) {
         bool canContinue = false;
+        if (frame->empty())
+            continue;
         cv::aruco::detectMarkers(*frame, dictionary, corners, ids);
         int rightId = 0;
         while (rightId < ids.size()) {
-            if (ids[rightId] == currentMarker) {
+            if (ids[rightId] != 0) {
                 canContinue = true;
                 break;
             }
             rightId++;
         }
-        if (canContinue){
+        if (canContinue) {
             auto info = getArucoInfo(corners[rightId]);
-
+            auto rcSpeeds = landInBox(info, yawErrorQueue, upDownQueue, leftRightQueue, forwardBackwardQueue,
+                                      errorYawEpsilon, errorLeftRightEpsilon, errorForwardBackwardEpsilon,
+                                      errorUpDownEpsilon);
+            double errorSide = leftRightQueue.front() -
+                               (60 + forwardBackwardQueue.front()) * std::sin(yawErrorQueue.front() * M_PI / 180);
+            if (std::abs(upDownQueue.front()) < errorUpDownEpsilon && std::abs(errorSide) < errorSideEpsilon &&
+                std::abs(yawErrorQueue.front()) < errorYawEpsilon &&
+                std::abs(forwardBackwardQueue.front()) < errorForwardBackwardEpsilon) {
+                amountOfTimesInTheBox += 1;
+                std::cout << "in a box: " << amountOfTimesInTheBox << std::endl;
+                if (amountOfTimesInTheBox == 20) {
+                    drone->SendCommand("rc 0 0 0 0");
+                    usleep(250);
+                    double forwardBackwardFactor = 1.0;
+                    if (std::abs(forwardBackwardQueue.front()) >= 5) {
+                        forwardBackwardFactor = 1.2;
+                    }
+                    int lastStep = 30;
+                    manageDroneCommand("forward " + std::to_string(
+                            int(lastStep - forwardBackwardQueue.front() * forwardBackwardFactor)), 3, 1);
+                    manageDroneCommand("land");
+                    return;
+                }
+            } else {
+                amountOfTimesInTheBox = 0;
+            }
+            if (std::get<2>(info).x != 0) {
+                std::cout
+                        << "rc " + std::to_string(std::get<0>(rcSpeeds)) + " " + std::to_string(std::get<1>(rcSpeeds)) +
+                           " " + std::to_string(std::get<2>(rcSpeeds)) + " " + std::to_string(std::get<3>(rcSpeeds))
+                        << std::endl;
+                drone->SendCommand(
+                        "rc " + std::to_string(std::get<0>(rcSpeeds)) + " " + std::to_string(std::get<1>(rcSpeeds)) +
+                        " " + std::to_string(std::get<2>(rcSpeeds)) + " " + std::to_string(std::get<3>(rcSpeeds)));
+                usleep(250);
+            } else {
+                drone->SendCommand("rc 0 0 0 0");
+            }
         }
     }
 

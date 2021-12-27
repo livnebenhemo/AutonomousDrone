@@ -173,7 +173,7 @@ namespace ORB_SLAM2 {
         cv::Mat mDescriptors, mDescriptorsRight;
 
         std::vector<MapPoint *> GetMvpMapPoints() {
-            std::unique_lock<std::mutex> lock(*mutex);
+            //std::unique_lock<std::mutex> lock(*mutex);
             return mvpMapPoints;
         }
 

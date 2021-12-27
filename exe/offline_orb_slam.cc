@@ -1,29 +1,5 @@
-//
-// Created by ge on 14/11/19.
-//
-/**
- *
- * This file is a modification of ORB-SLAM2.
- *
- *
- * Copyright (C) 2014-2016 Raúl Mur-Artal <raulmur at unizar dot es> (University of Zaragoza)
- * For more information see <https://github.com/raulmur/ORB_SLAM2>
- *
- * ORB-SLAM2 is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * ORB-SLAM2 is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with ORB-SLAM2. If not, see <http://www.gnu.org/licenses/>.
-*/
 
-
+#include <nlohmann/json.hpp>
 #include "tello/include/AutonomousDrone.h"
 
 /************* SIGNAL *************/
@@ -36,8 +12,8 @@ void saveMap(ORB_SLAM2::System SLAM) {
     std::vector<ORB_SLAM2::MapPoint *> mapPoints = SLAM.GetMap()->GetAllMapPoints();
     std::ofstream pointData;
     pointData.open("/tmp/pointData.csv");
-    for (auto p : mapPoints) {
-        if (p != NULL) {
+    for (auto p: mapPoints) {
+        if (p != nullptr) {
             auto point = p->GetWorldPos();
             Eigen::Matrix<double, 3, 1> v = ORB_SLAM2::Converter::toVector3d(point);
             pointData << v.x() << "," << v.y() << "," << v.z() << std::endl;
@@ -49,10 +25,10 @@ void saveMap(ORB_SLAM2::System SLAM) {
 void saveMap(int fileNumber) {
     std::ofstream pointData;
     pointData.open("/tmp/pointData" + std::to_string(fileNumber) + ".csv");
-    for (auto p : allMapPoints) {
-        if (p != NULL) {
+    for (auto p: allMapPoints) {
+        if (p != nullptr) {
             auto frame = p->GetReferenceKeyFrame();
-            int frameId = frame->mnFrameId;
+            auto frameId = frame->mnFrameId;
             cv::Mat Tcw = frame->GetPose();
             auto point = p->GetWorldPos();
             cv::Mat Rwc = Tcw.rowRange(0, 3).colRange(0, 3).t();
@@ -69,11 +45,19 @@ void saveMap(int fileNumber) {
 
 }
 
-int main(int argc, char **argv) {
-    ORB_SLAM2::System SLAM(argv[1], argv[2], ORB_SLAM2::System::MONOCULAR, true);
+int main() {
+    std::string settingPath = Auxiliary::GetGeneralSettingsPath();
+    std::ifstream programData(settingPath);
+    nlohmann::json data;
+    programData >> data;
+    programData.close();
+    std::string vocPath = data["VocabularyPath"];
+    std::string droneYamlPathSlam = data["DroneYamlPathSlam"];
+    std::string videoPath = data["offlineVideoTestPath"];
+    ORB_SLAM2::System SLAM(vocPath, droneYamlPathSlam, ORB_SLAM2::System::MONOCULAR, true);
     int amountOfAttepmpts = 2;
     while (amountOfAttepmpts--) {
-        cv::VideoCapture capture("/tmp/outpy.avi");
+        cv::VideoCapture capture(videoPath);
         if (!capture.isOpened()) {
             std::cout << "Error opening video stream or file" << std::endl;
             return 0;
@@ -105,7 +89,7 @@ int main(int argc, char **argv) {
     }
 
     allMapPoints = SLAM.GetMap()->GetAllMapPoints();
-    if (allMapPoints.size() > 0) {
+    if (!allMapPoints.empty()) {
         saveMap(0);
     }
     sleep(20);

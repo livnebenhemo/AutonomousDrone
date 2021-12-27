@@ -527,16 +527,20 @@ namespace ORB_SLAM2 {
     }
 
     void Tracking::CheckReplacedInLastFrame() {
-        for (int i = 0; i < mLastFrame.N; i++) {
+        for (auto &mapPoint: mLastFrame.mvpMapPoints) {
+            if (mapPoint && mapPoint->GetReplaced()) {
+                mapPoint = mapPoint->GetReplaced();
+            }
+        }
+        /*for (int i = 0; i < mLastFrame.N; i++) {
             MapPoint *pMP = mLastFrame.mvpMapPoints[i];
-
             if (pMP) {
                 MapPoint *pRep = pMP->GetReplaced();
                 if (pRep) {
                     mLastFrame.mvpMapPoints[i] = pRep;
                 }
             }
-        }
+        }*/
     }
 
 
@@ -647,18 +651,14 @@ namespace ORB_SLAM2 {
         fill(mCurrentFrame.mvpMapPoints.begin(), mCurrentFrame.mvpMapPoints.end(), static_cast<MapPoint *>(nullptr));
 
         // Project points seen in previous frame
-        int th;
-        if (mSensor != System::STEREO)
-            th = 15;
-        else
-            th = 7;
-        int nmatches = matcher.SearchByProjection(mCurrentFrame, mLastFrame, th, mSensor == System::MONOCULAR);
+        int th = 15;
+        int nmatches = matcher.SearchByProjection(mCurrentFrame, mLastFrame, th);
 
         // If few matches, uses a wider window search
         if (nmatches < 20) {
             fill(mCurrentFrame.mvpMapPoints.begin(), mCurrentFrame.mvpMapPoints.end(),
                  static_cast<MapPoint *>(nullptr));
-            nmatches = matcher.SearchByProjection(mCurrentFrame, mLastFrame, 2 * th, mSensor == System::MONOCULAR);
+            nmatches = matcher.SearchByProjection(mCurrentFrame, mLastFrame, 2 * th);
         }
 
         if (nmatches < 20)
@@ -1114,8 +1114,7 @@ namespace ORB_SLAM2 {
 
                     std::set<MapPoint *> sFound;
 
-                    const int np = vbInliers.size();
-
+                    auto np = vbInliers.size();
                     for (int j = 0; j < np; j++) {
                         if (vbInliers[j]) {
                             mCurrentFrame.mvpMapPoints[j] = vvpMapPointMatches[i][j];

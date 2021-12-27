@@ -167,15 +167,10 @@ namespace ORB_SLAM2 {
 
                 for (unsigned int realIdxKF: vIndicesKF) {
                     MapPoint *pMP = vpMapPointsKF[realIdxKF];
-
-                    if (!pMP)
-                        continue;
-
-                    if (pMP->isBad())
+                    if (!pMP || pMP->isBad())
                         continue;
 
                     const cv::Mat &dKF = pKF->mDescriptors.row(realIdxKF);
-
                     int bestDist1 = 256;
                     int bestIdxF = -1;
                     int bestDist2 = 256;
@@ -207,7 +202,7 @@ namespace ORB_SLAM2 {
                                 float rot = kp.angle - F.mvKeys[bestIdxF].angle;
                                 if (rot < 0.0)
                                     rot += 360.0f;
-                                int bin = round(rot * factor);
+                                int bin = std::round(rot * factor);
                                 if (bin == HISTO_LENGTH)
                                     bin = 0;
                                 assert(bin >= 0 && bin < HISTO_LENGTH);
@@ -1187,8 +1182,7 @@ namespace ORB_SLAM2 {
         return nFound;
     }
 
-    int ORBmatcher::SearchByProjection(Frame &CurrentFrame, const Frame &LastFrame, const float th,
-                                       const bool bMono) const {
+    int ORBmatcher::SearchByProjection(Frame &CurrentFrame, const Frame &LastFrame, const float th) const {
         int nmatches = 0;
 
         // Rotation Histogram (to check rotation consistency)
@@ -1206,9 +1200,6 @@ namespace ORB_SLAM2 {
         const cv::Mat tlw = LastFrame.mTcw.rowRange(0, 3).col(3);
 
         const cv::Mat tlc = Rlw * twc + tlw;
-
-        const bool bForward = tlc.at<float>(2) > CurrentFrame.mb && !bMono;
-        const bool bBackward = -tlc.at<float>(2) > CurrentFrame.mb && !bMono;
 
         for (int i = 0; i < LastFrame.N; i++) {
             MapPoint *pMP = LastFrame.mvpMapPoints[i];
@@ -1240,13 +1231,7 @@ namespace ORB_SLAM2 {
                     float radius = th * CurrentFrame.mvScaleFactors[nLastOctave];
 
                     std::vector<size_t> vIndices2;
-
-                    if (bForward)
-                        vIndices2 = CurrentFrame.GetFeaturesInArea(u, v, radius, nLastOctave);
-                    else if (bBackward)
-                        vIndices2 = CurrentFrame.GetFeaturesInArea(u, v, radius, 0, nLastOctave);
-                    else
-                        vIndices2 = CurrentFrame.GetFeaturesInArea(u, v, radius, nLastOctave - 1, nLastOctave + 1);
+                    vIndices2 = CurrentFrame.GetFeaturesInArea(u, v, radius, nLastOctave - 1, nLastOctave + 1);
 
                     if (vIndices2.empty())
                         continue;
@@ -1473,12 +1458,10 @@ namespace ORB_SLAM2 {
 
 // Bit set count operation from
 // http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
-    int ORBmatcher::DescriptorDistance(const cv::Mat &a, const cv::Mat &b) {
+    unsigned int ORBmatcher::DescriptorDistance(const cv::Mat &a, const cv::Mat &b) {
         const int *pa = a.ptr<int32_t>();
         const int *pb = b.ptr<int32_t>();
-
-        int dist = 0;
-
+        unsigned int dist = 0;
         for (int i = 0; i < 8; i++, pa++, pb++) {
             unsigned int v = *pa ^ *pb;
             v = v - ((v >> 1) & 0x55555555);

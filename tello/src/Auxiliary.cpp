@@ -168,6 +168,15 @@ std::tuple<int,int,int> Auxiliary::getRationalInverse(double input)
     std::cout << numerator << " / " << denominator << std::endl;
     return std::tuple(integral,numerator,denominator);
 }
+
+std::string Auxiliary::GetGeneralSettingsPath(){
+    char currentDirPath[256];
+    getcwd(currentDirPath, 256);
+    std::cout << "Current working directory: " << currentDirPath << std::endl;
+    std::string settingPath = currentDirPath;
+    settingPath += "/../generalSettings.json";
+    return settingPath;
+}
 double Auxiliary::calculateMeanOfDistanceDifferences(std::vector<double> distances){
     double sumOfDistances = 0.0;
     for (int i = 0; i <distances.size()-1; ++i) {

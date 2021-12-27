@@ -180,18 +180,15 @@ namespace ORB_SLAM2 {
             // Get min set of points
             for (int i = 0; i < mRansacMinSet; ++i) {
                 int randi = DUtils::Random::RandomInt(0, vAvailableIndices.size() - 1);
-
-                int idx = vAvailableIndices[randi];
-
-                add_correspondence(mvP3Dw[idx].x, mvP3Dw[idx].y, mvP3Dw[idx].z, mvP2D[idx].x, mvP2D[idx].y);
-
+                auto idx = vAvailableIndices[randi];
+                auto point = &mvP3Dw[idx];
+                auto point2d = &mvP2D[idx];
+                add_correspondence(point->x, point->y, point->z, point2d->x, point2d->y);
                 vAvailableIndices[randi] = vAvailableIndices.back();
                 vAvailableIndices.pop_back();
             }
-
             // Compute camera pose
             compute_pose(mRi, mti);
-
             // Check inliers
             CheckInliers();
 
@@ -330,13 +327,13 @@ namespace ORB_SLAM2 {
     }
 
     void PnPsolver::add_correspondence(double X, double Y, double Z, double u, double v) {
-        pws[3 * number_of_correspondences] = X;
-        pws[3 * number_of_correspondences + 1] = Y;
-        pws[3 * number_of_correspondences + 2] = Z;
-
-        us[2 * number_of_correspondences] = u;
-        us[2 * number_of_correspondences + 1] = v;
-
+        int placeOfXYZ = 3 * number_of_correspondences;
+        pws[placeOfXYZ] = X;
+        pws[placeOfXYZ + 1] = Y;
+        pws[placeOfXYZ + 2] = Z;
+        int placeOfUV = 2 * number_of_correspondences;
+        us[placeOfUV] = u;
+        us[placeOfUV + 1] = v;
         number_of_correspondences++;
     }
 
@@ -379,22 +376,21 @@ namespace ORB_SLAM2 {
         double cc[3 * 3], cc_inv[3 * 3];
         CvMat CC = cvMat(3, 3, CV_64F, cc);
         CvMat CC_inv = cvMat(3, 3, CV_64F, cc_inv);
-
         for (int i = 0; i < 3; i++)
             for (int j = 1; j < 4; j++)
                 cc[3 * i + j - 1] = cws[j][i] - cws[0][i];
-
         cvInvert(&CC, &CC_inv, CV_SVD);
         double *ci = cc_inv;
         for (int i = 0; i < number_of_correspondences; i++) {
             double *pi = pws + 3 * i;
             double *a = alphas + 4 * i;
-
-            for (int j = 0; j < 3; j++)
+            for (int j = 0; j < 3; j++) {
+                int location = 3 * j;
                 a[1 + j] =
-                        ci[3 * j] * (pi[0] - cws[0][0]) +
-                        ci[3 * j + 1] * (pi[1] - cws[0][1]) +
-                        ci[3 * j + 2] * (pi[2] - cws[0][2]);
+                        ci[location] * (pi[0] - cws[0][0]) +
+                        ci[location + 1] * (pi[1] - cws[0][1]) +
+                        ci[location + 2] * (pi[2] - cws[0][2]);
+            }
             a[0] = 1.0f - a[1] - a[2] - a[3];
         }
     }
@@ -416,7 +412,7 @@ namespace ORB_SLAM2 {
     }
 
     void PnPsolver::compute_ccs(const double *betas, const double *ut) {
-        for (auto & cc : ccs)
+        for (auto &cc: ccs)
             cc[0] = cc[1] = cc[2] = 0.0f;
 
         for (int i = 0; i < 4; i++) {

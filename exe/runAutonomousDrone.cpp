@@ -5,7 +5,8 @@
 #include <nlohmann/json.hpp>
 
 int main() {
-    std::ifstream programData("/home/tzuk/AutonomousDroneCPP/generalSettings.json");
+    std::string settingPath = Auxiliary::GetGeneralSettingsPath();
+    std::ifstream programData(settingPath);
     nlohmann::json data;
     programData >> data;
     programData.close();

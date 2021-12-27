@@ -37,9 +37,9 @@ public:
 
     Map* mpMap;
 
-    void DrawMapPoints() const;
-    void DrawKeyFrames(bool bDrawKF, bool bDrawGraph) const;
-    void DrawCurrentCamera(pangolin::OpenGlMatrix &Twc) const;
+    void DrawMapPoints();
+    void DrawKeyFrames(bool bDrawKF, bool bDrawGraph);
+    void DrawCurrentCamera(pangolin::OpenGlMatrix &Twc);
     void SetCurrentCameraPose(const cv::Mat &Tcw);
     void GetCurrentOpenGLCameraMatrix(pangolin::OpenGlMatrix &M);
     void SetDestination(const Point& point){destination = point;}

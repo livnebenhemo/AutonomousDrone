@@ -105,6 +105,8 @@ private:
 
     bool chargeByEstimation(int batteryAtStart);
 
+    std::tuple<int, int, int, int> searchBoxCharger(int *amountOfSearch);
+
     void monitorDroneState();
 
     std::string getMovementInDepth(double forwardBackwards);

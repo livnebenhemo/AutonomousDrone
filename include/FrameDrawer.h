@@ -48,7 +48,7 @@ namespace ORB_SLAM2 {
         // Draw last processed frame.
         cv::Mat DrawFrame();
 
-        Point SetDestination(Point point) { destination = point; }
+        Point SetDestination(const Point &point) { destination = point; }
 
         void ClearDestinationPoint() { destination = Point(1000, 1000, 1000); }
 

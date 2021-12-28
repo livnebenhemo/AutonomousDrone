@@ -178,17 +178,12 @@ namespace ORB_SLAM2 {
         if (mState == NO_IMAGES_YET) {
             mState = NOT_INITIALIZED;
         }
-
         mLastProcessedState = mState;
-
         // Get Map Mutex -> Map cannot be changed
         std::unique_lock<std::mutex> lock(mpMap->mMutexMapUpdate);
-
         if (mState == NOT_INITIALIZED) {
             MonocularInitialization();
-
             mpFrameDrawer->Update(this);
-
             if (mState != OK)
                 return;
         } else {
@@ -234,7 +229,6 @@ namespace ORB_SLAM2 {
                         // We compute two camera poses, one from motion model and one doing relocalization.
                         // If relocalization is sucessfull we choose that solution, otherwise we retain
                         // the "visual odometry" solution.
-
                         bool bOKMM = false;
                         bool bOKReloc = false;
                         std::vector<MapPoint *> vpMPsMM;
@@ -487,6 +481,7 @@ namespace ORB_SLAM2 {
         if (medianDepth < 0 || pKFcur->TrackedMapPoints(1) < 100) {
             std::cout << "Wrong initialization, reseting..." << std::endl;
             Reset();
+            std::cout << "done reseting" << std::endl;
             return;
         }
 
@@ -1182,19 +1177,16 @@ namespace ORB_SLAM2 {
     }
 
     void Tracking::Reset() {
-
         std::cout << "System Reseting" << std::endl;
         if (mpViewer) {
             mpViewer->RequestStop();
             while (!mpViewer->isStopped())
                 usleep(3000);
         }
-
         // Reset Local Mapping
         std::cout << "Reseting Local Mapper...";
         mpLocalMapper->RequestReset();
         std::cout << " done" << std::endl;
-
         // Reset Loop Closing
         std::cout << "Reseting Loop Closing...";
         mpLoopClosing->RequestReset();
@@ -1204,24 +1196,17 @@ namespace ORB_SLAM2 {
         std::cout << "Reseting Database...";
         mpKeyFrameDB->clear();
         std::cout << " done" << std::endl;
-
         // Clear Map (this erase MapPoints and KeyFrames)
         mpMap->clear();
-
         KeyFrame::nNextId = 0;
         Frame::nNextId = 0;
         mState = NO_IMAGES_YET;
-
-        if (mpInitializer) {
-            delete mpInitializer;
-            mpInitializer = static_cast<Initializer *>(nullptr);
-        }
-
+        delete mpInitializer;
+        mpInitializer = static_cast<Initializer *>(nullptr);
         mlRelativeFramePoses.clear();
         mlpReferences.clear();
         mlFrameTimes.clear();
         mlbLost.clear();
-
         if (mpViewer)
             mpViewer->Release();
         std::cout << "reset everything" << std::endl;

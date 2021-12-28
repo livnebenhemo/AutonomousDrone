@@ -13,7 +13,6 @@ void getCameraFeed() {
         try {
             if (!*holdCamera) {
                 capture.read(*frame);
-                cv::resize(*frame,*frame,cv::Size(360,240));
                 if (!frame->empty()) {
                     cameraOpen = true;
                     imshow("CTello Stream", *frame);

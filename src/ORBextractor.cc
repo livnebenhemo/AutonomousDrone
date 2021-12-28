@@ -8,7 +8,7 @@ namespace ORB_SLAM2 {
     const int EDGE_THRESHOLD = 19;
 
 
-    static float IC_Angle(const cv::Mat &image,const cv::Point2f &pt, const std::vector<int> &u_max) {
+    static float IC_Angle(const cv::Mat &image, const cv::Point2f &pt, const std::vector<int> &u_max) {
         int m_01 = 0, m_10 = 0;
 
         const uchar *center = &image.at<uchar>(cvRound(pt.y), cvRound(pt.x));
@@ -40,8 +40,8 @@ namespace ORB_SLAM2 {
     static void computeOrbDescriptor(const cv::KeyPoint &kpt,
                                      const cv::Mat &img, const cv::Point *pattern,
                                      uchar *desc) {
-        float angle = (float) kpt.angle * factorPI;
-        auto a = (float) std::cos(angle), b = (float) std::sin(angle);
+        float angle = kpt.angle * factorPI;
+        auto a = std::cos(angle), b = std::sin(angle);
 
         const uchar *center = &img.at<uchar>(cvRound(kpt.pt.y), cvRound(kpt.pt.x));
         const int step = (int) img.step;
@@ -416,15 +416,17 @@ namespace ORB_SLAM2 {
 
         //Define boundaries of childs
         n1.UL = UL;
-        n1.UR = cv::Point2i(UL.x + halfX, UL.y);
-        n1.BL = cv::Point2i(UL.x, UL.y + halfY);
-        n1.BR = cv::Point2i(UL.x + halfX, UL.y + halfY);
+        int x = UL.x + halfX;
+        int y = UL.y + halfY;
+        n1.UR = cv::Point2i(x, UL.y);
+        n1.BL = cv::Point2i(UL.x, y);
+        n1.BR = cv::Point2i(x, y);
         n1.vKeys.reserve(vKeys.size());
 
         n2.UL = n1.UR;
         n2.UR = UR;
         n2.BL = n1.BR;
-        n2.BR = cv::Point2i(UR.x, UL.y + halfY);
+        n2.BR = cv::Point2i(UR.x, y);
         n2.vKeys.reserve(vKeys.size());
 
         n3.UL = n1.BL;
@@ -440,7 +442,7 @@ namespace ORB_SLAM2 {
         n4.vKeys.reserve(vKeys.size());
 
         //Associate points to childs
-        for (auto & kp : vKeys) {
+        for (auto &kp: vKeys) {
             if (kp.pt.x < n1.UR.x) {
                 if (kp.pt.y < n1.BR.y)
                     n1.vKeys.push_back(kp);
@@ -452,20 +454,17 @@ namespace ORB_SLAM2 {
                 n4.vKeys.push_back(kp);
         }
 
-        if (n1.vKeys.size() == 1)
-            n1.bNoMore = true;
-        if (n2.vKeys.size() == 1)
-            n2.bNoMore = true;
-        if (n3.vKeys.size() == 1)
-            n3.bNoMore = true;
-        if (n4.vKeys.size() == 1)
-            n4.bNoMore = true;
+        n1.bNoMore = n1.vKeys.size() == 1;
+        n2.bNoMore = n2.vKeys.size() == 1;
+        n3.bNoMore = n3.vKeys.size() == 1;
+        n4.bNoMore = n4.vKeys.size() == 1;
 
     }
 
     std::vector<cv::KeyPoint>
     ORBextractor::DistributeOctTree(const std::vector<cv::KeyPoint> &vToDistributeKeys, const int &minX,
-                                    const int &maxX, const int &minY, const int &maxY, const int &N, const int &level) const {
+                                    const int &maxX, const int &minY, const int &maxY, const int &N,
+                                    const int &level) const {
         // Compute how many initial nodes
         const int nIni = std::round(static_cast<float>(maxX - minX) / (maxY - minY));
 
@@ -483,7 +482,6 @@ namespace ORB_SLAM2 {
             ni.BL = cv::Point2i(ni.UL.x, maxY - minY);
             ni.BR = cv::Point2i(ni.UR.x, maxY - minY);
             ni.vKeys.reserve(vToDistributeKeys.size());
-
             lNodes.push_back(ni);
             vpIniNodes[i] = &lNodes.back();
         }
@@ -656,9 +654,7 @@ namespace ORB_SLAM2 {
 
     void ORBextractor::ComputeKeyPointsOctTree(std::vector<std::vector<cv::KeyPoint> > &allKeypoints) {
         allKeypoints.resize(nlevels);
-
         const int W = 30;
-
         for (int level = 0; level < nlevels; ++level) {
             const int minBorderX = EDGE_THRESHOLD - 3;
             const int minBorderY = minBorderX;
@@ -692,20 +688,18 @@ namespace ORB_SLAM2 {
                         continue;
                     if (maxX > maxBorderX)
                         maxX = maxBorderX;
-
+                    cv::Mat imgToExtract = mvImagePyramid[level].rowRange(iniY, maxY).colRange(iniX, maxX);
                     std::vector<cv::KeyPoint> vKeysCell;
-                    FAST(mvImagePyramid[level].rowRange(iniY, maxY).colRange(iniX, maxX),
-                         vKeysCell, iniThFAST, true);
-
+                    FAST(imgToExtract, vKeysCell, iniThFAST, true);
                     if (vKeysCell.empty()) {
-                        FAST(mvImagePyramid[level].rowRange(iniY, maxY).colRange(iniX, maxX),
-                             vKeysCell, minThFAST, true);
+                        FAST(imgToExtract, vKeysCell, minThFAST, true);
                     }
-
+                    int widthCellCalc = j * wCell;
+                    int heightCellCalc = i * hCell;
                     if (!vKeysCell.empty()) {
                         for (auto &vit: vKeysCell) {
-                            vit.pt.x += j * wCell;
-                            vit.pt.y += i * hCell;
+                            vit.pt.x += widthCellCalc;
+                            vit.pt.y += heightCellCalc;
                             vToDistributeKeys.push_back(vit);
                         }
                     }
@@ -739,7 +733,6 @@ namespace ORB_SLAM2 {
     static void computeDescriptors(const cv::Mat &image, std::vector<cv::KeyPoint> &keypoints, cv::Mat &descriptors,
                                    const std::vector<cv::Point> &pattern) {
         descriptors = cv::Mat::zeros((int) keypoints.size(), 32, CV_8UC1);
-
         for (size_t i = 0; i < keypoints.size(); i++)
             computeOrbDescriptor(keypoints[i], image, &pattern[0], descriptors.ptr((int) i));
     }
@@ -750,8 +743,6 @@ namespace ORB_SLAM2 {
             return;
 
         cv::Mat image = _image.getMat();
-        assert(image.type() == CV_8UC1);
-
         // Pre-compute the scale pyramid
         ComputePyramid(image);
 
@@ -770,28 +761,21 @@ namespace ORB_SLAM2 {
             _descriptors.create(nkeypoints, 32, CV_8U);
             descriptors = _descriptors.getMat();
         }
-
         _keypoints.clear();
         _keypoints.reserve(nkeypoints);
-
         int offset = 0;
         for (int level = 0; level < nlevels; ++level) {
             std::vector<cv::KeyPoint> &keypoints = allKeypoints[level];
             int nkeypointsLevel = (int) keypoints.size();
-
             if (nkeypointsLevel == 0)
                 continue;
-
             // preprocess the resized image
             cv::Mat workingMat = mvImagePyramid[level].clone();
             GaussianBlur(workingMat, workingMat, cv::Size(7, 7), 2, 2, cv::BORDER_REFLECT_101);
-
             // Compute the descriptors
             cv::Mat desc = descriptors.rowRange(offset, offset + nkeypointsLevel);
             computeDescriptors(workingMat, keypoints, desc, pattern);
-
             offset += nkeypointsLevel;
-
             // Scale keypoint coordinates
             if (level != 0) {
                 float scale = mvScaleFactor[level]; //getScale(level, firstLevel, scaleFactor);

@@ -5,6 +5,7 @@
 #include "tello/include/Charger.h"
 
 #include <utility>
+#include <opencv2/imgproc.hpp>
 
 Charger::Charger(std::vector<std::pair<int, double>> markers, std::shared_ptr<bool> holdCamera,
                  std::string droneWifiName,
@@ -60,7 +61,7 @@ std::tuple<float, float, cv::Point2f> Charger::getArucoInfo(std::vector<cv::Poin
     return {leftNorm / rightNorm, (upNorm + downNorm) / 2, (corners[0] + corners[1] + corners[2] + corners[3]) / 4};
 }
 
-void Charger::handleQueue(std::vector<double> queue, double newValue) const {
+void Charger::handleQueue(std::vector<double> &queue, double newValue) const {
     if (queue.size() == sizeOfMovingAverageWindow) {
         queue.pop_back();
     }
@@ -91,15 +92,16 @@ std::tuple<int, int, int, int> Charger::landInBox(std::tuple<float, float, cv::P
             speedFactor = 0.8;
         }
         double currentYawError = 70 * (1 - std::get<0>(info));
-        currentYawError = std::accumulate(yawErrorQueue.begin(), yawErrorQueue.end(), currentYawError) /
+        currentYawError = std::accumulate(yawErrorQueue.begin(), yawErrorQueue.end() - 1, currentYawError) /
                           sizeOfMovingAverageWindow;
         std::cout << "current yaw error:" << currentYawError << std::endl;
         int yawSpeed = std::floor((std::clamp(
                 speedScaleFactor[0] * currentYawError * 12 + speedScaleFactor[1] * (currentYawError - yawError) * 2,
                 -70.0, 70.0)));
         double currentLeftRightError = (std::get<2>(info).x - std::round(widthForLanding / 2)) / 3;
-        currentLeftRightError = std::accumulate(leftRightQueue.begin(), leftRightQueue.end(), currentLeftRightError) /
-                                sizeOfMovingAverageWindow;
+        currentLeftRightError =
+                std::accumulate(leftRightQueue.begin(), leftRightQueue.end() - 1, currentLeftRightError) /
+                sizeOfMovingAverageWindow;
         std::cout << "current left right error: " << currentLeftRightError << std::endl;
 
         int leftRightSpeed = std::floor(std::clamp(2 * speedScaleFactor[0] * currentLeftRightError +
@@ -111,14 +113,15 @@ std::tuple<int, int, int, int> Charger::landInBox(std::tuple<float, float, cv::P
         double dChargerNom = lCharger / std::cos(thetaNom);
         double dRatio = dChargerNom / dCharger;
         double currentUpDownError = (drone->GetHeightState() - 30) * 2;
-        currentUpDownError = (std::accumulate(upDownQueue.begin(), upDownQueue.end(), 0.0) + upDownError) /
+        currentUpDownError = (std::accumulate(upDownQueue.begin(), upDownQueue.end() - 1, 0.0) + upDownError) /
                              sizeOfMovingAverageWindow;
         std::cout << "current up down error: " << currentUpDownError << std::endl;
 
-        int upDownSpeed = -5;//(-4 * speedScaleFactor[0]*currentUpDownError - speedScaleFactor[1]*(currentUpDownError - upDownError))*0.5
+        int upDownSpeed = -12;//(-4 * speedScaleFactor[0]*currentUpDownError - speedScaleFactor[1]*(currentUpDownError - upDownError))*0.5
         double currentForwardBackwardError = (std::get<1>(info) / dRatio - 48);
         currentForwardBackwardError =
-                std::accumulate(forwardBackwardQueue.begin(), forwardBackwardQueue.end(), currentForwardBackwardError) /
+                std::accumulate(forwardBackwardQueue.begin(), forwardBackwardQueue.end() - 1,
+                                currentForwardBackwardError) /
                 sizeOfMovingAverageWindow;
         std::cout << "current forward backward error: " << currentForwardBackwardError << std::endl;
 
@@ -130,13 +133,14 @@ std::tuple<int, int, int, int> Charger::landInBox(std::tuple<float, float, cv::P
         handleQueue(yawErrorQueue, currentYawError);
         handleQueue(forwardBackwardQueue, currentForwardBackwardError);
         handleQueue(upDownQueue, currentUpDownError);
-        return {leftRightSpeed, forwardBackwardSpeed,upDownSpeed,yawSpeed};
+        return {leftRightSpeed, forwardBackwardSpeed, upDownSpeed, yawSpeed};
     }
     return {0, 0, 0, 0};
 
 }
 
 void Charger::navigateToBox() {
+    manageDroneCommand("down 30", 3, 1);
     std::vector<double> yawErrorQueue{10}, upDownQueue{10}, leftRightQueue{10}, forwardBackwardQueue{10};
     std::vector<std::vector<cv::Point2f>> corners;
     std::vector<int> ids;
@@ -151,9 +155,11 @@ void Charger::navigateToBox() {
             cv::aruco::DICT_6X6_250);
     while (!stop) {
         bool canContinue = false;
-        if (frame->empty())
+        cv::Mat currentFrame;
+        cv::resize(*frame, currentFrame, cv::Size(360, 240));
+        if (currentFrame.empty())
             continue;
-        cv::aruco::detectMarkers(*frame, dictionary, corners, ids);
+        cv::aruco::detectMarkers(currentFrame, dictionary, corners, ids);
         int rightId = 0;
         while (rightId < ids.size()) {
             if (ids[rightId] != 0) {
@@ -169,6 +175,7 @@ void Charger::navigateToBox() {
                                       errorUpDownEpsilon);
             double errorSide = leftRightQueue.front() -
                                (60 + forwardBackwardQueue.front()) * std::sin(yawErrorQueue.front() * M_PI / 180);
+            std::cout << "error side: " << errorSide << std::endl;
             if (std::abs(upDownQueue.front()) < errorUpDownEpsilon && std::abs(errorSide) < errorSideEpsilon &&
                 std::abs(yawErrorQueue.front()) < errorYawEpsilon &&
                 std::abs(forwardBackwardQueue.front()) < errorForwardBackwardEpsilon) {
@@ -202,6 +209,14 @@ void Charger::navigateToBox() {
             } else {
                 drone->SendCommand("rc 0 0 0 0");
             }
+
+            cv::putText(currentFrame, "lr: " + std::to_string(leftRightQueue.front()), cv::Point2i(20, 20),
+                        cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0));
+            cv::putText(currentFrame, "fb: " + std::to_string(forwardBackwardQueue.front()), cv::Point2i(20, 40),
+                        cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0));
+            cv::putText(currentFrame, "yaw: " + std::to_string(yawErrorQueue.front()), cv::Point2i(20, 60),
+                        cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0));
+            cv::imshow("debug info", currentFrame);
         }
     }
 

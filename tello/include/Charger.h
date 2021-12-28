@@ -34,7 +34,8 @@ public:
             double distanceUpDownMarker = 0.2,
             double distanceRightFromArucoCenter = -0.02,
             double distanceLeftFromArucoCenter = -0.05, double almostStopSpeedDistance = 0.02,
-            std::vector<double> speedScaleFactor = {0.35, 0.15, 1}, int sizeOfMovingAverageWindow = 5,int distanceToBox = 48);
+            std::vector<double> speedScaleFactor = {0.35, 0.15, 1}, int sizeOfMovingAverageWindow = 5,
+            int distanceToBox = 48);
 
     void chargeByPaper();
 
@@ -86,10 +87,11 @@ private:
     std::vector<double> speedScaleFactor;
     std::shared_ptr<ctello::Tello> drone;
     bool withImShow = false;
-    int sizeOfMovingAverageWindow;
+    double sizeOfMovingAverageWindow;
     int distanceToBox;
     int widthForLanding;
     int heightForLanding;
+
     void
     calculateAxisErrors(double rightLeftExpectation, double forwardBackwardsExpectation, double upDownExpectation);
 
@@ -146,7 +148,7 @@ private:
 
     bool communicateWithCharger(char connectionAddr[]);
 
-    void handleQueue(std::vector<double> queue, double newValue) const;
+    void handleQueue(std::vector<double> &queue, double newValue) const;
 
     std::tuple<int, int, int, int>
     landInBox(std::tuple<float, float, cv::Point2f> info, std::vector<double> &yawErrorQueue,

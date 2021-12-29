@@ -80,7 +80,8 @@ add_library(${PROJECT_NAME}
         tello/src/Room.cpp
         tello/src/Auxiliary.cpp
         tello/src/Charger.cpp
-        )
+        tello/include/gpio.h
+        tello/src/gpio.cpp)
 
 
 target_link_libraries(${PROJECT_NAME}
@@ -102,7 +103,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/exe)
 # target_compile_options(mono_tello PRIVATE -Wno-deprecated-declarations) # -Wall -Werror -Wall -Wextra)
 
 add_executable(tello
-        exe/tello.cc)
+        exe/tello.cc tello/include/gpio.h tello/src/gpio.cpp)
 target_link_libraries(tello PUBLIC ${PROJECT_NAME})
 add_executable(testPolygon exe/testPolygon.cpp)
 target_link_libraries(testPolygon ${PROJECT_NAME})

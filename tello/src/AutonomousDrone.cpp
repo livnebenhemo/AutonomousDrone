@@ -216,7 +216,7 @@ bool AutonomousDrone::manageDroneCommand(const std::string &command, int amountO
         }
         commandingDrone = true;
         while (amountOfAttempt--) {
-            if (drone->SendCommandWithResponse(command)) {
+            if (drone->SendCommandWithResponseByThread(command)) {
                 commandingDrone = false;
                 if (amountOfSleep) {
                     sleep(amountOfSleep);
@@ -312,7 +312,7 @@ void AutonomousDrone::alertLowBattery() {
         while (true) {
             if (!commandingDrone) {
                 statusingDrone = true;
-                battery = drone->GetBatteryState();
+                battery = drone->GetBattery();
                 statusingDrone = false;
                 std::cout << "battery:" << battery << std::endl;
                 break;
@@ -938,9 +938,8 @@ void AutonomousDrone::run() {
             rooms.emplace_back(Room());
             currentRoom = rooms.back();
             home = Point();
-            manageDroneCommand("takeoff", 3, 3);
-            /*exitRoom();*/
-            std::cout << drone->GetHeightStatus() << std::endl;
+            manageDroneCommand("takeoff", 3);
+            std::cout << drone->GetHeight() << std::endl;
             beginScan(true);
             while (true) {
                 if (!lowBattery) {

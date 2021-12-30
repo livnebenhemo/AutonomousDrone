@@ -10,11 +10,8 @@ int main() {
     nlohmann::json data;
     programData >> data;
     programData.close();
-    std::shared_ptr<ctello::Tello> drone = std::make_shared<ctello::Tello>();
-    drone->Bind();
-
+    std::shared_ptr<ctello::Tello> drone = std::make_shared<ctello::Tello>(true);
     while (!drone->SendCommandWithResponse("streamon"));
-
     std::string vocPath = data["VocabularyPath"];
     std::string droneYamlPathSlam = data["DroneYamlPathSlam"];
     std::string droneYamlPathAruco = data["DroneYamlPathAruco"];

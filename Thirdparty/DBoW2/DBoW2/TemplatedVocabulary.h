@@ -1152,7 +1152,7 @@ namespace DBoW2 {
 
         // level at which the node must be stored in nid, if given
         const int nid_level = m_L - levelsup;
-        if (nid_level <= 0 && nid != NULL) *nid = 0; // root
+        if (nid_level <= 0 && nid != nullptr) *nid = 0; // root
 
         NodeId final_id = 0; // root
         int current_level = 0;
@@ -1173,7 +1173,7 @@ namespace DBoW2 {
                 }
             }
 
-            if (nid != NULL && current_level == nid_level)
+            if (nid != nullptr && current_level == nid_level)
                 *nid = final_id;
 
         } while (!m_nodes[final_id].isLeaf());

@@ -43,10 +43,6 @@ namespace ORB_SLAM2 {
 
         if (mSensor == MONOCULAR)
             std::cout << "Monocular" << std::endl;
-        else if (mSensor == STEREO)
-            std::cout << "Stereo" << std::endl;
-        else if (mSensor == RGBD)
-            std::cout << "RGB-D" << std::endl;
 
         //Check settings file
         cv::FileStorage fsSettings(strSettingsFile.c_str(), cv::FileStorage::READ);

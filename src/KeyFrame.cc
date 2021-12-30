@@ -150,8 +150,8 @@ namespace ORB_SLAM2 {
         if ((int) mvpOrderedConnectedKeyFrames.size() < N)
             return mvpOrderedConnectedKeyFrames;
         else
-            return std::vector<KeyFrame *>(mvpOrderedConnectedKeyFrames.begin(),
-                                           mvpOrderedConnectedKeyFrames.begin() + N);
+            return {mvpOrderedConnectedKeyFrames.begin(),
+                                           mvpOrderedConnectedKeyFrames.begin() + N};
 
     }
 

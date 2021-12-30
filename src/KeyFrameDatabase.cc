@@ -1,22 +1,4 @@
-/**
-* This file is part of ORB-SLAM2.
-*
-* Copyright (C) 2014-2016 Raúl Mur-Artal <raulmur at unizar dot es> (University of Zaragoza)
-* For more information see <https://github.com/raulmur/ORB_SLAM2>
-*
-* ORB-SLAM2 is free software: you can redistribute it and/or modify
-* it under the terms of the GNU General Public License as published by
-* the Free Software Foundation, either version 3 of the License, or
-* (at your option) any later version.
-*
-* ORB-SLAM2 is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-* GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License
-* along with ORB-SLAM2. If not, see <http://www.gnu.org/licenses/>.
-*/
+
 
 #include "KeyFrameDatabase.h"
 
@@ -90,7 +72,7 @@ namespace ORB_SLAM2 {
         }
 
         if (lKFsSharingWords.empty())
-            return std::vector<KeyFrame *>();
+            return {};
 
         std::list<std::pair<float, KeyFrame *> > lScoreAndMatch;
 
@@ -101,7 +83,7 @@ namespace ORB_SLAM2 {
                 maxCommonWords = lKFsSharingWord->mnLoopWords;
         }
 
-        int minCommonWords = maxCommonWords * 0.8f;
+        int minCommonWords = std::ceil(maxCommonWords * 0.8);
 
         int nscores = 0;
 
@@ -110,7 +92,7 @@ namespace ORB_SLAM2 {
             if (pKFi->mnLoopWords > minCommonWords) {
                 nscores++;
 
-                float si = mpVoc->score(pKF->mBowVec, pKFi->mBowVec);
+                double si = mpVoc->score(pKF->mBowVec, pKFi->mBowVec);
 
                 pKFi->mLoopScore = si;
                 if (si >= minScore)
@@ -119,18 +101,18 @@ namespace ORB_SLAM2 {
         }
 
         if (lScoreAndMatch.empty())
-            return std::vector<KeyFrame *>();
+            return {};
 
         std::list<std::pair<float, KeyFrame *> > lAccScoreAndMatch;
-        float bestAccScore = minScore;
+        double bestAccScore = minScore;
 
         // Lets now accumulate score by covisibility
         for (auto &it: lScoreAndMatch) {
             KeyFrame *pKFi = it.second;
             std::vector<KeyFrame *> vpNeighs = pKFi->GetBestCovisibilityKeyFrames(10);
 
-            float bestScore = it.first;
-            float accScore = it.first;
+            double bestScore = it.first;
+            double accScore = it.first;
             KeyFrame *pBestKF = pKFi;
             for (auto pKF2: vpNeighs) {
                 if (pKF2->mnLoopQuery == pKF->mnId && pKF2->mnLoopWords > minCommonWords) {
@@ -148,7 +130,7 @@ namespace ORB_SLAM2 {
         }
 
         // Return all those keyframes with a score higher than 0.75*bestScore
-        float minScoreToRetain = 0.75f * bestAccScore;
+        double minScoreToRetain = 0.75f * bestAccScore;
 
         std::set<KeyFrame *> spAlreadyAddedKF;
         std::vector<KeyFrame *> vpLoopCandidates;
@@ -187,7 +169,7 @@ namespace ORB_SLAM2 {
             }
         }
         if (lKFsSharingWords.empty())
-            return std::vector<KeyFrame *>();
+            return {};
 
         // Only compare against those keyframes that share enough words
         int maxCommonWords = 0;
@@ -196,7 +178,7 @@ namespace ORB_SLAM2 {
                 maxCommonWords = lKFsSharingWord->mnRelocWords;
         }
 
-        int minCommonWords = maxCommonWords * 0.8f;
+        int minCommonWords = std::ceil(maxCommonWords * 0.8);
 
         std::list<std::pair<float, KeyFrame *> > lScoreAndMatch;
 
@@ -206,25 +188,25 @@ namespace ORB_SLAM2 {
         for (auto pKFi: lKFsSharingWords) {
             if (pKFi->mnRelocWords > minCommonWords) {
                 nscores++;
-                float si = mpVoc->score(F->mBowVec, pKFi->mBowVec);
+                double si = mpVoc->score(F->mBowVec, pKFi->mBowVec);
                 pKFi->mRelocScore = si;
                 lScoreAndMatch.emplace_back(si, pKFi);
             }
         }
 
         if (lScoreAndMatch.empty())
-            return std::vector<KeyFrame *>();
+            return {};
 
         std::list<std::pair<float, KeyFrame *> > lAccScoreAndMatch;
-        float bestAccScore = 0;
+        double bestAccScore = 0;
 
         // Lets now accumulate score by covisibility
         for (auto &it: lScoreAndMatch) {
             KeyFrame *pKFi = it.second;
             std::vector<KeyFrame *> vpNeighs = pKFi->GetBestCovisibilityKeyFrames(10);
 
-            float bestScore = it.first;
-            float accScore = bestScore;
+            double bestScore = it.first;
+            double accScore = bestScore;
             KeyFrame *pBestKF = pKFi;
             for (auto pKF2: vpNeighs) {
                 if (pKF2->mnRelocQuery != F->mnId)
@@ -243,7 +225,7 @@ namespace ORB_SLAM2 {
         }
 
         // Return all those keyframes with a score higher than 0.75*bestScore
-        float minScoreToRetain = 0.75f * bestAccScore;
+        double minScoreToRetain = 0.75 * bestAccScore;
         std::set<KeyFrame *> spAlreadyAddedKF;
         std::vector<KeyFrame *> vpRelocCandidates;
         vpRelocCandidates.reserve(lAccScoreAndMatch.size());

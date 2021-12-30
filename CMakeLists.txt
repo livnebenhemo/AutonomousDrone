@@ -39,6 +39,8 @@ endif ()
 find_package(Eigen3 3.1.0 REQUIRED)
 find_package(Pangolin REQUIRED)
 find_package(PythonLibs REQUIRED)
+find_package(Threads REQUIRED)
+
 include_directories(
         ${PROJECT_SOURCE_DIR}
         ${PROJECT_SOURCE_DIR}/include
@@ -79,9 +81,7 @@ add_library(${PROJECT_NAME}
         tello/src/Frame.cpp
         tello/src/Room.cpp
         tello/src/Auxiliary.cpp
-        tello/src/Charger.cpp
-        tello/include/gpio.h
-        tello/src/gpio.cpp)
+        tello/src/Charger.cpp)
 
 
 target_link_libraries(${PROJECT_NAME}
@@ -102,12 +102,12 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/exe)
 # target_link_libraries(mono_tello PUBLIC ${PROJECT_NAME})
 # target_compile_options(mono_tello PRIVATE -Wno-deprecated-declarations) # -Wall -Werror -Wall -Wextra)
 
-add_executable(tello
-        exe/tello.cc tello/include/gpio.h tello/src/gpio.cpp)
-target_link_libraries(tello PUBLIC ${PROJECT_NAME})
-add_executable(testPolygon exe/testPolygon.cpp)
-target_link_libraries(testPolygon ${PROJECT_NAME})
-target_compile_options(tello PRIVATE -Wno-deprecated-declarations)
+#add_executable(tello
+#        exe/tello.cc tello/include/gpio.h tello/src/gpio.cpp)
+#target_link_libraries(tello PUBLIC ${PROJECT_NAME})
+#add_executable(testPolygon exe/testPolygon.cpp)
+#target_link_libraries(testPolygon ${PROJECT_NAME})
+#target_compile_options(tello PRIVATE -Wno-deprecated-declarations)
 add_executable(runAutonomousDrone exe/runAutonomousDrone.cpp)
 target_link_libraries(runAutonomousDrone ${PROJECT_NAME} nlohmann_json::nlohmann_json)
 
@@ -117,6 +117,8 @@ add_executable(offline_orb_slam
         exe/offline_orb_slam.cc)
 target_link_libraries(offline_orb_slam ${PROJECT_NAME})
 
+add_executable(testDroneCommunication exe/testDroneCommunication.cpp)
+target_link_libraries(testDroneCommunication  ctello spdlog Threads::Threads)
 #target_compile_options(offline_orb_slam PRIVATE -Wno-deprecated-declarations)
 #add_executable(computeScaleFactor
 #       Examples/Monocular/computeScaleFactor.cc)

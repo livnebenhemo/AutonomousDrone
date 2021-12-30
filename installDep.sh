@@ -51,4 +51,10 @@ mkdir build
 cd build
 cmake ..
 sudo make -j$(nproc) install
-
+cd ~
+git clone https://github.com/tzukpolinsky/ctello.git
+cd ctello
+mkdir build
+cd build
+cmake ..
+sudo make -j$(nproc) install

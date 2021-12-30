@@ -4,7 +4,7 @@ mkdir build
 cd build
 cmake ..
 sudo make install
-cd ../../
+cd ../../../
 echo "Configuring and building Thirdparty/DBoW2 ..."
 #sudo apt install libeigen3-dev
 cd Thirdparty/DBoW2

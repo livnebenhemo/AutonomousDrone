@@ -36,7 +36,9 @@ if (NOT OpenCV_FOUND)
     endif ()
 endif ()
 
-find_package(Eigen3 3.1.0 REQUIRED)
+
+find_package(PkgConfig)
+pkg_search_module(Eigen3 REQUIRED eigen3)
 find_package(Pangolin REQUIRED)
 find_package(PythonLibs REQUIRED)
 find_package(Threads REQUIRED)

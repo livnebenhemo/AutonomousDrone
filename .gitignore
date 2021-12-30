@@ -33,7 +33,6 @@ Examples/Monocular/gopro_gal.yaml
 *outpy.avi*
 *FrameTrajectory*
 Makefile
-*cmake*
 *.zip
 *vscode*
 ORB_SLAM2.cbp
@@ -41,6 +40,6 @@ Examples/Monocular/offline_orb_slam
 Examples/Monocular/tello
 cmake_modules/
 *.a
-*.cmake
+
 *CMakeCache.txt
 *MakeFile

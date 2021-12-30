@@ -771,7 +771,7 @@ namespace ORB_SLAM2 {
                 continue;
             // preprocess the resized image
             cv::Mat workingMat = mvImagePyramid[level].clone();
-            GaussianBlur(workingMat, workingMat, cv::Size(7, 7), 2, 2, cv::BORDER_REFLECT);
+            //GaussianBlur(workingMat, workingMat, cv::Size(7, 7), 2, 2, cv::BORDER_REFLECT);
             // Compute the descriptors
             cv::Mat desc = descriptors.rowRange(offset, offset + nkeypointsLevel);
             computeDescriptors(workingMat, keypoints, desc, pattern);

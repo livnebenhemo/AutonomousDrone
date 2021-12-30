@@ -41,8 +41,7 @@ git clone https://github.com/nlohmann/json.git
 cd json
 mkdir build
 cd build
-cmake -DEigen3_INCLUDE_DIR=/usr/local/include/eige
-n3 ..
+cmake -DEigen3_INCLUDE_DIR=/usr/local/include/eigen3 ..
 sudo make -j$(nproc) install
 
 

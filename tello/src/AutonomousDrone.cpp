@@ -224,6 +224,8 @@ bool AutonomousDrone::manageDroneCommand(const std::string &command, int amountO
                     usleep(400000);
                 }
                 return true;
+            }else{
+                sleep(1);
             }
         }
         sleep(1);

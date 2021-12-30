@@ -11,7 +11,7 @@ int main() {
     programData >> data;
     programData.close();
     std::shared_ptr<ctello::Tello> drone = std::make_shared<ctello::Tello>(true);
-    while (!drone->SendCommandWithResponse("streamon"));
+    while (!drone->SendCommandWithResponseByThread("streamon"));
     std::string vocPath = data["VocabularyPath"];
     std::string droneYamlPathSlam = data["DroneYamlPathSlam"];
     std::string droneYamlPathAruco = data["DroneYamlPathAruco"];

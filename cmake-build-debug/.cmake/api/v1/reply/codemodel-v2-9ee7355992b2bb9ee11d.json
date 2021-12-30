@@ -1,0 +1,96 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"jsonFile" : "directory-.-Debug-f5ebdc15457944623624.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "2.8"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4
+					]
+				}
+			],
+			"name" : "Debug",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0
+					],
+					"name" : "ORB_SLAM2",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "ORB_SLAM2::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-ORB_SLAM2-Debug-9b21910f339f3294db93.json",
+					"name" : "ORB_SLAM2",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "offline_orb_slam::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-offline_orb_slam-Debug-0fa614f65d8cf2e5e261.json",
+					"name" : "offline_orb_slam",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "runAutonomousDrone::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-runAutonomousDrone-Debug-f334946e5cdfb69ad5f9.json",
+					"name" : "runAutonomousDrone",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "runCharger::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-runCharger-Debug-fbecdb536a9a00d7ae0a.json",
+					"name" : "runCharger",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "testDroneCommunication::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-testDroneCommunication-Debug-8968b91f29ec1fddffde.json",
+					"name" : "testDroneCommunication",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "/home/tzuk/AutonomousDroneCPP/cmake-build-debug",
+		"source" : "/home/tzuk/AutonomousDroneCPP"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 3
+	}
+}

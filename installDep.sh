@@ -1,4 +1,10 @@
 #!/bin/bash
+cv Thirdparty/eigen-3.1.3
+mkdir build
+cd build
+cmake ..
+sudo make install
+cd ../../
 echo "Configuring and building Thirdparty/DBoW2 ..."
 #sudo apt install libeigen3-dev
 cd Thirdparty/DBoW2
@@ -27,8 +33,7 @@ sudo apt-get install libboost-all-dev libopenblas-dev
 cd ../../Pangolin
 mkdir build
 cd build
-cmake -DCPP11_NO_BOOST=1 -DEigen3_INCLUDE_DIR=/usr/local/include/eige
-n3 ..
+cmake -DCPP11_NO_BOOST=1 -DEigen3_INCLUDE_DIR=/usr/local/include/eigen3 ..
 sudo make -j$(nproc) install
 
 cd ~

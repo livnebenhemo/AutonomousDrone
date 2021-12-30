@@ -1,5 +1,5 @@
 #!/bin/bash
-cv Thirdparty/eigen-3.1.3
+cd Thirdparty/eigen-3.1.3
 mkdir build
 cd build
 cmake ..

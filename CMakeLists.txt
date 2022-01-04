@@ -42,7 +42,6 @@ pkg_search_module(Eigen3 REQUIRED eigen3)
 find_package(Pangolin REQUIRED)
 find_package(PythonLibs REQUIRED)
 find_package(Threads REQUIRED)
-
 include_directories(
         ${PROJECT_SOURCE_DIR}
         ${PROJECT_SOURCE_DIR}/include
@@ -83,7 +82,8 @@ add_library(${PROJECT_NAME}
         tello/src/Frame.cpp
         tello/src/Room.cpp
         tello/src/Auxiliary.cpp
-        tello/src/Charger.cpp)
+        tello/src/Charger.cpp
+        tello/src/Navigation.cpp)
 
 
 target_link_libraries(${PROJECT_NAME}
@@ -107,9 +107,13 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/exe)
 #add_executable(tello
 #        exe/tello.cc tello/include/gpio.h tello/src/gpio.cpp)
 #target_link_libraries(tello PUBLIC ${PROJECT_NAME})
-#add_executable(testPolygon exe/testPolygon.cpp)
-#target_link_libraries(testPolygon ${PROJECT_NAME})
-#target_compile_options(tello PRIVATE -Wno-deprecated-declarations)
+add_executable(testPolygon exe/testPolygon.cpp)
+target_link_libraries(testPolygon ${PROJECT_NAME})
+target_compile_options(${PROJECT_NAME} PRIVATE -Wno-deprecated-declarations)
+
+add_executable(testNavigationPathing exe/testNavigationPathing.cpp)
+target_link_libraries(testNavigationPathing ${PROJECT_NAME})
+target_compile_options(${PROJECT_NAME} PRIVATE -Wno-deprecated-declarations)
 add_executable(runAutonomousDrone exe/runAutonomousDrone.cpp)
 target_link_libraries(runAutonomousDrone ${PROJECT_NAME} nlohmann_json::nlohmann_json)
 

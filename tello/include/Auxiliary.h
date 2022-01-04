@@ -34,7 +34,7 @@ public:
 
     static double radiansToAngle(double radian);
 
-    static double calculateDistance(const Point &point1, const Point &point2);
+    static double calculateDistanceXY(const Point &point1, const Point &point2);
 
     static double calculateDistance3D(const Point &point1, const Point &point2);
 
@@ -60,6 +60,18 @@ public:
 //#endif
 
     double calculateMedianError(const std::vector<double> &errorVector, int numberOfSamples);
+
+    static std::vector<double> Get3dAnglesBetween2Points(const Point &point1, const Point &point2);
+
+    static double GetPitchFrom2Points(const Point &point1, const Point &point2);
+
+    static double calculateDistanceXZ(const Point &point1, const Point &point2);
+
+    static void showCloudPoint3D(const std::vector<Point> &redPoints, const std::vector<Point> &cloud);
+
+    static std::vector<double> getZValues(const std::vector<Point> &points);
+
+    static void exportToXYZFile(const std::vector<Point> &points, std::string fileName = "/tmp/result.xyz");
 };
 
 

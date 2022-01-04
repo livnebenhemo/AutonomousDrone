@@ -33,7 +33,7 @@ private:
 
     std::vector<Point> points;
 
-    std::vector<Point> getNavigationPoints(std::vector<Point> goodPoints, int minSamples = 15);
+    std::vector<Point> getNavigationPoints(const std::vector<Point>& goodPoints, int minSamples = 15);
 
     std::vector<Point> filterCheckpoints(const std::vector<Point>& rawNavigationPoints, int minAngleDistance = 20) const;
 

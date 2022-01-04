@@ -36,11 +36,11 @@ int main() {
     nlohmann::json data;
     programData >> data;
     programData.close();
-    std::shared_ptr<ctello::Tello> drone = std::make_shared<ctello::Tello>();
-    drone->Bind();
+    std::shared_ptr<ctello::Tello> drone = std::make_shared<ctello::Tello>(true);
+    //drone->Bind();
     std::string droneYamlPathAruco = data["DroneYamlPathAruco"];
     std::string droneName = data["DroneName"];
-    while (!drone->SendCommandWithResponse("streamon"));
+    while (!drone->SendCommandWithResponseByThread("streamon"));
     std::thread cameraThread(getCameraFeed);
     while (!cameraOpen) {
         usleep(5000000);
@@ -51,7 +51,7 @@ int main() {
     markers.emplace_back(std::pair<int, double>(6, 0.1815));
     Charger charger(markers, holdCamera, droneName, droneYamlPathAruco,
                     drone, frame, 9000);
-    drone->SendCommandWithResponse("takeoff");
+    drone->SendCommandWithResponseByThread("takeoff");
     charger.navigateToBox();
     return 0;
 }

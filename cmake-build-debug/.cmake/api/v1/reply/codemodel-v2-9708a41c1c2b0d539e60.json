@@ -1,0 +1,114 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"jsonFile" : "directory-.-Debug-f5ebdc15457944623624.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "2.8"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4,
+						5,
+						6
+					]
+				}
+			],
+			"name" : "Debug",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0
+					],
+					"name" : "ORB_SLAM2",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4,
+						5,
+						6
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "ORB_SLAM2::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-ORB_SLAM2-Debug-d9352d6ca0a59fbd8fbe.json",
+					"name" : "ORB_SLAM2",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "offline_orb_slam::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-offline_orb_slam-Debug-0c6f6345b1ee7085d94e.json",
+					"name" : "offline_orb_slam",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "runAutonomousDrone::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-runAutonomousDrone-Debug-c7b14b9a970d4cf6c55c.json",
+					"name" : "runAutonomousDrone",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "runCharger::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-runCharger-Debug-87e9571ded828f830e33.json",
+					"name" : "runCharger",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "testDroneCommunication::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-testDroneCommunication-Debug-2d25d0c82988cb676313.json",
+					"name" : "testDroneCommunication",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "testNavigationPathing::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-testNavigationPathing-Debug-508a740b4a5de0359494.json",
+					"name" : "testNavigationPathing",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "testPolygon::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-testPolygon-Debug-19eb25aa4270a59d5d20.json",
+					"name" : "testPolygon",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "/home/tzuk/AutonomousDroneCPP/cmake-build-debug",
+		"source" : "/home/tzuk/AutonomousDroneCPP"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 3
+	}
+}

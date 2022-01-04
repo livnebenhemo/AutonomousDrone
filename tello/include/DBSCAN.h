@@ -1,6 +1,7 @@
 #ifndef DBSCAN_H
 #define DBSCAN_H
 
+#include <utility>
 #include <vector>
 #include <cmath>
 #include "Point.h"
@@ -14,10 +15,11 @@
 
 class DBSCAN {
 public:
-    DBSCAN(unsigned int minPts, float eps, std::vector<Point> points){
+    DBSCAN(unsigned int minPts, double eps,const std::vector<Point> &points,std::function<double(Point,Point)> func = Auxiliary::calculateDistanceXY){
         m_minPoints = minPts;
         m_epsilon = eps;
         m_points = points;
+        clusterFunction = std::move(func);
     }
     ~DBSCAN(){}
 
@@ -29,7 +31,8 @@ public:
 private:
     std::vector<Point> m_points;
     unsigned int m_minPoints;
-    float m_epsilon;
+    double m_epsilon;
+    std::function<double(Point,Point)> clusterFunction;
 };
 
 #endif // DBSCAN_H

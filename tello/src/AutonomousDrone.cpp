@@ -224,7 +224,7 @@ bool AutonomousDrone::manageDroneCommand(const std::string &command, int amountO
                     usleep(400000);
                 }
                 return true;
-            }else{
+            } else {
                 sleep(1);
             }
         }
@@ -235,7 +235,7 @@ bool AutonomousDrone::manageDroneCommand(const std::string &command, int amountO
 }
 
 bool AutonomousDrone::doTriangulation() {
-    return manageDroneCommand("back 30", 3) && manageDroneCommand("forward 30", 3);
+    return manageDroneCommand("up 30", 3) && manageDroneCommand("down 30", 3);
 }
 
 void AutonomousDrone::rotateDrone(int angle, bool clockwise, bool buildMap) {
@@ -474,8 +474,8 @@ void AutonomousDrone::getNavigationPoints(bool isExit) {
         for (const auto &room: rooms) {
             if (!room.visitedExitPoints.empty())
                 for (const auto &visitedExitPoint: room.visitedExitPoints) {
-                    if (Auxiliary::calculateDistance(point, visitedExitPoint) <
-                        Auxiliary::calculateDistance(currentLocation, point) / 2.5) {
+                    if (Auxiliary::calculateDistanceXY(point, visitedExitPoint) <
+                        Auxiliary::calculateDistanceXY(currentLocation, point) / 2.5) {
                         exitPoints.erase(exitPoints.begin() + pointIndex);
                     }
                 }
@@ -570,7 +570,7 @@ AutonomousDrone::protectiveSphereByClosePoint(Point dronePosition, std::vector<P
                                               double epsilon,
                                               int minSamples) {
     std::sort(points.begin(), points.end(), [&dronePosition](const Point &p1, const Point &p2) {
-        return Auxiliary::calculateDistance(p1, dronePosition) < Auxiliary::calculateDistance(p2, dronePosition);
+        return Auxiliary::calculateDistanceXY(p1, dronePosition) < Auxiliary::calculateDistanceXY(p2, dronePosition);
     });
     for (const Point &point: points) {
         if (Auxiliary::calculateDistance3D(point, dronePosition) < sphereRadius) {
@@ -635,12 +635,12 @@ AutonomousDrone::checkMotion(const Point &oldestPosition, const Point &currentPo
 void AutonomousDrone::areWeInWrongScale(const std::vector<Frame> &frames) {
     double sumOfDistances = 0.0;
     for (const auto &frame: frames) {
-        sumOfDistances += Auxiliary::calculateDistance(convertFrameToPoint(frame), Point());
+        sumOfDistances += Auxiliary::calculateDistanceXY(convertFrameToPoint(frame), Point());
     }
     double mean = sumOfDistances / frames.size();
     double variance = 0.0;
     for (const auto &frame: frames) {
-        variance += pow(Auxiliary::calculateDistance(convertFrameToPoint(frame), Point()) - mean, 2);
+        variance += pow(Auxiliary::calculateDistanceXY(convertFrameToPoint(frame), Point()) - mean, 2);
     }
     weInAWrongScale = variance < 0.001;
 }
@@ -752,14 +752,14 @@ void AutonomousDrone::monitorDroneProgress(const Point &destination) {
     usleep(500000);
     int i = 0;
     int amountOfGettingFurther = 4;
-    closeThreshold = Auxiliary::calculateDistance(currentLocation, destination) / 2.5;
+    closeThreshold = Auxiliary::calculateDistanceXY(currentLocation, destination) / 2.5;
     std::cout << "close threshold:" << closeThreshold << std::endl;
     double expectedScale = closeThreshold * 0.005;
     std::cout << "scale threshold:" << expectedScale << std::endl;
     std::vector<double> distances{};
     while (!stop && !lowBattery) {
         try {
-            double distance = Auxiliary::calculateDistance(currentLocation, destination);
+            double distance = Auxiliary::calculateDistanceXY(currentLocation, destination);
             if (!(i % 2)) {
                 std::cout << "distance to destination: " << distance << std::endl;
             }
@@ -820,7 +820,7 @@ bool AutonomousDrone::navigateDrone(const Point &destination, bool rotateToFrame
     stop = false;
     loopCloserHappened = false;
     weInAWrongScale = false;
-    if (Auxiliary::calculateDistance(destination, currentLocation) < closeThreshold) {
+    if (Auxiliary::calculateDistanceXY(destination, currentLocation) < closeThreshold) {
         std::cout << "we are close to the point" << std::endl;
         return true;
     }
@@ -860,7 +860,7 @@ bool AutonomousDrone::navigateDrone(const Point &destination, bool rotateToFrame
     navigationDestination = Point(1000, 1000, 1000);
     orbSlamPointer->GetMapDrawer()->ClearDestinationPoint();
     orbSlamPointer->GetFrameDrawer()->ClearDestinationPoint();
-    return Auxiliary::calculateDistance(currentLocation, destination) < closeThreshold * 1.5;
+    return Auxiliary::calculateDistanceXY(currentLocation, destination) < closeThreshold * 1.5;
 }
 
 void AutonomousDrone::flyToNavigationPoints() {
@@ -963,7 +963,7 @@ void AutonomousDrone::run() {
                     std::cout << "no battery" << std::endl;
                     batteryThread.join();
                     lowBattery = false;
-                    if (Auxiliary::calculateDistance(Point(), currentLocation) > closeThreshold * 1.2) {
+                    if (Auxiliary::calculateDistanceXY(Point(), currentLocation) > closeThreshold * 1.2) {
                         if (!checkIfPointInFront(home)) {
                             howToRotate(180, true, true);
                         }

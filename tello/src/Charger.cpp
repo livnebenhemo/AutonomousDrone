@@ -74,8 +74,7 @@ std::tuple<int, int, int, int> Charger::landInBox(std::tuple<float, float, cv::P
                                                   std::vector<double> &forwardBackwardQueue, double errorYawEpsilon,
                                                   double errorLeftRightEpsilon, double errorForwardBackwardEpsilon,
                                                   double errorUpDownEpsilon, double factor = 1.0) {
-    auto height = drone->GetHeightState();
-    std::cout << height << std::endl;
+    auto height = drone->GetHeight();
     if (height < 50) {//TODO: check if this height sampling is correct
         double lCharger = 60.0;
         double aAruco = 30.0;
@@ -105,12 +104,12 @@ std::tuple<int, int, int, int> Charger::landInBox(std::tuple<float, float, cv::P
         int leftRightSpeed = std::floor(std::clamp(2 * speedScaleFactor[0] * currentLeftRightError +
                                                    speedScaleFactor[1] * (currentLeftRightError - leftRightError),
                                                    -30.0, 30.0) * speedFactor);
-        double theta = std::atan((drone->GetHeightState() - aAruco) / lCharger);
+        double theta = std::atan((drone->GetHeight() - aAruco) / lCharger);
         double dCharger = lCharger / std::cos(theta);
         double thetaNom = std::atan((30 - aAruco) / lCharger);
         double dChargerNom = lCharger / std::cos(thetaNom);
         double dRatio = dChargerNom / dCharger;
-        double currentUpDownError = (drone->GetHeightState() - 30) * 2;
+        double currentUpDownError = (drone->GetHeight() - 30) * 2;
         currentUpDownError = (std::accumulate(upDownQueue.begin(), upDownQueue.end() - 1, 0.0) + upDownError) /
                              sizeOfMovingAverageWindow;
 
@@ -146,7 +145,7 @@ std::tuple<int, int, int, int> Charger::searchBoxCharger(int *amountOfSearch) {
 }
 
 void Charger::navigateToBox() {
-    manageDroneCommand("down 60", 3, 1);
+    manageDroneCommand("down 60", 10, 3);
     std::vector<double> yawErrorQueue{10}, upDownQueue{10}, leftRightQueue{10}, forwardBackwardQueue{10};
     std::vector<std::vector<cv::Point2f>> corners;
     std::vector<int> ids;
@@ -159,6 +158,7 @@ void Charger::navigateToBox() {
     double errorForwardBackwardEpsilon = 8 * factor;
     double errorUpDownEpsilon = 10 * factor;
     double errorSideEpsilon = 8.0;
+    int amountOfLostCharger = 30;
     const cv::Ptr<cv::aruco::Dictionary> dictionary = cv::aruco::getPredefinedDictionary(
             cv::aruco::DICT_6X6_250);
     while (!stop) {
@@ -170,13 +170,17 @@ void Charger::navigateToBox() {
         cv::aruco::detectMarkers(currentFrame, dictionary, corners, ids);
         if (ids.empty()) {
             std::cout << "cant find charger" << std::endl;
-            rcSpeeds = searchBoxCharger(&amountOfSearch);
-            drone->SendCommand(
-                    "rc " + std::to_string(std::get<0>(rcSpeeds)) + " " + std::to_string(std::get<1>(rcSpeeds)) +
-                    " " + std::to_string(std::get<2>(rcSpeeds)) + " " + std::to_string(std::get<3>(rcSpeeds)));
+            if (amountOfLostCharger-- <= 0) {
+
+                rcSpeeds = searchBoxCharger(&amountOfSearch);
+                drone->SendCommand(
+                        "rc " + std::to_string(std::get<0>(rcSpeeds)) + " " + std::to_string(std::get<1>(rcSpeeds)) +
+                        " " + std::to_string(std::get<2>(rcSpeeds)) + " " + std::to_string(std::get<3>(rcSpeeds)));
+            }
             usleep(250);
             continue;
         }
+        amountOfLostCharger = 30;
         int rightId = 0;
         while (rightId < ids.size()) {
             if (ids[rightId] != 0) {
@@ -197,6 +201,9 @@ void Charger::navigateToBox() {
                 std::abs(forwardBackwardQueue.front()) < errorForwardBackwardEpsilon) {
                 amountOfTimesInTheBox += 1;
                 std::cout << "in a box: " << amountOfTimesInTheBox << std::endl;
+                drone->SendCommand("rc 0 0 0 0");
+                drone->SendCommand("rc 0 0 0 0");
+                drone->SendCommand("rc 0 0 0 0");
                 if (amountOfTimesInTheBox == 20) {
                     drone->SendCommand("rc 0 0 0 0");
                     drone->SendCommand("rc 0 0 0 0");
@@ -206,9 +213,9 @@ void Charger::navigateToBox() {
                     if (std::abs(forwardBackwardQueue.front()) >= 5) {
                         forwardBackwardFactor = 1.2;
                     }
-                    int lastStep = 30;
+                    int lastStep = 33;
                     manageDroneCommand("forward " + std::to_string(
-                            int(lastStep - forwardBackwardQueue.front() * forwardBackwardFactor)), 3, 3);
+                            int(lastStep - forwardBackwardQueue.front() * forwardBackwardFactor)), 3, 5);
                     manageDroneCommand("land");
                     return;
                 }
@@ -380,16 +387,22 @@ void Charger::getEulerAngles(cv::Mat &rotCameraMatrix, cv::Vec3d &eulerAngles) {
                               eulerAngles);
 }
 
+
 bool Charger::manageDroneCommand(const std::string &command, int amountOfAttempt, int amountOfSleep) {
+
     while (amountOfAttempt--) {
-        if (drone->SendCommandWithResponse(command)) {
+        if (drone->SendCommandWithResponseByThread(command)) {
             if (amountOfSleep) {
                 sleep(amountOfSleep);
+            } else {
+                usleep(400000);
             }
             return true;
+        } else {
+            sleep(1);
         }
-        sleep(3);
     }
+    sleep(1);
     return false;
 }
 

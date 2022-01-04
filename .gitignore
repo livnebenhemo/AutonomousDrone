@@ -40,6 +40,7 @@ Examples/Monocular/offline_orb_slam
 Examples/Monocular/tello
 cmake_modules/
 *.a
+cmake-build-debug/
 
 *CMakeCache.txt
 *MakeFile

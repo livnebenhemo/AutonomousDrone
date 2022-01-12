@@ -2,7 +2,7 @@
 // Created by rbdstudent on 27/06/2021.
 //
 
-#include "tello/include/Polygon.h"
+#include "include/Polygon.h"
 #include<fstream>
 #include <chrono>
 

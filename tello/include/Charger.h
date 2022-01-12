@@ -17,7 +17,7 @@
 #include <thread>
 #include <queue>
 //#include <wiringPi.h>
-#include "Auxiliary.h"
+#include "include/Auxiliary.h"
 
 class Charger {
 public:

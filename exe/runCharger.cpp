@@ -1,5 +1,5 @@
 #include <nlohmann/json.hpp>
-#include "tello/include/AutonomousDrone.h"
+#include "include/AutonomousDrone.h"
 
 std::shared_ptr<bool> holdCamera;
 std::shared_ptr<cv::Mat> frame;

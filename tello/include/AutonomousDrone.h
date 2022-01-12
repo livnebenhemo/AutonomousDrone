@@ -5,13 +5,13 @@
 #ifndef TELLO_AUTONOMOUSDRONE_H
 #define TELLO_AUTONOMOUSDRONE_H
 
-#include "Room.h"
-#include "Polygon.h"
+#include "include/Room.h"
+#include "include/Polygon.h"
 #include <opencv2/core.hpp>
 #include <opencv2/videoio.hpp>
 #include <opencv2/highgui.hpp>
 #include <memory>
-#include "include/System.h"
+#include "../slam/include/System.h"
 #include <iostream>
 #include <unistd.h>
 #include "include/Converter.h"
@@ -156,6 +156,7 @@ private:
     bool exitStayInTheAirLoop;
     bool weInAWrongScale;
 
+    void blobDetection();
 };
 
 #endif //TELLO_AUTONOMOUSDRONE_H

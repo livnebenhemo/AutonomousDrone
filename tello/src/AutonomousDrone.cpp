@@ -4,7 +4,7 @@
 // Created by rbdstudent on 15/06/2021.
 //
 
-#include "tello/include/AutonomousDrone.h"
+#include "include/AutonomousDrone.h"
 
 #include <utility>
 
@@ -60,6 +60,48 @@ void AutonomousDrone::getCameraFeed() {
         video.write(*currentImage);
     }
     video.release();
+}
+
+void AutonomousDrone::blobDetection() {
+    while (!runCamera) {
+        usleep(100);
+    }
+    while (orbSlamRunning) {
+        if (!currentImage->empty()) {
+            cv::Mat gray;
+            cv::Mat imageCopy = *currentImage;
+            cvtColor(imageCopy, gray, CV_BGR2GRAY);
+            cv::Mat thresh;
+            cv::adaptiveThreshold(gray, thresh, 255,
+                                  cv::ADAPTIVE_THRESH_GAUSSIAN_C, cv::THRESH_BINARY_INV, 3, 5);
+
+            cv::Mat labels;
+            cv::Mat stats;
+            cv::Mat centroids;
+            cv::connectedComponentsWithStats(thresh, labels, stats, centroids);
+            //std::cout << labels << std::endl;
+            std::cout << "stats.size()=" << stats.size() << std::endl;
+            //std::cout << centroids << std::endl;
+
+            for (int i = 0; i < stats.rows; i++) {
+                int x = stats.at<int>(0, i);
+                int y = stats.at<int>(1, i);
+                int w = stats.at<int>(2, i);
+                int h = stats.at<int>(3, i);
+
+                std::cout << "x=" << x << " y=" << y << " w=" << w << " h=" << h << std::endl;
+
+                cv::Scalar color(255, 0, 0);
+                cv::Rect rect(x, y, w, h);
+                cv::rectangle(imageCopy, rect, color);
+            }
+
+            ///*
+            namedWindow("Display Image", cv::WINDOW_AUTOSIZE);
+            cv::imshow("Display Image", imageCopy);
+            cv::waitKey(0);
+        }
+    }
 }
 
 void AutonomousDrone::runOrbSlam() {
@@ -934,6 +976,7 @@ void AutonomousDrone::exitRoom() {
 void AutonomousDrone::run() {
 
     std::thread orbThread(&AutonomousDrone::runOrbSlam, this);
+    std::thread blobThread(&AutonomousDrone::blobDetection, this);
     while (true) {
         if (canStart) {
             std::thread batteryThread(&AutonomousDrone::alertLowBattery, this);

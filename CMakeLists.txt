@@ -43,9 +43,15 @@ find_package(Pangolin REQUIRED)
 find_package(PythonLibs REQUIRED)
 find_package(Threads REQUIRED)
 include_directories(
-        ${PROJECT_SOURCE_DIR}
-        ${PROJECT_SOURCE_DIR}/include
+
+        ${PROJECT_SOURCE_DIR}/Thirdparty/g2o/
+        ${PROJECT_SOURCE_DIR}/Thirdparty/DBoW2/
+        ${PROJECT_SOURCE_DIR}/Thirdparty/Pangolin/
+        ${PROJECT_SOURCE_DIR}/Thirdparty/eigen-3.1.3/
+        ${PROJECT_SOURCE_DIR}/utils
+        ${PROJECT_SOURCE_DIR}/slam/
         ${PROJECT_SOURCE_DIR}/tello
+        ${PROJECT_SOURCE_DIR}/algo
         ${EIGEN3_INCLUDE_DIR}
         ${Pangolin_INCLUDE_DIRS}
         ${PYTHON_INCLUDE_DIRS}
@@ -54,36 +60,36 @@ include_directories(
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
 
 add_library(${PROJECT_NAME}
-        src/System.cc
-        src/Tracking.cc
-        src/LocalMapping.cc
-        src/ORBextractor.cc
-        src/ORBmatcher.cc
-        src/FrameDrawer.cc
-        src/Sim3Solver.cc
-        src/Converter.cc
-        src/MapPoint.cc
-        src/KeyFrame.cc
-        src/Map.cc
-        src/MapDrawer.cc
-        src/Optimizer.cc
-        src/PnPsolver.cc
-        src/Frame.cc
-        src/KeyFrameDatabase.cc
-        src/Initializer.cc
-        src/Viewer.cc
-        src/LoopClosing.cc
-        tello/src/DBSCAN.cpp
+        slam/src/System.cc
+        slam/src/Tracking.cc
+        slam/src/LocalMapping.cc
+        slam/src/ORBextractor.cc
+        slam/src/ORBmatcher.cc
+        slam/src/FrameDrawer.cc
+        slam/src/Sim3Solver.cc
+        slam/src/Converter.cc
+        slam/src/MapPoint.cc
+        slam/src/KeyFrame.cc
+        slam/src/Map.cc
+        slam/src/MapDrawer.cc
+        slam/src/Optimizer.cc
+        slam/src/PnPsolver.cc
+        slam/src/Frame.cc
+        slam/src/KeyFrameDatabase.cc
+        slam/src/Initializer.cc
+        slam/src/Viewer.cc
+        slam/src/LoopClosing.cc
+        algo/src/DBSCAN.cpp
         tello/src/AutonomousDrone.cpp
-        tello/src/Polygon.cpp
-        tello/src/Point.cpp
-        tello/src/Pizza.cpp
-        tello/src/Line.cpp
-        tello/src/Frame.cpp
-        tello/src/Room.cpp
-        tello/src/Auxiliary.cpp
+        algo/src/Polygon.cpp
+        utils/src/Point.cpp
+        algo/src/Pizza.cpp
+        utils/src/Line.cpp
+        utils/src/Frame.cpp
+        utils/src/Room.cpp
+        utils/src/Auxiliary.cpp
         tello/src/Charger.cpp
-        tello/src/Navigation.cpp)
+        algo/src/Navigation.cpp)
 
 
 target_link_libraries(${PROJECT_NAME}
@@ -124,7 +130,7 @@ add_executable(offline_orb_slam
 target_link_libraries(offline_orb_slam ${PROJECT_NAME})
 
 add_executable(testDroneCommunication exe/testDroneCommunication.cpp)
-target_link_libraries(testDroneCommunication  ctello spdlog Threads::Threads)
+target_link_libraries(testDroneCommunication ctello spdlog Threads::Threads)
 #target_compile_options(offline_orb_slam PRIVATE -Wno-deprecated-declarations)
 #add_executable(computeScaleFactor
 #       Examples/Monocular/computeScaleFactor.cc)

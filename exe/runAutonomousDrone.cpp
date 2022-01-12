@@ -1,7 +1,7 @@
 //
 // Created by rbdstudent on 30/06/2021.
 //
-#include "tello/include/AutonomousDrone.h"
+#include "include/AutonomousDrone.h"
 #include <nlohmann/json.hpp>
 
 int main() {

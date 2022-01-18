@@ -40,6 +40,7 @@
 #include <thread>
 #include <pangolin/pangolin.h>
 #include <iomanip>
+
 namespace ORB_SLAM2 {
 
     class Viewer;
@@ -117,9 +118,12 @@ namespace ORB_SLAM2 {
         Map *GetMap() { return mpMap; };
 
         MapDrawer *GetMapDrawer() { return mpMapDrawer; };
+
         FrameDrawer *GetFrameDrawer() { return mpFrameDrawer; };
 
         Tracking *GetTracker() { return mpTracker; };
+
+        LocalMapping *GetLocalMapping() { return mpLocalMapper; };
     private:
 
         // Input sensor

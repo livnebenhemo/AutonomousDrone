@@ -5,44 +5,53 @@
 #include <opencv2/core/mat.hpp>
 #include <opencv2/imgproc.hpp>
 #include "include/Navigation.h"
+#include "include/RRT.h"
 
+std::vector<Point> Navigation::filterPointsByStartPosition(std::vector<Point> &points, std::pair<Point, Point> &track) {
+    std::vector<Point> pointsInTrack;
 
-bool
-Navigation::objectDetection(std::vector<Point> &points, std::pair<Point, Point> &track, bool debug) {
-    std::string pangolinWindowName = "objectDetection";
-    if (debug) {
-        Auxiliary::SetupPangolin(pangolinWindowName);
-    }
-    bool trackOptions;
-    cv::Mat labels;
-    cv::Mat stats;
-    cv::Mat centroids;
-    std::vector<Point> pointsInFieldOfView;
     Point current = track.first;
     Point next = track.second;
-    std::vector<Point> pointsInTrack;
-    double trackLength = Auxiliary::calculateDistance3D(current, next);
+    double trackLength = Auxiliary::calculateDistanceXY(current, next);
     for (const auto &point: points) {
-        if (current.z < point.z || Auxiliary::calculateDistance3D(current, point) > trackLength) {
+        if (current.z < point.z || Auxiliary::calculateDistanceXY(current, point) > trackLength) {
             continue;
         }
         pointsInTrack.emplace_back(point);
     }
-    if (pointsInTrack.empty()) {
-        std::cout << "no points in track" << std::endl;
-        return false;
+    return pointsInTrack;
+}
+
+bool
+Navigation::objectDetection(std::vector<Point> &points, std::pair<Point, Point> &track, bool debug) {
+    std::string pangolinWindowName = "objectDetection" + std::to_string(std::rand());
+    if (debug) {
+        //Auxiliary::SetupPangolin(pangolinWindowName);
+    }
+    std::vector<Point> pointsInTrack;
+    Point current = track.first;
+    Point next = track.second;
+    double trackLength = Auxiliary::calculateDistanceXY(current, next);
+    for (const auto &point: points) {
+        if (current.z < point.z || Auxiliary::calculateDistanceXY(current, point) > trackLength) {
+            continue;
+        }
+        pointsInTrack.emplace_back(point);
+    }
+    std::vector<Point> pointsInFieldOfView;
+    if (points.empty()) {
+        return true;
     }
     double trackAngle = atan2(next.y - current.y, next.x - current.x);
     for (const auto &point: pointsInTrack) {
         double pointAngle = atan2(point.y - current.y, point.x - current.x);
         double angle = Auxiliary::radiansToAngle(pointAngle - trackAngle);
-        if (angle < 15 && angle > -15) {
+        if (angle < 5 && angle > -5) {
             pointsInFieldOfView.emplace_back(point);
         }
     }
-    if (pointsInTrack.empty()) {
-        std::cout << "no points in 30 angle around the track" << std::endl;
-        return false;
+    if (pointsInFieldOfView.empty()) {
+        return true;
     }
     //Auxiliary::DrawMapPointsPangolin(points, pointsInFieldOfView, pangolinWindowName, track[1]);
     std::sort(pointsInFieldOfView.begin(), pointsInFieldOfView.end(),
@@ -75,10 +84,11 @@ Navigation::objectDetection(std::vector<Point> &points, std::pair<Point, Point> 
                   return weightedPoint1.first > weightedPoint2.first;
               });
     if (debug) {
-        Auxiliary::DrawMapPointsPangolin(points, weightedPoints.front().second, pangolinWindowName, track);
-        Auxiliary::showGraph(pointsSizes, variances, "ro");
+        //Auxiliary::DrawMapPointsPangolin(points, weightedPoints.front().second, pangolinWindowName, track);
+        //Auxiliary::showGraph(pointsSizes, variances, "ro");
     }
-    return true;
+    std::cout << "weightedPoints: " << weightedPoints.front().second.size() << std::endl;
+    return weightedPoints.front().second.size() < 30;
 }
 
 std::vector<Point> Navigation::getFloor(std::vector<Point> &points, unsigned long sizeOfJump) {
@@ -118,6 +128,79 @@ std::vector<Point> Navigation::getFloor(std::vector<Point> &points, unsigned lon
     Auxiliary::SetupPangolin("floor");
     Auxiliary::DrawMapPointsPangolin(points, weightedPoints.front().second, "floor");
     return weightedPoints.front().second;
+}
+
+std::vector<Point> Navigation::dijkstra(Graph graph) {
+    size_t startId = graph.verticesPositions.at(graph.start);
+    size_t endId = graph.verticesPositions.at(graph.end);
+    std::vector<size_t> positions;
+    positions.reserve(graph.neighbors.size());
+    for (const auto &neighbor: graph.neighbors) {
+        positions.push_back(neighbor.first);
+    }
+    std::unordered_map<size_t, double> distances;
+    std::unordered_map<size_t, size_t> previous;
+    for (const auto position: positions) {
+        if (!distances.count(position)) {
+            distances.insert({position, std::numeric_limits<double>::max()});
+        }
+        if (!previous.count(position)) {
+            previous.insert({position, std::numeric_limits<size_t>::max()});
+        }
+    }
+    distances.at(startId) = 0;
+    while (!positions.empty()) {
+        auto currentNode = std::min_element(positions.begin(), positions.end(),
+                                            [&distances](size_t &pos1, size_t &pos2) -> bool {
+                                                return distances.at(pos1) < distances.at(pos2);
+                                            });
+        if (distances.at(*currentNode) == std::numeric_limits<double>::max()) {
+            break;
+        }
+        for (const auto &neighbor: graph.neighbors.at(*currentNode)) {
+            double newCost = distances.at(*currentNode) + neighbor.second;
+            if (newCost < distances.at(neighbor.first)) {
+                distances.at(neighbor.first) = newCost;
+                previous.at(neighbor.first) = *currentNode;
+            }
+        }
+        positions.erase(currentNode);
+    }
+    auto currentNode = endId;
+    std::deque<Point> path;
+    /*for (const auto prev: previous) {
+        std::cout << "first: " << prev.first << std::endl;
+        std::cout << "second: " << prev.second << std::endl;
+    }*/
+    while (previous.count(currentNode)) {
+        path.push_front(graph.vertices[currentNode]);
+        currentNode = previous.at(currentNode);
+        //std::cout << "currentNode: " << currentNode << std::endl;
+    }
+    path.push_front(graph.start);
+    return {path.begin(), path.end()};
+}
+
+std::vector<Point>
+Navigation::getNavigationPathByRRT(std::vector<Point> &points, std::pair<Point, Point> &track, bool debug) {
+    double pathLength = Auxiliary::calculateDistanceXY(track.first, track.second);
+    std::cout << "path length: " << pathLength << std::endl;
+    RRT rrt(track, points, debug, 20000, 0.3, pathLength / 4);
+    auto graph = rrt.BuildTrack();
+    if (graph.vertices.size() == 1) {
+        std::cout << "cant find path" << std::endl;
+
+        Auxiliary::SetupPangolin("path");
+        Auxiliary::drawPathPangolin(points, graph.vertices, "path", track);
+        return {};
+    }
+    auto path = dijkstra(graph);
+    std::cout << "size of path: " << path.size() << std::endl;
+    if (debug) {
+        Auxiliary::SetupPangolin("path");
+        Auxiliary::drawPathPangolin(points, path, "path", track);
+    }
+    return path;
 }
 
 //ccl logic

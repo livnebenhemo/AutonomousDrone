@@ -9,6 +9,7 @@
 #include <opencv2/core/mat.hpp>
 #include <opencv2/core.hpp>
 #include "../utils/include/Frame.h"
+#include "include/RRT.h"
 
 cv::Mat points3d_to_mat(const std::vector<cv::Point3d> &points3d) {
     std::size_t nPoints = points3d.size();
@@ -149,6 +150,38 @@ std::pair<std::vector<Frame>, std::vector<Point>> getFramesFromFile(const std::s
 
 }
 
+std::vector<Point> getPointsFromFile(const std::string &fileName) {
+    std::ifstream myFile(fileName);
+    std::string line;
+    std::vector<Point> allPoints;
+    while (std::getline(myFile, line)) {
+        std::stringstream lineStream(line);
+        Point point;
+        lineStream >> point.x;
+        if (lineStream.peek() == ',') lineStream.ignore();
+        lineStream >> point.z;
+        if (lineStream.peek() == ',') lineStream.ignore();
+        lineStream >> point.y;
+        if (lineStream.peek() == ',') lineStream.ignore();
+        lineStream >> point.qx;
+        if (lineStream.peek() == ',') lineStream.ignore();
+        lineStream >> point.qy;
+
+        if (lineStream.peek() == ',') lineStream.ignore();
+        lineStream >> point.qz;
+
+        if (lineStream.peek() == ',') lineStream.ignore();
+        lineStream >> point.qw;
+
+        if (lineStream.peek() == ',') lineStream.ignore();
+        lineStream >> point.frameId;
+
+        allPoints.emplace_back(point);
+    }
+    return allPoints;
+
+}
+
 std::vector<Point> getPointsFromXYZFile(const std::string &fileName) {
     std::ifstream myFile(fileName);
     std::string line;
@@ -168,15 +201,24 @@ std::vector<Point> getPointsFromXYZFile(const std::string &fileName) {
 }
 
 int main() {
-    std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "buildings/pointData0.csv";
-    auto points = getFramesFromFile(datasetFilePath);
-    auto[R, T] = align_map(points.second);
-    //Auxiliary::DrawMapPointsPangolin(points.second,{},Point(0.2,1,-0.1));
+    std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "buildings/pointDataBarLab.csv";
+    auto points = getPointsFromFile(datasetFilePath);
+    auto[R, T] = align_map(points);
     auto start = std::chrono::high_resolution_clock::now();
-
+    std::vector<Point> pathPoints{Point(0.3, 1, -0.1),Point(0.5,-0.2,-0.05),Point(-2.5,-0.5,0.1)};
+    std::vector<Point> navigationPoints;
+    navigationPoints.emplace_back(pathPoints[0]);
     Navigation navigation;
-    std::pair<Point, Point> track{Point(0, 0, -0.05), Point(0.3, 1, -0.1)};
-    navigation.objectDetection(points.second, track, false);
+    for (int i = 0; i < pathPoints.size()-1; ++i) {
+
+        std::pair<Point, Point> track{pathPoints[i],pathPoints[i+1]};
+        auto result = navigation.getNavigationPathByRRT(points, track, false);
+        navigationPoints.insert(navigationPoints.end(),result.begin(),result.end());
+    }
+    Auxiliary::SetupPangolin("full path");
+    Auxiliary::drawPathPangolin(points,navigationPoints,"full path",std::pair<Point, Point>{pathPoints[0],pathPoints[1]});
+    //auto filteredPoints = navigation.filterPointsByStartPosition(points.second,track);
+    //navigation.objectDetection(points.second, track, false);
     //navigation.getFloor(points.second, points.second.size() / 100);
     auto stop = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::seconds>(stop - start);

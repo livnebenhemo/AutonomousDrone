@@ -45,7 +45,7 @@ namespace ORB_SLAM2 {
 
         if (im.channels() < 3) //this should be always true
             cvtColor(im, im, CV_GRAY2BGR);
-        cv::Mat thresh;
+        /*cv::Mat thresh;
         cv::Mat gray;
         cvtColor(im, gray, CV_BGR2GRAY);
         cv::threshold(gray, thresh, 0, 180,
@@ -57,7 +57,7 @@ namespace ORB_SLAM2 {
 
         for (int i = 0; i < contours.size(); i++) {
             drawContours(im, contours, i, color, 2, cv::LINE_8, hierarchy, 0);
-        }
+        }*/
         //Draw
         if (state == Tracking::NOT_INITIALIZED) //INITIALIZING
         {

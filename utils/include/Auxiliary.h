@@ -91,6 +91,11 @@ public:
     static void SetupPangolin(const std::string &window_name);
 
     static std::string GetDataSetsDirPath();
+
+    static double norm2d(double x, double y);
+
+    static void drawPathPangolin(const std::vector<Point> &cloud, std::vector<Point> &path, const std::string &windowName,
+                          const std::pair<Point, Point> &lineFromCenter);
 };
 
 

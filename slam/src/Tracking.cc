@@ -479,12 +479,12 @@ namespace ORB_SLAM2 {
         float medianDepth = pKFini->ComputeSceneMedianDepth(2);
         float invMedianDepth = 1.0f / medianDepth;
 
-        /*if (medianDepth < 0 || pKFcur->TrackedMapPoints(1) < 100) {
+        if (medianDepth < 0 || pKFcur->TrackedMapPoints(1) < 100) {
             std::cout << "Wrong initialization, reseting..." << std::endl;
             Reset();
             std::cout << "done reseting" << std::endl;
             return;
-        }*/
+        }
 
         // Scale initial baseline
         cv::Mat Tc2w = pKFcur->GetPose();

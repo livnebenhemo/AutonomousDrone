@@ -81,10 +81,13 @@ add_library(${PROJECT_NAME}
         slam/src/LoopClosing.cc
         algo/src/DBSCAN.cpp
         tello/src/AutonomousDrone.cpp
+        algo/src/Graph.cpp
         algo/src/Polygon.cpp
         utils/src/Point.cpp
         algo/src/Pizza.cpp
+        algo/src/RRT.cpp
         utils/src/Line.cpp
+        utils/src/Node.cpp
         utils/src/Frame.cpp
         utils/src/Room.cpp
         utils/src/Auxiliary.cpp
@@ -123,12 +126,17 @@ target_compile_options(${PROJECT_NAME} PRIVATE -Wno-deprecated-declarations)
 add_executable(runAutonomousDrone exe/runAutonomousDrone.cpp)
 target_link_libraries(runAutonomousDrone ${PROJECT_NAME} nlohmann_json::nlohmann_json)
 
+add_executable(cameraCalibretion exe/cameraCalibretion.cpp)
+target_link_libraries(cameraCalibretion ${PROJECT_NAME} nlohmann_json::nlohmann_json)
 add_executable(runCharger exe/runCharger.cpp)
 target_link_libraries(runCharger ${PROJECT_NAME})
 add_executable(offline_orb_slam
         exe/offline_orb_slam.cc)
 target_link_libraries(offline_orb_slam ${PROJECT_NAME})
 
+add_executable(mapCreating
+        exe/mapCreating.cpp)
+target_link_libraries(mapCreating ${PROJECT_NAME})
 add_executable(testDroneCommunication exe/testDroneCommunication.cpp)
 target_link_libraries(testDroneCommunication ctello spdlog Threads::Threads)
 #target_compile_options(offline_orb_slam PRIVATE -Wno-deprecated-declarations)

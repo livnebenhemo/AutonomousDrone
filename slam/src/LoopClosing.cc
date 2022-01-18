@@ -45,19 +45,20 @@ namespace ORB_SLAM2 {
     void LoopClosing::Run() {
         mbFinished = false;
 
-        while (1) {
+        while (true) {
             // Check if there are keyframes in the queue
-            if (CheckNewKeyFrames()) {
-                // Detect loop candidates and check covisibility consistency
-                if (DetectLoop()) {
-                    // Compute similarity transformation [sR|t]
-                    // In the stereo/RGBD case s=1
-                    if (ComputeSim3()) {
-                        // Perform loop fusion and pose graph optimization
-                        CorrectLoop();
-                    }
+            // Detect loop candidates and check covisibility consistency
+            if (DetectLoop()) {
+                // Compute similarity transformation [sR|t]
+                // In the stereo/RGBD case s=1
+                if (ComputeSim3()) {
+                    std::cout << "ComputeSim3" << std::endl;
+
+                    // Perform loop fusion and pose graph optimization
+                    CorrectLoop();
                 }
             }
+
 
             ResetIfRequested();
 
@@ -83,6 +84,9 @@ namespace ORB_SLAM2 {
 
     bool LoopClosing::DetectLoop() {
         {
+            if (mlpLoopKeyFrameQueue.empty()) {
+                return false;
+            }
             std::unique_lock<std::mutex> lock(mMutexLoopQueue);
             mpCurrentKF = mlpLoopKeyFrameQueue.front();
             mlpLoopKeyFrameQueue.pop_front();
@@ -102,13 +106,13 @@ namespace ORB_SLAM2 {
         // We will impose loop candidates to have a higher similarity than this
         const std::vector<KeyFrame *> vpConnectedKeyFrames = mpCurrentKF->GetVectorCovisibleKeyFrames();
         const DBoW2::BowVector &CurrentBowVec = mpCurrentKF->mBowVec;
-        float minScore = 1;
+        double minScore = 1;
         for (auto pKF: vpConnectedKeyFrames) {
             if (pKF->isBad())
                 continue;
             const DBoW2::BowVector &BowVec = pKF->mBowVec;
 
-            float score = mpORBVocabulary->score(CurrentBowVec, BowVec);
+            double score = mpORBVocabulary->score(CurrentBowVec, BowVec);
 
             if (score < minScore)
                 minScore = score;
@@ -362,9 +366,9 @@ namespace ORB_SLAM2 {
         std::cout << "bundle adjustment aborted" << std::endl;
         // Wait until Local Mapping has effectively stopped
         while (!mpLocalMapper->isStopped()) {
-            usleep(1000);
+            usleep(100);
         }
-
+        std::cout << "local map stopped" << std::endl;
         // Ensure current keyframe is updated
         mpCurrentKF->UpdateConnections();
 
@@ -485,6 +489,7 @@ namespace ORB_SLAM2 {
         mpLocalMapper->Release();
 
         mLastLoopKFid = mpCurrentKF->mnId;
+        std::cout << "done loop closing" << std::endl;
     }
 
     void LoopClosing::SearchAndFuse(const KeyFrameAndPose &CorrectedPosesMap) {

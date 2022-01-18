@@ -9,18 +9,20 @@
 #include <vector>
 #include "DBSCAN.h"
 #include "../utils/include/Frame.h"
+#include "Graph.h"
 
 class Navigation {
 public:
-    std::vector<Point>
-    getValidNavigationPointsByDBScan(const std::vector<Frame> &frames, const std::vector<Point> &points,
-                                     const Point &currentLocation);
+    std::vector<Point> getNavigationPathByRRT(std::vector<Point> &points, std::pair<Point,Point> &track,bool debug = false);
 
     std::vector<Point> getFloor(std::vector<Point> &points, unsigned long sizeOfJump);
 
     bool
     objectDetection(std::vector<Point> &points, std::pair<Point,Point> &track, bool debug = false);
 
+    std::vector<Point> filterPointsByStartPosition(std::vector<Point> &points, std::pair<Point, Point> &track);
+
+    std::vector<Point> dijkstra(Graph graph);
 };
 
 

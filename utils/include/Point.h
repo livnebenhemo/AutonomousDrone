@@ -31,13 +31,11 @@ public:
     }
 
 
-    [[nodiscard]] std::string to_string() const {
+    std::string to_string() const {
         std::ostringstream ss;
         ss << this->x << "," << this->y << "," << this->z << "," << this->label;
         return ss.str();
     }
-
-    Point &operator=(const Point &point) = default;
 
     double x;
     double y;
@@ -48,7 +46,29 @@ public:
     double qw;
     int label;
     int frameId;
-};
 
+    Point &operator=(const Point &point) = default;
+
+};
+namespace std {
+
+    template<>
+    struct hash<Point> {
+        std::size_t operator()(const Point &k) const {
+            using std::size_t;
+            using std::hash;
+            using std::string;
+
+            // Compute individual hash values for first,
+            // second and third and combine them using XOR
+            // and bit shifting:
+
+            return ((hash<double>()(k.x)
+                     ^ (hash<double>()(k.y) << 1)) >> 1)
+                   ^ (hash<double>()(k.z) << 1);
+        }
+    };
+
+};
 
 #endif //TELLO_POINT_H

@@ -5,5 +5,7 @@
   "DroneName": "TELLO-5C023B",
   "WithPlot": false,
   "sizeOfFrameStack": 20,
-  "offlineVideoTestPath": "/home/tzuk/Downloads/outpy.avi"
+  "offlineVideoTestPath": "/home/tzuk/Downloads/outpy.avi",
+  "onlineVideoPath": 0,
+  "onlineVideoSettingsPath": "/home/tzuk/AutonomousDroneCPP/config/tzukComputerCamera.yaml"
 }

@@ -82,6 +82,75 @@ void Auxiliary::SetupPangolin(const std::string &window_name) {
     pangolin::GetBoundWindow()->RemoveCurrent();
 }
 
+void
+Auxiliary::drawPathPangolin(const std::vector<Point> &cloud, std::vector<Point> &path, const std::string &windowName,
+                            const std::pair<Point, Point> &lineFromCenter) {
+    pangolin::BindToContext(windowName);
+    glEnable(GL_DEPTH_TEST);
+
+    // Define Projection and initial ModelView matrix
+    pangolin::OpenGlRenderState s_cam(
+            pangolin::ProjectionMatrix(640, 480, 420, 420, 320, 240, 0.2, 100),
+            pangolin::ModelViewLookAt(-2, 2, -2, 0, 0, 0, pangolin::AxisY)
+    );
+
+    pangolin::Renderable tree;
+    tree.Add(std::make_shared<pangolin::Axis>());
+
+    // Create Interactive View in window
+    pangolin::SceneHandler handler(tree, s_cam);
+    pangolin::View &d_cam = pangolin::CreateDisplay()
+            .SetBounds(0.0, 1.0, 0.0, 1.0, -640.0f / 480.0f)
+            .SetHandler(&handler);
+
+    d_cam.SetDrawFunction([&](pangolin::View &view) {
+        view.Activate(s_cam);
+        tree.Render();
+    });
+
+    while (!pangolin::ShouldQuit()) {
+        // Clear screen and activate view to render into
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glPointSize(1);
+        glBegin(GL_POINTS);
+        glColor3f(0.0, 0.0, 1.0);
+        for (const auto &point: cloud) {
+            glVertex3f(point.x, -1 * point.z, point.y);
+        }
+        glEnd();
+        glPointSize(10);
+        glBegin(GL_POINTS);
+        glColor3f(1.0, 1.0, 1.0);
+        for (const auto &point: path) {
+            glVertex3f(point.x, -1 * point.z, point.y);
+        }
+        glEnd();
+        glBegin(GL_LINES);
+        glColor3f(1.0, 0.0, 0.0);
+        glLineWidth(3);
+        for (int i = 0; i < path.size() - 1; ++i) {
+
+            glVertex3f(path[i].x, -1 * path[i].z, path[i].y);;
+            glVertex3f(path[i + 1].x, -1 * path[i + 1].z, path[i + 1].y);
+        }
+        glEnd();
+        glBegin(GL_LINES);
+        glColor3f(1.0, 1.0, 1.0);
+        glLineWidth(3);
+        glVertex3f(path[path.size() - 2].x, -1 * path[path.size() - 2].z, path[path.size() - 2].y);;
+        glVertex3f(path.back().x, -1 * path.back().z, path.back().y);
+        glEnd();
+        glColor3f(1.0f, 0.0f, 1.0f);
+        glBegin(GL_LINES);
+        glVertex3f(lineFromCenter.first.x, -1 * lineFromCenter.first.z, lineFromCenter.first.y);;
+        glVertex3f(lineFromCenter.second.x, -1 * lineFromCenter.second.z, lineFromCenter.second.y);
+        glEnd();
+        // Swap frames and Process Events
+        pangolin::FinishFrame();
+    }
+    pangolin::GetBoundWindow()->RemoveCurrent();
+}
+
 void Auxiliary::DrawMapPointsPangolin(const std::vector<Point> &cloud, const std::vector<Point> &redPoints,
                                       const std::string &windowName,
                                       const std::pair<Point, Point> &lineFromCenter) {
@@ -250,6 +319,10 @@ std::pair<double, double> Auxiliary::GetMinMax(std::vector<double> &points) {
         }
     }
     return {min, max};
+}
+
+double Auxiliary::norm2d(double x, double y) {
+    return std::sqrt(std::pow(x, 2) + std::pow(y, 2));
 }
 
 double

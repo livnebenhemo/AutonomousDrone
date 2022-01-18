@@ -162,7 +162,7 @@ std::vector<Point> getPointsFromFile(const std::string &fileName) {
         lineStream >> point.z;
         if (lineStream.peek() == ',') lineStream.ignore();
         lineStream >> point.y;
-        if (lineStream.peek() == ',') lineStream.ignore();
+        /*if (lineStream.peek() == ',') lineStream.ignore();
         lineStream >> point.qx;
         if (lineStream.peek() == ',') lineStream.ignore();
         lineStream >> point.qy;
@@ -174,7 +174,7 @@ std::vector<Point> getPointsFromFile(const std::string &fileName) {
         lineStream >> point.qw;
 
         if (lineStream.peek() == ',') lineStream.ignore();
-        lineStream >> point.frameId;
+        lineStream >> point.frameId;*/
 
         allPoints.emplace_back(point);
     }
@@ -205,18 +205,19 @@ int main() {
     auto points = getPointsFromFile(datasetFilePath);
     auto[R, T] = align_map(points);
     auto start = std::chrono::high_resolution_clock::now();
-    std::vector<Point> pathPoints{Point(0.3, 1, -0.1),Point(0.5,-0.2,-0.05),Point(-2.5,-0.5,0.1)};
+    std::vector<Point> pathPoints{Point(0.3, 1, -0.1), Point(0.5, -0.2, -0.05), Point(-2.5, -0.5, 0.1)};
     std::vector<Point> navigationPoints;
     navigationPoints.emplace_back(pathPoints[0]);
     Navigation navigation;
-    for (int i = 0; i < pathPoints.size()-1; ++i) {
+    for (int i = 0; i < pathPoints.size() - 1; ++i) {
 
-        std::pair<Point, Point> track{pathPoints[i],pathPoints[i+1]};
+        std::pair<Point, Point> track{pathPoints[i], pathPoints[i + 1]};
         auto result = navigation.getNavigationPathByRRT(points, track, false);
-        navigationPoints.insert(navigationPoints.end(),result.begin(),result.end());
+        navigationPoints.insert(navigationPoints.end(), result.begin(), result.end());
     }
     Auxiliary::SetupPangolin("full path");
-    Auxiliary::drawPathPangolin(points,navigationPoints,"full path",std::pair<Point, Point>{pathPoints[0],pathPoints[1]});
+    Auxiliary::drawPathPangolin(points, navigationPoints, "full path",
+                                std::pair<Point, Point>{pathPoints[0], pathPoints[1]});
     //auto filteredPoints = navigation.filterPointsByStartPosition(points.second,track);
     //navigation.objectDetection(points.second, track, false);
     //navigation.getFloor(points.second, points.second.size() / 100);

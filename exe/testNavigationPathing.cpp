@@ -178,6 +178,7 @@ std::vector<Point> getPointsFromFile(const std::string &fileName) {
 
         allPoints.emplace_back(point);
     }
+    myFile.close();
     return allPoints;
 
 }
@@ -201,7 +202,7 @@ std::vector<Point> getPointsFromXYZFile(const std::string &fileName) {
 }
 
 int main() {
-    std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "buildings/pointDataBarLab.csv";
+    std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "buildings/Lab/pointDataBarLab.csv";
     auto points = getPointsFromFile(datasetFilePath);
     auto[R, T] = align_map(points);
     auto start = std::chrono::high_resolution_clock::now();

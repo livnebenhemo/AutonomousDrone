@@ -32,10 +32,10 @@ Graph::Graph(std::pair<Point, Point> &track) {
     neighbors.insert({0, std::vector<std::pair<size_t, double>>{}});
     sx = start.x - end.x;
     sy = start.y - end.y;
-    minX = start.x*1.5;
-    maxX = end.x*1.5;
-    minY = start.y*1.5;
-    maxY = end.y*1.5;
+    minX = start.x * 1.5;
+    maxX = end.x * 1.5;
+    minY = start.y * 1.5;
+    maxY = end.y * 1.5;
 }
 
 size_t Graph::addVertex(const Point &pos) {
@@ -46,13 +46,24 @@ size_t Graph::addVertex(const Point &pos) {
         neighbors.insert({newId, std::vector<std::pair<size_t, double>>{}});
         return newId;
     }
+    std::cout << "cant add vertex" <<std::endl;
     return -1;
 }
 
 void Graph::addEdge(size_t id1, size_t id2, double distance) {
     edges.emplace_back(id1, id2);
-    neighbors.at(id1).emplace_back(id2, distance);
-    neighbors.at(id2).emplace_back(id1, distance);
+    if (!neighbors.count(id1)) {
+        neighbors.insert({id1, std::vector<std::pair<size_t, double>>{{id2, distance}}});
+    } else {
+        neighbors.at(id1).emplace_back(id2, distance);
+
+    }
+    if (!neighbors.count(id2)) {
+        neighbors.insert({id2, std::vector<std::pair<size_t, double>>{{id1, distance}}});
+    } else {
+        neighbors.at(id2).emplace_back(id1, distance);
+
+    }
 }
 
 Point Graph::randomPosition() const {

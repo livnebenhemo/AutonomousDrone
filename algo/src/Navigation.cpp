@@ -46,7 +46,7 @@ Navigation::objectDetection(std::vector<Point> &points, std::pair<Point, Point> 
     for (const auto &point: pointsInTrack) {
         double pointAngle = atan2(point.y - current.y, point.x - current.x);
         double angle = Auxiliary::radiansToAngle(pointAngle - trackAngle);
-        if (angle < 5 && angle > -5) {
+        if (angle < 10 && angle > -10) {
             pointsInFieldOfView.emplace_back(point);
         }
     }
@@ -55,9 +55,10 @@ Navigation::objectDetection(std::vector<Point> &points, std::pair<Point, Point> 
     }
     //Auxiliary::DrawMapPointsPangolin(points, pointsInFieldOfView, pangolinWindowName, track[1]);
     std::sort(pointsInFieldOfView.begin(), pointsInFieldOfView.end(),
-              [](const Point &point1, const Point &point2) -> bool {
-                  return std::abs(point1.y) > std::abs(point2.y);
-              });
+              [&](const Point &point1, const Point &point2) -> bool {
+                  return Auxiliary::calculateDistanceXY(point1, track.first) >
+                         Auxiliary::calculateDistanceXY(point2, track.first);
+              });//TODO: is it y axis only or distance from 0,0,0
     std::vector<double> z = Auxiliary::getZValues(pointsInFieldOfView);
     std::vector<double> y = Auxiliary::getYValues(pointsInFieldOfView);
     std::vector<double> x = Auxiliary::getXValues(pointsInFieldOfView);
@@ -69,9 +70,9 @@ Navigation::objectDetection(std::vector<Point> &points, std::pair<Point, Point> 
         double zVariance = Auxiliary::calculateVariance(z);
         double xVariance = Auxiliary::calculateVariance(x);
         double yVariance = Auxiliary::calculateVariance(y);
-        variances.emplace_back(((xVariance + zVariance) / yVariance) * (double) y.size());
+        variances.emplace_back(((zVariance) / (xVariance + yVariance)) * (double) y.size());
         pointsSizes.emplace_back(z.size());
-        weightedPoints.emplace_back(((xVariance + zVariance) / yVariance) * (double) y.size(),
+        weightedPoints.emplace_back(((zVariance) / (xVariance + yVariance)) * (double) y.size(),
                                     std::vector<Point>(pointsInFieldOfView.begin(),
                                                        pointsInFieldOfView.begin() + (long) y.size()));
         z.resize(z.size() - sizeOfJump);
@@ -87,8 +88,7 @@ Navigation::objectDetection(std::vector<Point> &points, std::pair<Point, Point> 
         //Auxiliary::DrawMapPointsPangolin(points, weightedPoints.front().second, pangolinWindowName, track);
         //Auxiliary::showGraph(pointsSizes, variances, "ro");
     }
-    std::cout << "weightedPoints: " << weightedPoints.front().second.size() << std::endl;
-    return weightedPoints.front().second.size() < 30;
+    return weightedPoints.front().second.size() < 10;
 }
 
 std::vector<Point> Navigation::getFloor(std::vector<Point> &points, unsigned long sizeOfJump) {
@@ -187,12 +187,17 @@ Navigation::getNavigationPathByRRT(std::vector<Point> &points, std::pair<Point, 
     std::cout << "path length: " << pathLength << std::endl;
     RRT rrt(track, points, debug, 20000, 0.3, pathLength / 4);
     auto graph = rrt.BuildTrack();
-    if (graph.vertices.size() == 1) {
-        std::cout << "cant find path" << std::endl;
-
-        Auxiliary::SetupPangolin("path");
-        Auxiliary::drawPathPangolin(points, graph.vertices, "path", track);
+    if(graph.start == Point() && graph.end == Point(1,1,1)){
+        std::cout << "cant find path" <<std::endl;
         return {};
+    }
+    if (graph.vertices.size() == 1) {
+        std::cout << "straight line" << std::endl;
+        if (debug) {
+            Auxiliary::SetupPangolin("path");
+            Auxiliary::drawPathPangolin(points, graph.vertices, "path", track);
+        }
+        return std::vector<Point>{track.first, track.second};
     }
     auto path = dijkstra(graph);
     std::cout << "size of path: " << path.size() << std::endl;

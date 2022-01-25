@@ -49,6 +49,7 @@ namespace ORB_SLAM2 {
             // Check if there are keyframes in the queue
             // Detect loop candidates and check covisibility consistency
             if (DetectLoop()) {
+                std::cout << "DetectLoop" << std::endl;
                 // Compute similarity transformation [sR|t]
                 // In the stereo/RGBD case s=1
                 if (ComputeSim3()) {
@@ -577,7 +578,6 @@ namespace ORB_SLAM2 {
                             cv::Mat Tchildc = pChild->GetPose() * Twc;
                             pChild->mTcwGBA = Tchildc * pKF->mTcwGBA;//*Tcorc*pKF->mTcwGBA;
                             pChild->mnBAGlobalForKF = nLoopKF;
-
                         }
                         lpKFtoCheck.push_back(pChild);
                     }

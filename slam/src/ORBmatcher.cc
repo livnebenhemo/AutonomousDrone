@@ -734,10 +734,7 @@ namespace ORB_SLAM2 {
         for (int i = 0; i < nMPs; i++) {
             MapPoint *pMP = vpMapPoints[i];
 
-            if (!pMP)
-                continue;
-
-            if (pMP->isBad() || pMP->IsInKeyFrame(pKF))
+            if (!pMP || pMP->isBad() || pMP->IsInKeyFrame(pKF))
                 continue;
 
             cv::Mat p3Dw = pMP->GetWorldPos();

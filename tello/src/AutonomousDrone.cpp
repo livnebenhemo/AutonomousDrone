@@ -62,7 +62,7 @@ void AutonomousDrone::getCameraFeed() {
     video.release();
 }
 
-void AutonomousDrone::blobDetection() {
+void AutonomousDrone::colorDetection() {
     while (!orbSlamRunning) {
         usleep(100);
     }
@@ -70,47 +70,33 @@ void AutonomousDrone::blobDetection() {
     while (orbSlamRunning) {
         if (!currentImage->empty()) {
             cv::Mat im = *currentImage;
-            cv::medianBlur(im, im, 3);
-            cv::cvtColor(im, im, CV_BGR2GRAY);
-            std::vector<unsigned char> redGreenDifferences;
-            unsigned long redGreenDifferenceAvg;
-            std::vector<unsigned char> ybs;
-            unsigned long ybAvg;
-
+            cv::Mat rgbChannels[3];
+            cv::split(im, rgbChannels);
+            cv::Mat redGreenDifferences(im.rows, im.cols, im.type());
+            cv::Mat blueYellowDifferences(im.rows, im.cols, im.type());
             for (int i = 0; i < im.rows; ++i) {
                 for (int j = 0; j < im.cols; ++j) {
-                    auto colorVec = im.at<cv::Vec3b>(i, j);
-                    unsigned char redGreenDifference = std::abs(colorVec[2] - colorVec[1]);
-                    redGreenDifferenceAvg += redGreenDifference;
-                    redGreenDifferences.emplace_back(redGreenDifference);
-                    unsigned char yb = std::abs(0.5 * (colorVec[2] + colorVec[1]) - colorVec[0]);
-                    ybAvg += yb;
-                    ybs.emplace_back(yb);
+                    auto red = rgbChannels[0].at<uchar>(i, j);
+                    auto green = rgbChannels[1].at<uchar>(i, j);
+                    auto blue = rgbChannels[2].at<uchar>(i, j);
+                    redGreenDifferences.at<uchar>(i, j) = std::abs(red - green);
+                    blueYellowDifferences.at<uchar>(i, j) = std::abs((red + green) / 2 - blue);
                 }
             }
-            redGreenDifferenceAvg /= redGreenDifferences.size();
-            ybAvg /= ybs.size();
-            double redGreenDifferenceStandardDeviation;
-            double ybStandardDeviation;
-            for (int i = 0; i < redGreenDifferences.size(); ++i) {
-                redGreenDifferenceStandardDeviation += std::pow(redGreenDifferences[i] - redGreenDifferenceAvg, 2);
-                ybStandardDeviation += std::pow(ybs[i] - ybAvg, 2);
-            }
-            redGreenDifferenceStandardDeviation = std::sqrt(
-                    redGreenDifferenceStandardDeviation / (double) redGreenDifferences.size());
-            ybStandardDeviation = std::sqrt(ybStandardDeviation / (double) ybs.size());
-            double standardDeviationDistance = std::sqrt(
-                    std::pow(redGreenDifferenceStandardDeviation, 2) + std::pow(ybStandardDeviation, 2));
-            double avgDistance = std::sqrt(std::pow(redGreenDifferenceAvg, 2) + std::pow(ybAvg, 2));
-            double colorfulness = standardDeviationDistance + (0.3 * avgDistance);
+            cv::Scalar redGreenMean, redGreenStdDev;
+            cv::Scalar blueYellowMean, blueYellowStdDev;
+            cv::meanStdDev(redGreenDifferences, redGreenMean, redGreenStdDev);
+            cv::meanStdDev(blueYellowDifferences, blueYellowMean, blueYellowStdDev);
+            auto stdRoot = std::sqrt(std::pow(blueYellowStdDev[0], 2) + std::pow(redGreenStdDev[0], 2));
+            auto meanRoot = std::sqrt(std::pow(redGreenMean[0], 2) + std::pow(blueYellowMean[0], 2));
+            double colorfulness = stdRoot + (0.3 * meanRoot);
+            std::cout << colorfulness << std::endl;
+            if (colorfulness < 8.5) {
+                cv::putText(im, "warning", {im.rows / 2, im.cols / 2}, cv::FONT_HERSHEY_SIMPLEX, 3, {0, 255, 0},3);
 
-            if (colorfulness < 18) {
-                std::cout << std::endl;
-                std::cout << std::endl;
-                std::cout << std::endl;
-                std::cout << "warning " << warningPrint++ << std::endl;
             }
-            usleep(100);
+            cv::imshow("color", im);
+            cv::waitKey(1);
         }
     }
 }
@@ -118,6 +104,7 @@ void AutonomousDrone::blobDetection() {
 void AutonomousDrone::runOrbSlam() {
     std::thread getCameraThread(&AutonomousDrone::getCameraFeed, this);
     orbSlamRunning = true;
+    getCameraThread.join();
     ORB_SLAM2::System SLAM(vocFilePath, yamlFilePath, ORB_SLAM2::System::MONOCULAR, true);
     orbSlamPointer = &SLAM;
     double timeStamp = 0.2;
@@ -1016,7 +1003,8 @@ void AutonomousDrone::exitRoom() {
 void AutonomousDrone::run() {
 
     std::thread orbThread(&AutonomousDrone::runOrbSlam, this);
-    // std::thread blobThread(&AutonomousDrone::blobDetection, this);
+    std::thread blobThread(&AutonomousDrone::colorDetection, this);
+    blobThread.join();
     while (true) {
         if (canStart) {
             std::thread batteryThread(&AutonomousDrone::alertLowBattery, this);

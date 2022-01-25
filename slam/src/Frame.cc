@@ -256,14 +256,11 @@ namespace ORB_SLAM2 {
     }
 
     bool Frame::PosInGrid(const cv::KeyPoint &kp, int &posX, int &posY) {
-        posX = round((kp.pt.x - mnMinX) * mfGridElementWidthInv);
-        posY = round((kp.pt.y - mnMinY) * mfGridElementHeightInv);
+        posX = std::round((kp.pt.x - mnMinX) * mfGridElementWidthInv);
+        posY = std::round((kp.pt.y - mnMinY) * mfGridElementHeightInv);
 
         //Keypoint's coordinates are undistorted, which could cause to go out of the image
-        if (posX < 0 || posX >= FRAME_GRID_COLS || posY < 0 || posY >= FRAME_GRID_ROWS)
-            return false;
-
-        return true;
+        return !(posX < 0 || posX >= FRAME_GRID_COLS || posY < 0 || posY >= FRAME_GRID_ROWS);
     }
 
 
@@ -498,26 +495,6 @@ namespace ORB_SLAM2 {
         }
     }
 
-
-    void Frame::ComputeStereoFromRGBD(const cv::Mat &imDepth) {
-        mvuRight = std::vector<float>(N, -1);
-        mvDepth = std::vector<float>(N, -1);
-
-        for (int i = 0; i < N; i++) {
-            const cv::KeyPoint &kp = mvKeys[i];
-            const cv::KeyPoint &kpU = mvKeysUn[i];
-
-            const float &v = kp.pt.y;
-            const float &u = kp.pt.x;
-
-            const float d = imDepth.at<float>(v, u);
-
-            if (d > 0) {
-                mvDepth[i] = d;
-                mvuRight[i] = kpU.pt.x - mbf / d;
-            }
-        }
-    }
 
     cv::Mat Frame::UnprojectStereo(const int &i) {
         const float z = mvDepth[i];

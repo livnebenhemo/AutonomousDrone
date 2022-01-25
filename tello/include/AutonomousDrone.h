@@ -159,7 +159,7 @@ private:
     bool exitStayInTheAirLoop;
     bool weInAWrongScale;
 
-    void blobDetection();
+    void colorDetection();
 };
 
 #endif //TELLO_AUTONOMOUSDRONE_H

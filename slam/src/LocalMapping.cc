@@ -153,17 +153,16 @@ namespace ORB_SLAM2 {
 
         for (size_t i = 0; i < vpMapPointMatches.size(); i++) {
             MapPoint *pMP = vpMapPointMatches[i];
-            if (pMP) {
-                if (!pMP->isBad()) {
-                    if (!pMP->IsInKeyFrame(mpCurrentKeyFrame)) {
-                        pMP->AddObservation(mpCurrentKeyFrame, i);
-                        pMP->UpdateNormalAndDepth();
-                        pMP->ComputeDistinctiveDescriptors();
-                    } else // this can only happen for new stereo points inserted by the Tracking
-                    {
-                        mlpRecentAddedMapPoints.push_back(pMP);
-                    }
+            if (pMP && !pMP->isBad()) {
+                if (!pMP->IsInKeyFrame(mpCurrentKeyFrame)) {
+                    pMP->AddObservation(mpCurrentKeyFrame, i);
+                    pMP->UpdateNormalAndDepth();
+                    pMP->ComputeDistinctiveDescriptors();
+                } else // this can only happen for new stereo points inserted by the Tracking
+                {
+                    mlpRecentAddedMapPoints.push_back(pMP);
                 }
+
             }
         }
 
@@ -177,14 +176,7 @@ namespace ORB_SLAM2 {
     void LocalMapping::MapPointCulling() {
         // Check Recent Added MapPoints
         auto lit = mlpRecentAddedMapPoints.begin();
-        const unsigned long int nCurrentKFid = mpCurrentKeyFrame->mnId;
-
-        int nThObs;
-        if (mbMonocular)
-            nThObs = 2;
-        else
-            nThObs = 3;
-        const int cnThObs = nThObs;
+        const int cnThObs = 2;
 
         while (lit != mlpRecentAddedMapPoints.end()) {
             MapPoint *pMP = *lit;
@@ -193,12 +185,10 @@ namespace ORB_SLAM2 {
             } else if (pMP->GetFoundRatio() < 0.25f) {
                 pMP->SetBadFlag();
                 lit = mlpRecentAddedMapPoints.erase(lit);
-            } else if (((int) nCurrentKFid - (int) pMP->mnFirstKFid) >= 2 && pMP->Observations() <= cnThObs) {
+            } else if (pMP->Observations() <= cnThObs) {
                 pMP->SetBadFlag();
                 lit = mlpRecentAddedMapPoints.erase(lit);
-            } else if (((int) nCurrentKFid - (int) pMP->mnFirstKFid) >= 3)
-                lit = mlpRecentAddedMapPoints.erase(lit);
-            else
+            } else
                 lit++;
         }
     }
@@ -549,36 +539,31 @@ namespace ORB_SLAM2 {
             if (pKF->mnId == 0)
                 continue;
             const std::vector<MapPoint *> vpMapPoints = pKF->GetMapPointMatches();
-
-            int nObs = 3;
-            const int thObs = nObs;
+            const int thObs = 3;
             int nRedundantObservations = 0;
             int nMPs = 0;
             for (size_t i = 0, iend = vpMapPoints.size(); i < iend; i++) {
                 MapPoint *pMP = vpMapPoints[i];
-                if (pMP) {
-                    if (!pMP->isBad()) {
+                if (pMP && !pMP->isBad()) {
+                    nMPs++;
+                    if (pMP->Observations() > thObs) {
+                        const int scaleLevel = pKF->mvKeysUn[i].octave + 1;
+                        const auto observations = pMP->GetObservations();
+                        int nObs = 0;
+                        for (auto observation: observations) {
+                            KeyFrame *pKFi = observation.first;
+                            if (pKFi == pKF)
+                                continue;
+                            const int &scaleLeveli = pKFi->mvKeysUn[observation.second].octave;
 
-                        nMPs++;
-                        if (pMP->Observations() > thObs) {
-                            const int &scaleLevel = pKF->mvKeysUn[i].octave;
-                            const auto observations = pMP->GetObservations();
-                            int nObs = 0;
-                            for (auto observation: observations) {
-                                KeyFrame *pKFi = observation.first;
-                                if (pKFi == pKF)
-                                    continue;
-                                const int &scaleLeveli = pKFi->mvKeysUn[observation.second].octave;
-
-                                if (scaleLeveli <= scaleLevel + 1) {
-                                    nObs++;
-                                    if (nObs >= thObs)
-                                        break;
-                                }
+                            if (scaleLeveli <= scaleLevel) {
+                                nObs++;
+                                if (nObs >= thObs)
+                                    break;
                             }
-                            if (nObs >= thObs) {
-                                nRedundantObservations++;
-                            }
+                        }
+                        if (nObs >= thObs) {
+                            nRedundantObservations++;
                         }
                     }
                 }

@@ -28,15 +28,18 @@ namespace ORB_SLAM2 {
 
     KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB) :
             mnFrameId(F.mnId), mTimeStamp(F.mTimeStamp), mnGridCols(FRAME_GRID_COLS), mnGridRows(FRAME_GRID_ROWS),
-            mfGridElementWidthInv(ORB_SLAM2::Frame::mfGridElementWidthInv), mfGridElementHeightInv(ORB_SLAM2::Frame::mfGridElementHeightInv),
+            mfGridElementWidthInv(ORB_SLAM2::Frame::mfGridElementWidthInv),
+            mfGridElementHeightInv(ORB_SLAM2::Frame::mfGridElementHeightInv),
             mnTrackReferenceForFrame(0), mnFuseTargetForKF(0), mnBALocalForKF(0), mnBAFixedForKF(0),
             mnLoopQuery(0), mnLoopWords(0), mnRelocQuery(0), mnRelocWords(0), mnBAGlobalForKF(0),
-            fx(ORB_SLAM2::Frame::fx), fy(ORB_SLAM2::Frame::fy), cx(ORB_SLAM2::Frame::cx), cy(ORB_SLAM2::Frame::cy), invfx(ORB_SLAM2::Frame::invfx), invfy(ORB_SLAM2::Frame::invfy),
+            fx(ORB_SLAM2::Frame::fx), fy(ORB_SLAM2::Frame::fy), cx(ORB_SLAM2::Frame::cx), cy(ORB_SLAM2::Frame::cy),
+            invfx(ORB_SLAM2::Frame::invfx), invfy(ORB_SLAM2::Frame::invfy),
             mbf(F.mbf), mb(F.mb), mThDepth(F.mThDepth), N(F.N), mvKeys(F.mvKeys), mvKeysUn(F.mvKeysUn),
             mvuRight(F.mvuRight), mvDepth(F.mvDepth), mDescriptors(F.mDescriptors.clone()),
             mBowVec(F.mBowVec), mFeatVec(F.mFeatVec), mnScaleLevels(F.mnScaleLevels), mfScaleFactor(F.mfScaleFactor),
             mfLogScaleFactor(F.mfLogScaleFactor), mvScaleFactors(F.mvScaleFactors), mvLevelSigma2(F.mvLevelSigma2),
-            mvInvLevelSigma2(F.mvInvLevelSigma2), mnMinX(ORB_SLAM2::Frame::mnMinX), mnMinY(ORB_SLAM2::Frame::mnMinY), mnMaxX(ORB_SLAM2::Frame::mnMaxX),
+            mvInvLevelSigma2(F.mvInvLevelSigma2), mnMinX(ORB_SLAM2::Frame::mnMinX), mnMinY(ORB_SLAM2::Frame::mnMinY),
+            mnMaxX(ORB_SLAM2::Frame::mnMaxX),
             mnMaxY(ORB_SLAM2::Frame::mnMaxY), mK(F.mK), mvpMapPoints(F.mvpMapPoints), mpKeyFrameDB(pKFDB),
             mpORBvocabulary(F.mpORBvocabulary), mbFirstConnection(true), mpParent(nullptr), mbNotErase(false),
             mbToBeErased(false), mbBad(false), mHalfBaseline(F.mb / 2), mpMap(pMap) {
@@ -123,7 +126,7 @@ namespace ORB_SLAM2 {
         sort(vPairs.begin(), vPairs.end());
         std::list<KeyFrame *> lKFs;
         std::list<int> lWs;
-        for (auto & vPair : vPairs) {
+        for (auto &vPair: vPairs) {
             lKFs.push_front(vPair.second);
             lWs.push_front(vPair.first);
         }
@@ -151,7 +154,7 @@ namespace ORB_SLAM2 {
             return mvpOrderedConnectedKeyFrames;
         else
             return {mvpOrderedConnectedKeyFrames.begin(),
-                                           mvpOrderedConnectedKeyFrames.begin() + N};
+                    mvpOrderedConnectedKeyFrames.begin() + N};
 
     }
 
@@ -162,13 +165,13 @@ namespace ORB_SLAM2 {
             return {};
 
         auto it = upper_bound(mvOrderedWeights.begin(), mvOrderedWeights.end(), w,
-                                                    KeyFrame::weightComp);
+                              KeyFrame::weightComp);
         if (it == mvOrderedWeights.end())
             return {};
         else {
             int n = it - mvOrderedWeights.begin();
             return {mvpOrderedConnectedKeyFrames.begin(),
-                                           mvpOrderedConnectedKeyFrames.begin() + n};
+                    mvpOrderedConnectedKeyFrames.begin() + n};
         }
     }
 
@@ -204,7 +207,7 @@ namespace ORB_SLAM2 {
     std::set<MapPoint *> KeyFrame::GetMapPoints() {
         std::unique_lock<std::mutex> lock(mMutexFeatures);
         std::set<MapPoint *> s;
-        for (auto & mvpMapPoint : mvpMapPoints) {
+        for (auto &mvpMapPoint: mvpMapPoints) {
             if (!mvpMapPoint)
                 continue;
             MapPoint *pMP = mvpMapPoint;
@@ -504,7 +507,7 @@ namespace ORB_SLAM2 {
         for (int ix = nMinCellX; ix <= nMaxCellX; ix++) {
             for (int iy = nMinCellY; iy <= nMaxCellY; iy++) {
                 const std::vector<size_t> vCell = mGrid[ix][iy];
-                for (unsigned long j : vCell) {
+                for (unsigned long j: vCell) {
                     const cv::KeyPoint &kpUn = mvKeysUn[j];
                     const float distx = kpUn.pt.x - x;
                     const float disty = kpUn.pt.y - y;

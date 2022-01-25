@@ -204,7 +204,7 @@ namespace ORB_SLAM2 {
 
     float MapPoint::GetFoundRatio() {
         std::unique_lock<std::mutex> lock(mMutexFeatures);
-        return static_cast<float>(mnFound) / mnVisible;
+        return static_cast<float>(mnFound) / static_cast<float>(mnVisible);
     }
 
     void MapPoint::ComputeDistinctiveDescriptors() {
@@ -286,7 +286,7 @@ namespace ORB_SLAM2 {
         std::unordered_map<KeyFrame *, size_t> observations;
         KeyFrame *pRefKF;
         cv::Mat Pos;
-        if (mObservations.empty())
+        if (mObservations.empty() || !mpRefKF)
             return;
         {
             std::unique_lock<std::mutex> lock1(mMutexFeatures);
@@ -299,8 +299,8 @@ namespace ORB_SLAM2 {
         }
 
         cv::Mat normal = cv::Mat::zeros(3, 1, CV_32F);
-        int n = observations.size();
-        for (auto observation: observations){
+        auto n = observations.size();
+        for (auto observation: observations) {
             auto pKF = observation.first;
             cv::Mat Owi = pKF->GetCameraCenter();
             cv::Mat normali = Pos - Owi;

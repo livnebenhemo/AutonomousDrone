@@ -216,13 +216,14 @@ int main() {
         auto result = navigation.getNavigationPathByRRT(points, track, false);
         navigationPoints.insert(navigationPoints.end(), result.begin(), result.end());
     }
-    Auxiliary::SetupPangolin("full path");
-    Auxiliary::drawPathPangolin(points, navigationPoints, "full path",
-                                std::pair<Point, Point>{pathPoints[0], pathPoints[1]});
     //auto filteredPoints = navigation.filterPointsByStartPosition(points.second,track);
     //navigation.objectDetection(points.second, track, false);
     //navigation.getFloor(points.second, points.second.size() / 100);
     auto stop = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::seconds>(stop - start);
+    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start);
     std::cout << duration.count() << std::endl;
+
+    Auxiliary::SetupPangolin("full path");
+    Auxiliary::drawPathPangolin(points, navigationPoints, "full path",
+                                std::pair<Point, Point>{pathPoints[0], pathPoints[1]});
 }

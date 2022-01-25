@@ -712,21 +712,15 @@ namespace ORB_SLAM2 {
                             mnMatchesInliers++;
                     } else
                         mnMatchesInliers++;
-                } else if (mSensor == System::STEREO)
-                    mCurrentFrame.mvpMapPoints[i] = static_cast<MapPoint *>(nullptr);
-
+                }
             }
         }
 
         // Decide if the tracking was succesful
         // More restrictive if there was a relocalization recently
-        if (mCurrentFrame.mnId < mnLastRelocFrameId + mMaxFrames && mnMatchesInliers < 50)
-            return false;
+        return !(mCurrentFrame.mnId < mnLastRelocFrameId + mMaxFrames && mnMatchesInliers < 50) &&
+               mnMatchesInliers >= 10;
 
-        if (mnMatchesInliers < 30)
-            return false;
-        else
-            return true;
     }
 
 

@@ -70,20 +70,24 @@ int main() {
 
         cv::Mat frame;
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-        //for (int i = 0; i < 170; ++i) {
+        for (int i = 0; i < 170; ++i) {
         capture >> frame;
-        //}
+
+        }
+
         cv::resize(frame, frame, cv::Size(960, 720));
         int amount_of_frames = 1;
 
         for (;;) {
             SLAM.TrackMonocular(frame, capture.get(CV_CAP_PROP_POS_MSEC));
-            capture >> frame;
+                capture >> frame;
+
             if (frame.empty()) {
                 break;
             }
             std::cout << "frame:" << amount_of_frames++ << std::endl;
             cv::resize(frame, frame, cv::Size(960, 720));
+
         }
         std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 

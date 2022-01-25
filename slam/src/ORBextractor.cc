@@ -5,7 +5,7 @@ namespace ORB_SLAM2 {
 
     const int PATCH_SIZE = 31;
     const int HALF_PATCH_SIZE = 15;
-    const int EDGE_THRESHOLD = 19;
+    const int EDGE_THRESHOLD = 9;
 
 
     static float IC_Angle(const cv::Mat &image, const cv::Point2f &pt, const std::vector<int> &u_max) {
@@ -370,7 +370,7 @@ namespace ORB_SLAM2 {
         mnFeaturesPerLevel.resize(nlevels);
         float factor = 1.0f / scaleFactor;
         float nDesiredFeaturesPerScale =
-                nfeatures * (1 - factor) / (1 - (float) pow((double) factor, (double) nlevels));
+                static_cast<float >(nfeatures) * (1 - factor) / (1 - (float) pow((double) factor, (double) nlevels));
 
         int sumFeatures = 0;
         for (int level = 0; level < nlevels - 1; level++) {
@@ -741,9 +741,8 @@ namespace ORB_SLAM2 {
         if (_image.empty())
             return;
 
-        cv::Mat image = _image.getMat();
         // Pre-compute the scale pyramid
-        ComputePyramid(image);
+        ComputePyramid(_image.getMat());
 
         std::vector<std::vector<cv::KeyPoint>> allKeypoints;
         ComputeKeyPointsOctTree(allKeypoints);

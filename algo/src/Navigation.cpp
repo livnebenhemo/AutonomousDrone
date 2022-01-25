@@ -23,7 +23,7 @@ std::vector<Point> Navigation::filterPointsByStartPosition(std::vector<Point> &p
 }
 
 bool
-Navigation::objectDetection(std::vector<Point> &points, std::pair<Point, Point> &track, bool debug) {
+Navigation::objectDetection(std::vector<Point> &points, std::pair<Point, Point> &track, int sizeOfJump, bool debug) {
     std::string pangolinWindowName = "objectDetection" + std::to_string(std::rand());
     if (debug) {
         //Auxiliary::SetupPangolin(pangolinWindowName);
@@ -39,7 +39,7 @@ Navigation::objectDetection(std::vector<Point> &points, std::pair<Point, Point> 
         pointsInTrack.emplace_back(point);
     }
     std::vector<Point> pointsInFieldOfView;
-    if (points.empty()) {
+    if (points.size() < sizeOfJump) {
         return true;
     }
     double trackAngle = atan2(next.y - current.y, next.x - current.x);
@@ -50,7 +50,7 @@ Navigation::objectDetection(std::vector<Point> &points, std::pair<Point, Point> 
             pointsInFieldOfView.emplace_back(point);
         }
     }
-    if (pointsInFieldOfView.empty()) {
+    if (pointsInFieldOfView.size() < sizeOfJump) {
         return true;
     }
     //Auxiliary::DrawMapPointsPangolin(points, pointsInFieldOfView, pangolinWindowName, track[1]);
@@ -65,7 +65,7 @@ Navigation::objectDetection(std::vector<Point> &points, std::pair<Point, Point> 
     std::vector<double> pointsSizes;
     std::vector<double> variances;
     std::vector<std::pair<double, std::vector<Point>>> weightedPoints;
-    int sizeOfJump = 2;
+
     while (y.size() > sizeOfJump) {
         double zVariance = Auxiliary::calculateVariance(z);
         double xVariance = Auxiliary::calculateVariance(x);
@@ -88,7 +88,7 @@ Navigation::objectDetection(std::vector<Point> &points, std::pair<Point, Point> 
         //Auxiliary::DrawMapPointsPangolin(points, weightedPoints.front().second, pangolinWindowName, track);
         //Auxiliary::showGraph(pointsSizes, variances, "ro");
     }
-    return weightedPoints.front().second.size() < 10;
+    return weightedPoints.empty() || weightedPoints.front().second.size() < 10;
 }
 
 std::vector<Point> Navigation::getFloor(std::vector<Point> &points, unsigned long sizeOfJump) {
@@ -185,10 +185,10 @@ std::vector<Point>
 Navigation::getNavigationPathByRRT(std::vector<Point> &points, std::pair<Point, Point> &track, bool debug) {
     double pathLength = Auxiliary::calculateDistanceXY(track.first, track.second);
     std::cout << "path length: " << pathLength << std::endl;
-    RRT rrt(track, points, debug, 20000, 0.3, pathLength / 4);
+    RRT rrt(track, points, debug, 20000, 0.3, pathLength / 8);
     auto graph = rrt.BuildTrack();
-    if(graph.start == Point() && graph.end == Point(1,1,1)){
-        std::cout << "cant find path" <<std::endl;
+    if (graph.start == Point() && graph.end == Point(1, 1, 1)) {
+        std::cout << "cant find path" << std::endl;
         return {};
     }
     if (graph.vertices.size() == 1) {

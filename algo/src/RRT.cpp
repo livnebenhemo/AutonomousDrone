@@ -27,7 +27,7 @@ RRT::RRT(std::pair<Point, Point> &track, std::vector<Point> &points, bool debug,
 
 Graph RRT::BuildTrack() {
     Navigation navigation;
-    if (navigation.objectDetection(points, track, debug)) { // if we have a straight line we don't need pathing
+    if (navigation.objectDetection(points, track, 2, debug)) { // if we have a straight line we don't need pathing
         return graph;
     }
     std::cout << "there is no straight line in the original track" << std::endl;
@@ -43,7 +43,7 @@ Graph RRT::BuildTrack() {
             continue;
         }
         std::pair<Point, Point> currentTrack{nearest.first, randomVertex};
-        if (navigation.objectDetection(points, currentTrack, debug)) {
+        if (navigation.objectDetection(points, currentTrack, 2, debug)) {
 
             Point distance(randomVertex.x - nearest.first.x, randomVertex.y - nearest.first.y, track.first.z);
             double length = Auxiliary::norm2d(distance.x, distance.y);

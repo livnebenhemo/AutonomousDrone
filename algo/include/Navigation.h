@@ -18,7 +18,7 @@ public:
     std::vector<Point> getFloor(std::vector<Point> &points, unsigned long sizeOfJump);
 
     bool
-    objectDetection(std::vector<Point> &points, std::pair<Point,Point> &track, bool debug = false);
+    objectDetection(std::vector<Point> &points, std::pair<Point,Point> &track,int sizeOfJump = 2, bool debug = false);
 
     std::vector<Point> filterPointsByStartPosition(std::vector<Point> &points, std::pair<Point, Point> &track);
 

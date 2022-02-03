@@ -98,7 +98,7 @@ namespace ORB_SLAM2 {
         // Lists used to recover the full camera trajectory at the end of the execution.
         // Basically we store the reference keyframe for each frame and its relative transformation
         std::list<cv::Mat> mlRelativeFramePoses;
-        std::list<KeyFrame *> mlpReferences;
+        // std::list<KeyFrame *> mlpReferences;
         std::list<double> mlFrameTimes;
         std::list<bool> mlbLost;
 

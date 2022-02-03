@@ -29,11 +29,11 @@ public:
             int raspberryToTelloPinNumber = 26,
             double slowSpeedDistance = 0.15,
             double fastSpeedDistance = 1.0,
-            double distanceFromWall = 0.80,
-            double distanceToWall = 0.77,
+            double distanceFromWall = 0.17,
+            double distanceToWall = 0.1,
             double distanceUpDownMarker = 0.2,
-            double distanceRightFromArucoCenter = -0.02,
-            double distanceLeftFromArucoCenter = -0.05, double almostStopSpeedDistance = 0.02,
+            double distanceRightFromArucoCenter = 0.1,
+            double distanceLeftFromArucoCenter = -0.1, double almostStopSpeedDistance = 0.02,
             std::vector<double> speedScaleFactor = {0.35, 0.15, 1}, int sizeOfMovingAverageWindow = 5,
             int distanceToBox = 48);
 
@@ -81,8 +81,8 @@ private:
     double leftRightError;
     double forwardBackwardError;
     double upDownError;
-    double amountOfUSleepForDroneRcCommand = 300000;
-    double amountOfUSleepForTrackMarker = 50000;
+    long amountOfUSleepForDroneRcCommand = 300000;
+    long amountOfUSleepForTrackMarker = 50000;
     int amountOfMeasurement = floor(amountOfUSleepForDroneRcCommand / amountOfUSleepForTrackMarker);
     std::vector<double> speedScaleFactor;
     std::shared_ptr<ctello::Tello> drone;

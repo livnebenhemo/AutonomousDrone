@@ -249,7 +249,7 @@ void Charger::trackMarker() {
     std::vector<std::vector<cv::Point2f>> corners;
     const std::vector<cv::Mat> cameraParams = getCameraCalibration(telloYamlFilePath);
     const cv::Ptr<cv::aruco::Dictionary> dictionary = cv::aruco::getPredefinedDictionary(
-            cv::aruco::DICT_ARUCO_ORIGINAL);
+            cv::aruco::DICT_6X6_250);
     while (!stop) {
         std::vector<int> ids;
         if (!frame->empty()) {
@@ -262,7 +262,7 @@ void Charger::trackMarker() {
         bool canContinue = false;
         int rightId = 0;
         while (rightId < ids.size()) {
-            if (ids[rightId] == currentMarker) {
+            if (ids[rightId] != 0) {
                 canContinue = true;
                 break;
             }
@@ -558,7 +558,6 @@ bool Charger::communicateWithCharger(int socket, bool closeSocket) {
 
 bool Charger::correctDroneAngle(std::pair<int, bool> currentLeftOverAngle) {
     int angle = currentLeftOverAngle.first;
-    angle = angle < 0 ? angle < -90 ? -1 * (-180 - angle) : -1 * angle : angle > 90 ? 180 - angle : angle;
     bool clockwise = currentLeftOverAngle.second;
     if (angle > 15) {
         if (clockwise)
@@ -733,7 +732,7 @@ double Charger::navigateToMarker(float markerSize, int markerId) {
     currentMarkerSize = markerSize;
     currentMarker = markerId;
     sleep(1);
-    int amountOfSearchTurns = 1;
+    int amountOfSearchTurns = 0;
     std::string forwardText = "0";
     std::string leftRightText = "0";
     std::string upDownText = "0";
@@ -743,7 +742,7 @@ double Charger::navigateToMarker(float markerSize, int markerId) {
     bool goUp = true;
     while (!stop) {
         if (leftOverAngle.first != -1) {
-            amountOfSearchTurns = 1;
+            amountOfSearchTurns = 0;
             localDistance = forward;
             std::cout << "distance:" << localDistance << std::endl;
             if (localDistance < distanceFromWall && localDistance > distanceToWall
@@ -768,9 +767,16 @@ double Charger::navigateToMarker(float markerSize, int markerId) {
             }
             //std::cout << localDistance << std::endl;
             localLeftOverAngle = leftOverAngle;
-            correctDroneAngle(leftOverAngle);
-            if (localDistance > 2) {
-                manageDroneCommand("forward " + std::to_string(int((forward - distanceFromWall) * 80)), 3, 1);
+            correctDroneAngle(localLeftOverAngle);
+            if (localDistance > 1) {
+                std::cout << "upDown: " << upDown <<std::endl;
+                if (upDown < 0 && upDown * -100 > 20) {
+                    manageDroneCommand("down " + std::to_string(int(upDown * -100)-10), 10, 5);
+                    //drone->EasyLanding();
+                }
+                manageDroneCommand("forward " + std::to_string(int((forward - distanceFromWall) * 80) - 10), 10, 5);
+
+                //manageDroneCommand("land");
             }
             if (upDown > distanceUpDownMarker) {
                 upDownText = "-10";
@@ -793,15 +799,16 @@ double Charger::navigateToMarker(float markerSize, int markerId) {
             }
             upDown = 0;
             if (amountOfSearchTurns++ % 18 == 0) {
-                manageDroneCommand("back 30", 2, 1);
+                manageDroneCommand("back 50", 2, 5);
                 if (goUp) {
-                    manageDroneCommand("up 30", 2, 1);
+                    manageDroneCommand("up 30", 2, 5);
                 } else {
-                    manageDroneCommand("down 30", 2, 1);
+                    manageDroneCommand("down 30", 2, 5);
                 }
                 goUp = !goUp;
+            } else {
+                manageDroneCommand(angleText);
             }
-            manageDroneCommand(angleText);
         }
     }
     int amountOfShutdowns = 1;
@@ -823,9 +830,8 @@ std::pair<int, bool> Charger::getLeftOverAngleFromRotationVector(const cv::Vec<d
     cv::Rodrigues(rvec, R33);
     cv::Vec3d eulerAngles;
     getEulerAngles(R33, eulerAngles);
-    int yaw = eulerAngles[0];
-    // std::cout << eulerAngles << std::endl;
-    return {yaw, eulerAngles[1] >= 0};
+    int yaw = std::abs(int(eulerAngles[1]));
+    return {yaw, eulerAngles[1] > 0};
 }
 
 bool Charger::connectToDrone(const std::string &droneName) {
@@ -919,9 +925,10 @@ bool Charger::run() {
     sleep(2);
     std::thread trackerThead(&Charger::trackMarker, this);
     stop = false;
-    navigateToMarker(markers[0].second, markers[0].first);
-    sleep(1);
-    navigateToMarker(markers[1].second, markers[1].first);
+    for (const auto &marker: markers) {
+        navigateToMarker(marker.second, marker.first);
+        sleep(1);
+    }
     drone->SendCommand("land");
 
     sleep(5);
@@ -933,7 +940,7 @@ bool Charger::run() {
     trackerThead.join();
     //cameraThead.join();
     drone->closeSockets();
-    turnDroneOnOrOff();
+    /*turnDroneOnOrOff();
     chargerSocket = -1;
     while (chargerSocket == -1) {
         chargerSocket = getChargerSocket(chargerBluetoothAddress);
@@ -948,6 +955,6 @@ bool Charger::run() {
     sendMsg(chargerSocket, "stop_fans");
     close(chargerSocket);
     turnDroneOnOrOff();
-    connectToDrone(droneWifiName);
+    connectToDrone(droneWifiName);*/
     return true;
 }

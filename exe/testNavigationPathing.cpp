@@ -202,16 +202,15 @@ std::vector<Point> getPointsFromXYZFile(const std::string &fileName) {
 }
 
 int main() {
-    std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "buildings/Lab/pointDataBarLab.csv";
+    std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "buildings/Lab/filterTest/pointData2.csv";
     auto points = getPointsFromFile(datasetFilePath);
     auto[R, T] = align_map(points);
     auto start = std::chrono::high_resolution_clock::now();
-    std::vector<Point> pathPoints{Point(0.3, 1, -0.1), Point(0.5, -0.2, -0.05), Point(-2.5, -0.5, 0.1)};
+    std::vector<Point> pathPoints{Point(), Point(-0.5, -0.5, -0.05)};
     std::vector<Point> navigationPoints;
     navigationPoints.emplace_back(pathPoints[0]);
     Navigation navigation;
     for (int i = 0; i < pathPoints.size() - 1; ++i) {
-
         std::pair<Point, Point> track{pathPoints[i], pathPoints[i + 1]};
         auto result = navigation.getNavigationPathByRRT(points, track, false);
         navigationPoints.insert(navigationPoints.end(), result.begin(), result.end());
@@ -221,7 +220,7 @@ int main() {
     //navigation.getFloor(points.second, points.second.size() / 100);
     auto stop = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start);
-    std::cout << duration.count() << std::endl;
+    std::cout << "exe time in seconds: " << duration.count() * 0.000000001 << std::endl;
 
     Auxiliary::SetupPangolin("full path");
     Auxiliary::drawPathPangolin(points, navigationPoints, "full path",

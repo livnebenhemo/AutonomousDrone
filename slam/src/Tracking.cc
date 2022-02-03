@@ -170,7 +170,9 @@ namespace ORB_SLAM2 {
                                   mThDepth);
 
         Track();
-
+        if (mState == NOT_INITIALIZED) {
+            return {};
+        }
         return mCurrentFrame.mTcw.clone();
     }
 
@@ -186,6 +188,7 @@ namespace ORB_SLAM2 {
             mpFrameDrawer->Update(this);
             if (mState != OK)
                 return;
+
         } else {
             // System is initialized. Track Frame.
             bool bOK;
@@ -277,9 +280,10 @@ namespace ORB_SLAM2 {
                     bOK = TrackLocalMap();
             }
 
-            if (bOK)
+            if (bOK) {
                 mState = OK;
-            else
+                mpKeyFrameDB->add(mpReferenceKF);
+            } else
                 mState = LOST;
 
             // Update drawer
@@ -348,13 +352,13 @@ namespace ORB_SLAM2 {
         if (!mCurrentFrame.mTcw.empty()) {
             cv::Mat Tcr = mCurrentFrame.mTcw * mCurrentFrame.mpReferenceKF->GetPoseInverse();
             mlRelativeFramePoses.push_back(Tcr);
-            mlpReferences.push_back(mpReferenceKF);
+            //mlpReferences.push_back(mpReferenceKF);
             mlFrameTimes.push_back(mCurrentFrame.mTimeStamp);
             mlbLost.push_back(mState == LOST);
         } else {
             // This can happen if tracking is lost
             mlRelativeFramePoses.push_back(mlRelativeFramePoses.back());
-            mlpReferences.push_back(mlpReferences.back());
+            //mlpReferences.push_back(mlpReferences.back());
             mlFrameTimes.push_back(mlFrameTimes.back());
             mlbLost.push_back(mState == LOST);
         }
@@ -479,9 +483,10 @@ namespace ORB_SLAM2 {
         float medianDepth = pKFini->ComputeSceneMedianDepth(2);
         float invMedianDepth = 1.0f / medianDepth;
 
-        if (medianDepth < 0 || pKFcur->TrackedMapPoints(1) < 100) {
+        if (medianDepth < 0 || pKFcur->TrackedMapPoints(1) < 200) {
             std::cout << "Wrong initialization, reseting..." << std::endl;
             Reset();
+            mState = NOT_INITIALIZED;
             std::cout << "done reseting" << std::endl;
             return;
         }
@@ -719,7 +724,7 @@ namespace ORB_SLAM2 {
         // Decide if the tracking was succesful
         // More restrictive if there was a relocalization recently
         return !(mCurrentFrame.mnId < mnLastRelocFrameId + mMaxFrames && mnMatchesInliers < 50) &&
-               mnMatchesInliers >= 10;
+               mnMatchesInliers >= 30;
 
     }
 
@@ -747,7 +752,7 @@ namespace ORB_SLAM2 {
             thRefRatio = 0.9f;
 
         // Condition 1a: More than "MaxFrames" have passed from last keyframe insertion
-        const bool c1a = false && mCurrentFrame.mnId >= mnLastKeyFrameId + mMaxFrames;
+        const bool c1a = mCurrentFrame.mnId >= mnLastKeyFrameId + mMaxFrames;
         // Condition 1b: More than "MinFrames" have passed and Local Mapping is idle
         const bool c1b = (mCurrentFrame.mnId >= mnLastKeyFrameId + mMinFrames && bLocalMappingIdle);
         //Condition 1c: tracking is weak
@@ -937,13 +942,9 @@ namespace ORB_SLAM2 {
     bool Tracking::Relocalization() {
         // Compute Bag of Words Vector
         mCurrentFrame.ComputeBoW();
-
         // Relocalization is performed when tracking is lost
         // Track Lost: Query KeyFrame Database for keyframe candidates for relocalisation
         std::vector<KeyFrame *> vpCandidateKFs = mpKeyFrameDB->DetectRelocalizationCandidates(&mCurrentFrame);
-
-        if (vpCandidateKFs.empty())
-            return false;
 
         const int nKFs = vpCandidateKFs.size();
 
@@ -964,11 +965,11 @@ namespace ORB_SLAM2 {
 
         for (int i = 0; i < nKFs; i++) {
             KeyFrame *pKF = vpCandidateKFs[i];
-            if (pKF->isBad())
+            if (!pKF || pKF->isBad())
                 vbDiscarded[i] = true;
             else {
                 int nmatches = matcher.SearchByBoW(pKF, mCurrentFrame, vvpMapPointMatches[i]);
-                if (nmatches < 15) {
+                if (nmatches < 5) {
                     vbDiscarded[i] = true;
                     continue;
                 } else {
@@ -1021,24 +1022,26 @@ namespace ORB_SLAM2 {
 
                     int nGood = Optimizer::PoseOptimization(&mCurrentFrame);
 
-                    if (nGood < 10)
+                    if (nGood < 10) {
+                        std::cout << "nGood: " << nGood << std::endl;
                         continue;
+
+                    }
 
                     for (int io = 0; io < mCurrentFrame.N; io++)
                         if (mCurrentFrame.mvbOutlier[io])
                             mCurrentFrame.mvpMapPoints[io] = static_cast<MapPoint *>(nullptr);
-
                     // If few inliers, search by projection in a coarse window and optimize again
-                    if (nGood < 50) {
+                    if (nGood < 20) {
                         int nadditional = matcher2.SearchByProjection(mCurrentFrame, vpCandidateKFs[i], sFound, 10,
                                                                       100);
 
-                        if (nadditional + nGood >= 50) {
+                        if (nadditional + nGood >= 20) {
                             nGood = Optimizer::PoseOptimization(&mCurrentFrame);
 
                             // If many inliers but still not enough, search by projection again in a narrower window
                             // the camera has been already optimized with many points
-                            if (nGood > 30 && nGood < 50) {
+                            if (nGood > 10 && nGood < 20) {
                                 sFound.clear();
                                 for (int ip = 0; ip < mCurrentFrame.N; ip++)
                                     if (mCurrentFrame.mvpMapPoints[ip])
@@ -1047,7 +1050,7 @@ namespace ORB_SLAM2 {
                                                                           64);
 
                                 // Final optimization
-                                if (nGood + nadditional >= 50) {
+                                if (nGood + nadditional >= 20) {
                                     nGood = Optimizer::PoseOptimization(&mCurrentFrame);
 
                                     for (int io = 0; io < mCurrentFrame.N; io++)
@@ -1057,12 +1060,12 @@ namespace ORB_SLAM2 {
                             }
                         }
                     }
-
-
                     // If the pose is supported by enough inliers stop ransacs and continue
-                    if (nGood >= 50) {
+                    if (nGood >= 20) {
                         bMatch = true;
                         break;
+                    } else {
+                        std::cout << "bad nGood Match: " << nGood << std::endl;
                     }
                 }
             }
@@ -1079,20 +1082,14 @@ namespace ORB_SLAM2 {
 
     void Tracking::Reset() {
         std::cout << "System Reseting" << std::endl;
-        if (mpViewer) {
-            mpViewer->RequestStop();
-            while (!mpViewer->isStopped())
-                usleep(3000);
-        }
+
         // Reset Local Mapping
         std::cout << "Reseting Local Mapper...";
-        mpLocalMapper->RequestReset();
+        //mpLocalMapper->RequestReset();
         std::cout << " done" << std::endl;
         // Reset Loop Closing
-        std::cout << "Reseting Loop Closing...";
-        mpLoopClosing->RequestReset();
-        std::cout << " done" << std::endl;
-
+        //std::cout << "Reseting Loop Closing...";
+        //mpLoopClosing->RequestReset();
         // Clear BoW Database
         std::cout << "Reseting Database...";
         mpKeyFrameDB->clear();
@@ -1105,11 +1102,9 @@ namespace ORB_SLAM2 {
         delete mpInitializer;
         mpInitializer = static_cast<Initializer *>(nullptr);
         mlRelativeFramePoses.clear();
-        mlpReferences.clear();
+        //mlpReferences.clear();
         mlFrameTimes.clear();
         mlbLost.clear();
-        if (mpViewer)
-            mpViewer->Release();
         std::cout << "reset everything" << std::endl;
     }
 

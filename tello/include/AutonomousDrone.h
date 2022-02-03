@@ -4,7 +4,7 @@
 
 #ifndef TELLO_AUTONOMOUSDRONE_H
 #define TELLO_AUTONOMOUSDRONE_H
-
+#include "include/Navigation.h"
 #include "include/Room.h"
 #include "include/Polygon.h"
 #include <opencv2/core.hpp>
@@ -43,7 +43,7 @@ private:
 
     void runOrbSlam();
 
-    void areWeInWrongScale(const std::vector<Frame> &frames);
+    void areWeInWrongScale(std::vector<Frame> &frames);
 
     std::vector<Point> getCurrentMap();
 
@@ -87,7 +87,7 @@ private:
 
     void saveMap(int fileNumber = 0);
 
-    static Point convertFrameToPoint(const Frame &frame);
+    static Point convertFrameToPoint(Frame &frame);
 
     void updateCurrentLocation(const cv::Mat &Tcw);
 
@@ -146,6 +146,7 @@ private:
     bool loopCloserHappened = false;
     double desiredAngle = 0.0;
     bool lowBattery = false;
+    int maxRotationAngle = 25;
     bool reachedCheckpoint = false;
     bool gettingFurther = false;
     bool gettingCloser = false;
@@ -159,7 +160,9 @@ private:
     bool exitStayInTheAirLoop;
     bool weInAWrongScale;
 
-    void colorDetection();
+    double colorDetection();
+
+    bool manageAngleDroneCommand(int angle, bool clockwise, int amountOfAttempt, int amountOfSleep);
 };
 
 #endif //TELLO_AUTONOMOUSDRONE_H

@@ -28,7 +28,7 @@
 #include <vector>
 #include <list>
 #include <opencv/cv.h>
-
+#include <opencv2/features2d.hpp>
 
 namespace ORB_SLAM2 {
 
@@ -56,9 +56,8 @@ namespace ORB_SLAM2 {
         // Compute the ORB features and descriptors on an image.
         // ORB are dispersed on the image using an octree.
         // Mask is ignored in the current implementation.
-        void operator()(cv::InputArray image, cv::InputArray mask,
-                        std::vector<cv::KeyPoint> &keypoints,
-                        cv::OutputArray descriptors);
+        void operator()(const cv::Mat &_image,const cv::Mat &_mask, std::vector<cv::KeyPoint> &_keypoints,
+                        cv::Mat &_descriptors);
 
         int inline GetLevels() {
             return nlevels;

@@ -3,6 +3,7 @@
 
 #include <string>
 #include <sstream>
+#include <opencv2/core/mat.hpp>
 
 class Point {
 public:
@@ -23,9 +24,10 @@ public:
      * q* is quaternion
      *
      * */
-    Point(double x, double y, double z, double qx = 0, double qy = 0, double qz = 0, double qw = 0, int frameId = -1,
+    Point(double x, double y, double z, cv::Mat &rotationMatrix, int frameId = -1,
           int label = -1);
 
+    Point(double x, double y, double z);
     bool operator==(const Point &ref) const {
         return this->x == ref.x && this->y == ref.y && this->z == ref.z;
     }
@@ -40,10 +42,7 @@ public:
     double x;
     double y;
     double z;
-    double qx;
-    double qy;
-    double qz;
-    double qw;
+    cv::Mat rotationMatrix;
     int label;
     int frameId;
 

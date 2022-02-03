@@ -28,7 +28,10 @@ std::vector<Point> Polygon::getExitPointsByPolygon(bool isDebug) {
     }
     smoothPolygon();
     filterPointsInsidePolygon();
-    std::vector<Point> goodPoints = filterPointsByVariances(getSlicesWithVariances(angle), epsilon);
+    std::vector<Point> goodPoints {};//= filterPointsByVariances(getSlicesWithVariances(angle), epsilon);
+    for(const auto &outSidePoint : pointsOutsidePolygon){
+        goodPoints.push_back(outSidePoint.first);
+    }
     if (isDebug) {
         Auxiliary::showCloudPoint(vertices, points);
         std::vector<Point> withOutVariances;
@@ -38,7 +41,7 @@ std::vector<Point> Polygon::getExitPointsByPolygon(bool isDebug) {
         Auxiliary::showCloudPoint(vertices, withOutVariances);
         Auxiliary::showCloudPoint(vertices, goodPoints);
     }
-    int minSamples = 25;
+    int minSamples = 10;
     auto rawNavigationPoints = std::vector<Point>{};
     while (rawNavigationPoints.empty() && minSamples > 0) {
         rawNavigationPoints = getNavigationPoints(goodPoints, minSamples);
@@ -58,6 +61,7 @@ std::vector<Point> Polygon::getExitPointsByPolygon(bool isDebug) {
             return Auxiliary::calculateDistanceXY(p1, center) > Auxiliary::calculateDistanceXY(p2, center);
         });
     }
+
     return navigationPoints;
 }
 
@@ -93,7 +97,7 @@ Polygon::filterCheckpoints(const std::vector<Point> &rawNavigationPoints, int mi
 }
 
 std::vector<Point> Polygon::getNavigationPoints(const std::vector<Point> &goodPoints, int minSamples) {
-    auto dbscan = DBSCAN(minSamples, 0.15, goodPoints);
+    auto dbscan = DBSCAN(minSamples, 0.1, goodPoints);
     int numberOfClusters = dbscan.run();
     if (!numberOfClusters) {
         return std::vector<Point>{};
@@ -247,11 +251,14 @@ std::vector<std::pair<Point, double>> Polygon::getRawPolygonCorners() {
     auto slices = Pizza::createPizzaSlices(polygonCenter, pointsWithDistance, angle);
     std::vector<std::pair<Point, double>> polygonVertices;
     auto sortRule = [](const std::pair<Point, double> &point1, const std::pair<Point, double> &point2) -> bool {
-        return point2.second < point1.second;
+        return point2.second > point1.second;
     };
     for (auto slice: slices) {
         std::sort(slice.second.begin(), slice.second.end(), sortRule);
-        std::pair<Point, double> medianPoint = slice.second[slice.second.size() / 2];
+        Point point((polygonCenter.x + slice.second.back().first.x) / 2,
+                    (polygonCenter.y + slice.second.back().first.y) / 2, polygonCenter.z);
+        std::pair<Point, double> medianPoint = {point,
+                                                slice.second.back().second / 2};//slice.second[slice.second.size() / 2];
         polygonVertices.push_back(medianPoint);
     }
     return polygonVertices;

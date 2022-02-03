@@ -35,11 +35,16 @@ std::vector<Point> getPointsFromFile(const std::string& fileName) {
 }
 
 int main() {
-    std::vector<Point> points = getPointsFromFile("/tmp/pointData1.csv");
+
+    std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "buildings/Lab/pointData0.csv";
+    auto points = getPointsFromFile(datasetFilePath);
     auto start = std::chrono::high_resolution_clock::now();
     Polygon polygon(points, Point());
-    polygon.getExitPointsByPolygon(true);
+    auto vertex = polygon.getExitPointsByPolygon(true);
     auto stop = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
     std::cout << duration.count() << std::endl;
+    Auxiliary::SetupPangolin("full path");
+    Auxiliary::drawPathPangolin(points, polygon.vertices, "full path",{Point(),Point()});
+
 }

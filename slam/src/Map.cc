@@ -32,15 +32,20 @@ Map::Map():mnMaxKFid(0),mnBigChangeIdx(0)
 void Map::AddKeyFrame(KeyFrame *pKF)
 {
     std::unique_lock<std::mutex> lock(mMutexMap);
-    mspKeyFrames.insert(pKF);
-    if(pKF->mnId>mnMaxKFid)
-        mnMaxKFid=pKF->mnId;
+    if (!mspKeyFrames.count(pKF)){
+        mspKeyFrames.insert({pKF,pKF->mnId});
+
+        if(pKF->mnId>mnMaxKFid)
+            mnMaxKFid=pKF->mnId;
+    }
 }
 
 void Map::AddMapPoint(MapPoint *pMP)
 {
     std::unique_lock<std::mutex> lock(mMutexMap);
-    mspMapPoints.insert(pMP);
+    if (!mspMapPoints.count(pMP)){
+        mspMapPoints[pMP] = pMP->mnId;
+    }
 }
 
 void Map::EraseMapPoint(MapPoint *pMP)
@@ -82,13 +87,21 @@ int Map::GetLastBigChangeIdx()
     std::vector<KeyFrame*> Map::GetAllKeyFrames()
 {
     std::unique_lock<std::mutex> lock(mMutexMap);
-    return std::vector<KeyFrame*>(mspKeyFrames.begin(),mspKeyFrames.end());
+    std::vector<KeyFrame*> keyFrames;
+    for(const auto &keyFrame : mspKeyFrames){
+        keyFrames.emplace_back(keyFrame.first);
+    }
+    return keyFrames;
 }
 
     std::vector<MapPoint*> Map::GetAllMapPoints()
 {
     std::unique_lock<std::mutex> lock(mMutexMap);
-    return std::vector<MapPoint*>(mspMapPoints.begin(),mspMapPoints.end());
+    std::vector<MapPoint*> mapPoints;
+    for(const auto &mapPoint: mspMapPoints){
+        mapPoints.emplace_back(mapPoint.first);
+    }
+    return mapPoints;
 }
 
 long unsigned int Map::MapPointsInMap()
@@ -118,10 +131,10 @@ long unsigned int Map::GetMaxKFid()
 void Map::clear()
 {
     for(auto mspMapPoint : mspMapPoints)
-        delete mspMapPoint;
+        delete mspMapPoint.first;
 
     for(auto mspKeyFrame : mspKeyFrames)
-        delete mspKeyFrame;
+        delete mspKeyFrame.first;
 
     mspMapPoints.clear();
     mspKeyFrames.clear();

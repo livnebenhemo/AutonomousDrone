@@ -227,9 +227,11 @@ namespace ORB_SLAM2 {
         }
 
 
-        if (nInitialCorrespondences < 3)
+        if (nInitialCorrespondences < 3) {
+            std::cout << "nInitialCorrespondences: " << nInitialCorrespondences << std::endl;
             return 0;
 
+        }
         // We perform 4 optimizations, after each optimization we classify observation as inlier/outlier
         // At the next optimization, outliers are not included, but at the end they can be classified as inliers again.
         const float chi2Mono[4] = {5.991, 5.991, 5.991, 5.991};
@@ -271,9 +273,43 @@ namespace ORB_SLAM2 {
         return nInitialCorrespondences - nBad;
     }
 
+    void Optimizer::filterBySphericalCoordinates(KeyFrame *pKF) {
+        std::unordered_map<double, std::unordered_map<double, ORB_SLAM2::MapPoint *>> pointsAndAngles;
+        auto keyFramePose = ORB_SLAM2::Converter::toVector3d(pKF->GetPose());
+        auto points = pKF->GetMapPointMatches();
+        auto amountOfPoints = points.size();
+        for (auto mapPoint: pKF->GetMapPointMatches()) {
+            if (mapPoint && !mapPoint->isBad()) {
+                auto v = ORB_SLAM2::Converter::toVector3d(mapPoint->GetWorldPos()) - keyFramePose;
+                double dist = std::sqrt(std::pow(v.x(), 2) + std::pow(v.y(), 2) + std::pow(v.z(), 2));
+                double azimuthalAngle = Converter::round_up(acos(v.z() / dist) * (180 / M_PI), 1);
+                double polarAngle;
+                if (v.x() > 0) {
+                    polarAngle = Converter::round_up(atan(v.y() / v.x()) * (180 / M_PI), 1);
+                } else if (v.x() < 0) {
+                    polarAngle = Converter::round_up((atan(v.y() / v.x()) + M_PI) * (180 / M_PI), 1);
+                } else {
+                    polarAngle = 90;
+                }
+                if (pointsAndAngles.count(polarAngle)) {
+                    if (pointsAndAngles.at(polarAngle).count(azimuthalAngle)) {
+                        mapPoint->SetBadFlag();
+                        amountOfPoints--;
+                    } else {
+                        pointsAndAngles.at(polarAngle).insert({azimuthalAngle, mapPoint});
+                    }
+                } else {
+                    pointsAndAngles.insert({polarAngle, std::unordered_map<double, ORB_SLAM2::MapPoint *>{}});
+                    pointsAndAngles.at(polarAngle).insert({azimuthalAngle, mapPoint});
+                }
+            }
+        }
+    }
+
     void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool *pbStopFlag, Map *pMap) {
         // Local KeyFrames: First Breath Search from Current Keyframe
-        std::list<KeyFrame *> lLocalKeyFrames;
+        std::vector<KeyFrame *> lLocalKeyFrames;
+        filterBySphericalCoordinates(pKF);
 
         lLocalKeyFrames.push_back(pKF);
         pKF->mnBALocalForKF = pKF->mnId;
@@ -282,20 +318,24 @@ namespace ORB_SLAM2 {
             if (!pKFi->isBad())
                 lLocalKeyFrames.push_back(pKFi);
         }
+
+        /*for(const auto keyframe : lLocalKeyFrames){
+            filterBySphericalCoordinates(keyframe);
+
+        }*/
         // Local MapPoints seen in Local KeyFrames
-        std::list<MapPoint *> lLocalMapPoints;
+        std::vector<MapPoint *> lLocalMapPoints;
         for (auto vpMPs: lLocalKeyFrames) {
             for (auto pMP: vpMPs->GetMapPointMatches()) {
-                if (pMP)
-                    if (!pMP->isBad())
-                        if (pMP->mnBALocalForKF != pKF->mnId) {
-                            lLocalMapPoints.push_back(pMP);
-                            pMP->mnBALocalForKF = pKF->mnId;
-                        }
+                if (pMP && !pMP->isBad())
+                    if (pMP->mnBALocalForKF != pKF->mnId) {
+                        lLocalMapPoints.push_back(pMP);
+                        pMP->mnBALocalForKF = pKF->mnId;
+                    }
             }
         }
         // Fixed Keyframes. Keyframes that see Local MapPoints but that are not Local Keyframes
-        std::list<KeyFrame *> lFixedCameras;
+        std::vector<KeyFrame *> lFixedCameras;
         for (auto lLocalMapPoint: lLocalMapPoints) {
             for (auto observation: lLocalMapPoint->GetObservations()) {
                 KeyFrame *pKFi = observation.first;
@@ -338,8 +378,7 @@ namespace ORB_SLAM2 {
             vSE3->setId(pKFi->mnId);
             vSE3->setFixed(true);
             optimizer.addVertex(vSE3);
-            if (pKFi->mnId > maxKFid)
-                maxKFid = pKFi->mnId;
+            maxKFid = pKFi->mnId > maxKFid ? pKFi->mnId : maxKFid;
         }
 
         // Set MapPoint vertices
@@ -395,16 +434,13 @@ namespace ORB_SLAM2 {
                 return;
         optimizer.initializeOptimization();
         optimizer.optimize(5);
-        bool bDoMore = true;
-        if (pbStopFlag)
-            if (*pbStopFlag)
-                bDoMore = false;
+
+        bool bDoMore = !(pbStopFlag && *pbStopFlag);
         if (bDoMore) {
             // Check inlier observations
             for (size_t i = 0, iend = vpEdgesMono.size(); i < iend; i++) {
                 g2o::EdgeSE3ProjectXYZ *e = vpEdgesMono[i];
                 MapPoint *pMP = vpMapPointEdgeMono[i];
-
                 if (pMP->isBad())
                     continue;
 
@@ -455,6 +491,7 @@ namespace ORB_SLAM2 {
             pMP->SetWorldPos(Converter::toCvMat(vPoint->estimate()));
             pMP->UpdateNormalAndDepth();
         }
+
     }
 
     void Optimizer::OptimizeEssentialGraph(Map *pMap, KeyFrame *pLoopKF, KeyFrame *pCurKF,
@@ -478,9 +515,9 @@ namespace ORB_SLAM2 {
 
         const unsigned int nMaxKFid = pMap->GetMaxKFid();
 
-        std::vector <g2o::Sim3, Eigen::aligned_allocator<g2o::Sim3>> vScw(nMaxKFid + 1);
-        std::vector <g2o::Sim3, Eigen::aligned_allocator<g2o::Sim3>> vCorrectedSwc(nMaxKFid + 1);
-        std::vector < g2o::VertexSim3Expmap * > vpVertices(nMaxKFid + 1);
+        std::vector<g2o::Sim3, Eigen::aligned_allocator<g2o::Sim3>> vScw(nMaxKFid + 1);
+        std::vector<g2o::Sim3, Eigen::aligned_allocator<g2o::Sim3>> vCorrectedSwc(nMaxKFid + 1);
+        std::vector<g2o::VertexSim3Expmap *> vpVertices(nMaxKFid + 1);
 
         const int minFeat = 100;
         // Set KeyFrame vertices
@@ -514,7 +551,7 @@ namespace ORB_SLAM2 {
         }
 
 
-        std::set <std::pair<long unsigned int, long unsigned int>> sInsertedEdges;
+        std::set<std::pair<long unsigned int, long unsigned int>> sInsertedEdges;
 
         const Eigen::Matrix<double, 7, 7> matLambda = Eigen::Matrix<double, 7, 7>::Identity();
 
@@ -600,7 +637,8 @@ namespace ORB_SLAM2 {
             for (auto pKFn: pKF->GetCovisiblesByWeight(minFeat)) {
                 if (pKFn && pKFn != pParentKF && !pKF->hasChild(pKFn) && !sLoopEdges.count(pKFn)) {
                     if (!pKFn->isBad() && pKFn->mnId < pKF->mnId) {
-                        if (sInsertedEdges.count(std::make_pair(std::min(pKF->mnId, pKFn->mnId), std::max(pKF->mnId, pKFn->mnId))))
+                        if (sInsertedEdges.count(
+                                std::make_pair(std::min(pKF->mnId, pKFn->mnId), std::max(pKF->mnId, pKFn->mnId))))
                             continue;
 
                         g2o::Sim3 Snw;
@@ -629,7 +667,7 @@ namespace ORB_SLAM2 {
         optimizer.initializeOptimization();
         optimizer.optimize(20);
 
-        std::unique_lock <std::mutex> lock(pMap->mMutexMapUpdate);
+        std::unique_lock<std::mutex> lock(pMap->mMutexMapUpdate);
 
 // SE3 Pose Recovering. Sim3:[sR t;0 1] -> SE3:[R t/s;0 1]
         for (auto pKFi: vpKFs) {
@@ -711,9 +749,9 @@ namespace ORB_SLAM2 {
         // Set MapPoint vertices
         const int N = vpMatches1.size();
         const std::vector<MapPoint *> vpMapPoints1 = pKF1->GetMapPointMatches();
-        std::vector < g2o::EdgeSim3ProjectXYZ * > vpEdges12;
-        std::vector < g2o::EdgeInverseSim3ProjectXYZ * > vpEdges21;
-        std::vector <size_t> vnIndexEdge;
+        std::vector<g2o::EdgeSim3ProjectXYZ *> vpEdges12;
+        std::vector<g2o::EdgeInverseSim3ProjectXYZ *> vpEdges21;
+        std::vector<size_t> vnIndexEdge;
 
         vnIndexEdge.reserve(2 * N);
         vpEdges12.reserve(2 * N);

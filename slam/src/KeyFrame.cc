@@ -65,7 +65,7 @@ namespace ORB_SLAM2 {
     }
 
     void KeyFrame::SetPose(const cv::Mat &Tcw_) {
-        std::unique_lock<std::mutex> lock(mMutexPose);
+        //std::unique_lock<std::mutex> lock(mMutexPose);
         Tcw_.copyTo(Tcw);
         cv::Mat Rcw = Tcw.rowRange(0, 3).colRange(0, 3);
         cv::Mat tcw = Tcw.rowRange(0, 3).col(3);
@@ -79,23 +79,23 @@ namespace ORB_SLAM2 {
     }
 
     cv::Mat KeyFrame::GetPose() {
-        std::unique_lock<std::mutex> lock(mMutexPose);
+        //std::unique_lock<std::mutex> lock(mMutexPose);
         return Tcw.clone();
     }
 
     cv::Mat KeyFrame::GetPoseInverse() {
-        std::unique_lock<std::mutex> lock(mMutexPose);
+        //std::unique_lock<std::mutex> lock(mMutexPose);
         return Twc.clone();
     }
 
     cv::Mat KeyFrame::GetCameraCenter() {
-        std::unique_lock<std::mutex> lock(mMutexPose);
+        //std::unique_lock<std::mutex> lock(mMutexPose);
         return Ow.clone();
     }
 
 
     cv::Mat KeyFrame::GetRotation() {
-        std::unique_lock<std::mutex> lock(mMutexPose);
+        //std::unique_lock<std::mutex> lock(mMutexPose);
         return Tcw.rowRange(0, 3).colRange(0, 3).clone();
     }
 
@@ -106,7 +106,7 @@ namespace ORB_SLAM2 {
 
     void KeyFrame::AddConnection(KeyFrame *pKF, const int &weight) {
         {
-            std::unique_lock<std::mutex> lock(mMutexConnections);
+            // std::unique_lock<std::mutex> lock(mMutexConnections);
             if (!mConnectedKeyFrameWeights.count(pKF) || mConnectedKeyFrameWeights[pKF] != weight)
                 mConnectedKeyFrameWeights[pKF] = weight;
             else
@@ -117,7 +117,7 @@ namespace ORB_SLAM2 {
     }
 
     void KeyFrame::UpdateBestCovisibles() {
-        std::unique_lock<std::mutex> lock(mMutexConnections);
+        // std::unique_lock<std::mutex> lock(mMutexConnections);
         std::vector<std::pair<int, KeyFrame *> > vPairs;
         vPairs.reserve(mConnectedKeyFrameWeights.size());
         for (auto &mConnectedKeyFrameWeight: mConnectedKeyFrameWeights)
@@ -136,7 +136,7 @@ namespace ORB_SLAM2 {
     }
 
     std::set<KeyFrame *> KeyFrame::GetConnectedKeyFrames() {
-        std::unique_lock<std::mutex> lock(mMutexConnections);
+        // std::unique_lock<std::mutex> lock(mMutexConnections);
         std::set<KeyFrame *> s;
         for (auto &mConnectedKeyFrameWeight: mConnectedKeyFrameWeights)
             s.insert(mConnectedKeyFrameWeight.first);
@@ -144,12 +144,12 @@ namespace ORB_SLAM2 {
     }
 
     std::vector<KeyFrame *> KeyFrame::GetVectorCovisibleKeyFrames() {
-        std::unique_lock<std::mutex> lock(mMutexConnections);
+        // std::unique_lock<std::mutex> lock(mMutexConnections);
         return mvpOrderedConnectedKeyFrames;
     }
 
     std::vector<KeyFrame *> KeyFrame::GetBestCovisibilityKeyFrames(const int &N) {
-        std::unique_lock<std::mutex> lock(mMutexConnections);
+        // std::unique_lock<std::mutex> lock(mMutexConnections);
         if ((int) mvpOrderedConnectedKeyFrames.size() < N)
             return mvpOrderedConnectedKeyFrames;
         else
@@ -159,7 +159,7 @@ namespace ORB_SLAM2 {
     }
 
     std::vector<KeyFrame *> KeyFrame::GetCovisiblesByWeight(const int &w) {
-        std::unique_lock<std::mutex> lock(mMutexConnections);
+        // std::unique_lock<std::mutex> lock(mMutexConnections);
 
         if (mvpOrderedConnectedKeyFrames.empty())
             return {};
@@ -176,7 +176,7 @@ namespace ORB_SLAM2 {
     }
 
     int KeyFrame::GetWeight(KeyFrame *pKF) {
-        std::unique_lock<std::mutex> lock(mMutexConnections);
+        // std::unique_lock<std::mutex> lock(mMutexConnections);
         if (mConnectedKeyFrameWeights.count(pKF))
             return mConnectedKeyFrameWeights[pKF];
         else
@@ -239,12 +239,12 @@ namespace ORB_SLAM2 {
     }
 
     std::vector<MapPoint *> KeyFrame::GetMapPointMatches() {
-        std::unique_lock<std::mutex> lock(mMutexFeatures);
+        //std::unique_lock<std::mutex> lock(mMutexFeatures);
         return mvpMapPoints;
     }
 
     MapPoint *KeyFrame::GetMapPoint(const size_t &idx) {
-        std::unique_lock<std::mutex> lock(mMutexFeatures);
+        //std::unique_lock<std::mutex> lock(mMutexFeatures);
         return mvpMapPoints[idx];
     }
 
@@ -307,7 +307,7 @@ namespace ORB_SLAM2 {
         }
 
         {
-            std::unique_lock<std::mutex> lockCon(mMutexConnections);
+            // std::unique_lock<std::mutex> lockCon(mMutexConnections);
 
             // mspConnectedKeyFrames = spConnectedKeyFrames;
             mConnectedKeyFrameWeights = KFcounter;
@@ -324,55 +324,55 @@ namespace ORB_SLAM2 {
     }
 
     void KeyFrame::AddChild(KeyFrame *pKF) {
-        std::unique_lock<std::mutex> lockCon(mMutexConnections);
+        // std::unique_lock<std::mutex> lockCon(mMutexConnections);
         mspChildrens.insert(pKF);
     }
 
     void KeyFrame::EraseChild(KeyFrame *pKF) {
-        std::unique_lock<std::mutex> lockCon(mMutexConnections);
+        // std::unique_lock<std::mutex> lockCon(mMutexConnections);
         mspChildrens.erase(pKF);
     }
 
     void KeyFrame::ChangeParent(KeyFrame *pKF) {
-        std::unique_lock<std::mutex> lockCon(mMutexConnections);
+        // std::unique_lock<std::mutex> lockCon(mMutexConnections);
         mpParent = pKF;
         pKF->AddChild(this);
     }
 
     std::set<KeyFrame *> KeyFrame::GetChilds() {
-        std::unique_lock<std::mutex> lockCon(mMutexConnections);
+        // std::unique_lock<std::mutex> lockCon(mMutexConnections);
         return mspChildrens;
     }
 
     KeyFrame *KeyFrame::GetParent() {
-        std::unique_lock<std::mutex> lockCon(mMutexConnections);
+        // std::unique_lock<std::mutex> lockCon(mMutexConnections);
         return mpParent;
     }
 
     bool KeyFrame::hasChild(KeyFrame *pKF) {
-        std::unique_lock<std::mutex> lockCon(mMutexConnections);
+        // std::unique_lock<std::mutex> lockCon(mMutexConnections);
         return mspChildrens.count(pKF);
     }
 
     void KeyFrame::AddLoopEdge(KeyFrame *pKF) {
-        std::unique_lock<std::mutex> lockCon(mMutexConnections);
+        // std::unique_lock<std::mutex> lockCon(mMutexConnections);
         mbNotErase = true;
         mspLoopEdges.insert(pKF);
     }
 
     std::set<KeyFrame *> KeyFrame::GetLoopEdges() {
-        std::unique_lock<std::mutex> lockCon(mMutexConnections);
+        // std::unique_lock<std::mutex> lockCon(mMutexConnections);
         return mspLoopEdges;
     }
 
     void KeyFrame::SetNotErase() {
-        std::unique_lock<std::mutex> lock(mMutexConnections);
+        // std::unique_lock<std::mutex> lock(mMutexConnections);
         mbNotErase = true;
     }
 
     void KeyFrame::SetErase() {
         {
-            std::unique_lock<std::mutex> lock(mMutexConnections);
+            // std::unique_lock<std::mutex> lock(mMutexConnections);
             if (mspLoopEdges.empty()) {
                 mbNotErase = false;
             }
@@ -385,7 +385,7 @@ namespace ORB_SLAM2 {
 
     void KeyFrame::SetBadFlag() {
         {
-            std::unique_lock<std::mutex> lock(mMutexConnections);
+            // std::unique_lock<std::mutex> lock(mMutexConnections);
             if (mnId == 0)
                 return;
             else if (mbNotErase) {
@@ -401,7 +401,7 @@ namespace ORB_SLAM2 {
             if (mvpMapPoint)
                 mvpMapPoint->EraseObservation(this);
         {
-            std::unique_lock<std::mutex> lock(mMutexConnections);
+            // std::unique_lock<std::mutex> lock(mMutexConnections);
             std::unique_lock<std::mutex> lock1(mMutexFeatures);
 
             mConnectedKeyFrameWeights.clear();
@@ -466,14 +466,14 @@ namespace ORB_SLAM2 {
     }
 
     bool KeyFrame::isBad() {
-        std::unique_lock<std::mutex> lock(mMutexConnections);
+        // std::unique_lock<std::mutex> lock(mMutexConnections);
         return mbBad;
     }
 
     void KeyFrame::EraseConnection(KeyFrame *pKF) {
         bool bUpdate = false;
         {
-            std::unique_lock<std::mutex> lock(mMutexConnections);
+            // std::unique_lock<std::mutex> lock(mMutexConnections);
             if (mConnectedKeyFrameWeights.count(pKF)) {
                 mConnectedKeyFrameWeights.erase(pKF);
                 bUpdate = true;
@@ -583,7 +583,7 @@ namespace ORB_SLAM2 {
     }
 
     std::unordered_map<KeyFrame *, int> KeyFrame::GetConnectedKeyFramesAsDic() {
-        std::unique_lock<std::mutex> lock(mMutexConnections);
+        // std::unique_lock<std::mutex> lock(mMutexConnections);
         std::unordered_map<KeyFrame *, int> s;
         for (auto mConnectedKeyFrameWeight: mConnectedKeyFrameWeights) {
             s.insert({mConnectedKeyFrameWeight.first, mConnectedKeyFrameWeight.second});

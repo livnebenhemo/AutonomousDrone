@@ -54,6 +54,8 @@ namespace ORB_SLAM2 {
         static Eigen::Matrix<double, 3, 3> toMatrix3d(const cv::Mat &cvMat3);
 
         static std::vector<double> toQuaternion(const cv::Mat &M);
+
+        static double round_up(double value, int decimal_places);
     };
 
 }// namespace ORB_SLAM

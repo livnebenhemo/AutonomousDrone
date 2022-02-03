@@ -46,12 +46,10 @@ int main() {
         usleep(5000000);
     }
     std::vector<std::pair<int, double>> markers;
-    markers.emplace_back(std::pair<int, double>(4, 0.1815));
-    markers.emplace_back(std::pair<int, double>(5, 0.1815));
-    markers.emplace_back(std::pair<int, double>(6, 0.1815));
+    markers.emplace_back(std::pair<int, double>(4, 0.07));
     Charger charger(markers, holdCamera, droneName, droneYamlPathAruco,
                     drone, frame, 9000);
     drone->SendCommandWithResponseByThread("takeoff");
-    charger.navigateToBox();
+    charger.run();
     return 0;
 }

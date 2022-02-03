@@ -39,10 +39,10 @@ DepthMapFactor: 1.0
 
 # ORB Extractor: Number of features per image
 #ORBextractor.nFeatures: 400
-ORBextractor.nFeatures: 5000
+ORBextractor.nFeatures: 3000
 
 # ORB Extractor: Scale factor between levels in the scale pyramid 	
-ORBextractor.scaleFactor: 1.166
+ORBextractor.scaleFactor: 1.2
 
 # ORB Extractor: Number of levels in the scale pyramid	
 ORBextractor.nLevels: 8

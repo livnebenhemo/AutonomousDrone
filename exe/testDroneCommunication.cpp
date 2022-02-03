@@ -6,7 +6,7 @@
 
 int main() {
     ctello::Tello drone(true);
-    while (!drone.SendCommandWithResponse("streamon"));
+    while (!drone.SendCommandWithResponseByThread("streamon"));
     std::ofstream batteryFile;
     batteryFile.open("/tmp/batteryFile.txt", std::ios_base::app);
     while (true){

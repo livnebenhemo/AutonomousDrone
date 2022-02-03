@@ -4,7 +4,25 @@
 
 #include <fstream>
 #include "include/Auxiliary.h"
+Point Auxiliary::rotationMatrixToEulerAngles(cv::Mat &R) {
 
+    double sy = std::sqrt(R.at<double>(0, 0) * R.at<double>(0, 0) +
+                          R.at<double>(1, 0) * R.at<double>(1, 0));
+
+    bool singular = sy < 1e-6; // If
+
+    double x, y, z;
+    if (!singular) {
+        x = std::atan2(R.at<double>(2, 1), R.at<double>(2, 2));
+        y = std::atan2(-R.at<double>(2, 0), sy);
+        z = std::atan2(R.at<double>(1, 0), R.at<double>(0, 0));
+    } else {
+        x = std::atan2(-R.at<double>(1, 2), R.at<double>(1, 1));
+        y = std::atan2(-R.at<double>(2, 0), sy);
+        z = 0;
+    }
+    return {x * 180 / CV_PI, y * 180 / CV_PI, z * 180 / CV_PI};
+}
 Point Auxiliary::GetCenterOfMass(const std::vector<Point> &points) {
     double x = 0.0;
     double y = 0.0;
@@ -15,7 +33,7 @@ Point Auxiliary::GetCenterOfMass(const std::vector<Point> &points) {
         z += point.z;
     }
     int size = points.size();
-    return {x / size, y / size, z / size, 0, 0, 0, 0};
+    return {x / size, y / size, z / size};
 }
 
 double Auxiliary::det(const Point &point1, const Point &point2) {

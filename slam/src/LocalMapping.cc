@@ -50,6 +50,9 @@ namespace ORB_SLAM2 {
             return;
         }
         // BoW conversion and insertion in Map
+        if (mlNewKeyFrames.empty()){
+            return;
+        }
         ProcessNewKeyFrame();
         // Check recent MapPoints
         MapPointCulling();
@@ -62,7 +65,10 @@ namespace ORB_SLAM2 {
             Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame, &mbAbortBA, mpMap);
         }
         KeyFrameCulling();
-        mpLoopCloser->InsertKeyFrame(mpCurrentKeyFrame);
+        if (mpCurrentKeyFrame){
+            //mpLoopCloser->InsertKeyFrame(mpCurrentKeyFrame);
+
+        }
         SetAcceptKeyFrames(true);
 
         // Tracking will see that Local Mapping is busy
@@ -102,7 +108,7 @@ namespace ORB_SLAM2 {
                     }
                 }
 
-                mpLoopCloser->InsertKeyFrame(mpCurrentKeyFrame);
+               // mpLoopCloser->InsertKeyFrame(mpCurrentKeyFrame);
             } else if (Stop()) {
                 // Safe area to stop
                 while (isStopped() && !CheckFinish()) {
@@ -127,20 +133,23 @@ namespace ORB_SLAM2 {
     }
 
     void LocalMapping::InsertKeyFrame(KeyFrame *pKF) {
-        std::unique_lock<std::mutex> lock(mMutexNewKFs);
-        mlNewKeyFrames.push_back(pKF);
-        mbAbortBA = true;
+        //std::unique_lock<std::mutex> lock(mMutexNewKFs);
+        if (pKF){
+            mlNewKeyFrames.push_back(pKF);
+            mbAbortBA = true;
+        }
     }
 
 
     bool LocalMapping::CheckNewKeyFrames() {
-        std::unique_lock<std::mutex> lock(mMutexNewKFs);
+        //std::unique_lock<std::mutex> lock(mMutexNewKFs);
         return (!mlNewKeyFrames.empty());
     }
 
     void LocalMapping::ProcessNewKeyFrame() {
         {
-            std::unique_lock<std::mutex> lock(mMutexNewKFs);
+            //std::unique_lock<std::mutex> lock(mMutexNewKFs);
+
             mpCurrentKeyFrame = mlNewKeyFrames.front();
             mlNewKeyFrames.pop_front();
         }
@@ -191,13 +200,12 @@ namespace ORB_SLAM2 {
             } else
                 lit++;
         }
+
     }
 
     void LocalMapping::CreateNewMapPoints() {
         // Retrieve neighbor keyframes in covisibility graph
-        int nn = 10;
-        if (mbMonocular)
-            nn = 20;
+        int nn = 20;
         const std::vector<KeyFrame *> vpNeighKFs = mpCurrentKeyFrame->GetBestCovisibilityKeyFrames(nn);
 
         ORBmatcher matcher(0.6, false);
@@ -469,7 +477,7 @@ namespace ORB_SLAM2 {
 
     void LocalMapping::RequestStop() {
         mbStopRequested = true;
-        std::unique_lock<std::mutex> lock2(mMutexNewKFs);
+        //std::unique_lock<std::mutex> lock2(mMutexNewKFs);
         mbAbortBA = true;
     }
 
@@ -492,7 +500,7 @@ namespace ORB_SLAM2 {
     }
 
     void LocalMapping::Release() {
-        std::unique_lock<std::mutex> lock2(mMutexFinish);
+        //std::unique_lock<std::mutex> lock2(mMutexFinish);
         if (mbFinished)
             return;
         mbStopped = false;
@@ -505,12 +513,12 @@ namespace ORB_SLAM2 {
     }
 
     bool LocalMapping::AcceptKeyFrames() {
-        std::unique_lock<std::mutex> lock(mMutexAccept);
+        //std::unique_lock<std::mutex> lock(mMutexAccept);
         return mbAcceptKeyFrames;
     }
 
     void LocalMapping::SetAcceptKeyFrames(bool flag) {
-        std::unique_lock<std::mutex> lock(mMutexAccept);
+        //std::unique_lock<std::mutex> lock(mMutexAccept);
         mbAcceptKeyFrames = flag;
     }
 
@@ -596,7 +604,7 @@ namespace ORB_SLAM2 {
     }
 
     void LocalMapping::ResetIfRequested() {
-        std::unique_lock<std::mutex> lock(mMutexReset);
+        //std::unique_lock<std::mutex> lock(mMutexReset);
         if (mbResetRequested) {
             mlNewKeyFrames.clear();
             mlpRecentAddedMapPoints.clear();
@@ -605,23 +613,23 @@ namespace ORB_SLAM2 {
     }
 
     void LocalMapping::RequestFinish() {
-        std::unique_lock<std::mutex> lock(mMutexFinish);
+        //std::unique_lock<std::mutex> lock(mMutexFinish);
         mbFinishRequested = true;
     }
 
     bool LocalMapping::CheckFinish() {
-        std::unique_lock<std::mutex> lock(mMutexFinish);
+        //std::unique_lock<std::mutex> lock(mMutexFinish);
         return mbFinishRequested;
     }
 
     void LocalMapping::SetFinish() {
-        std::unique_lock<std::mutex> lock(mMutexFinish);
+        //std::unique_lock<std::mutex> lock(mMutexFinish);
         mbFinished = true;
         mbStopped = true;
     }
 
     bool LocalMapping::isFinished() {
-        std::unique_lock<std::mutex> lock(mMutexFinish);
+        //std::unique_lock<std::mutex> lock(mMutexFinish);
         return mbFinished;
     }
 

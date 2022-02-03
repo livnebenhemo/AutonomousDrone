@@ -62,7 +62,7 @@ namespace ORB_SLAM2 {
         const ORBVocabulary *mpVoc;
 
         // Inverted file
-        std::vector<std::list<KeyFrame *> > mvInvertedFile;
+        std::unordered_map<unsigned int,std::unordered_map<KeyFrame *,int> > mvInvertedFile;
 
         // Mutex
         std::mutex mMutex;

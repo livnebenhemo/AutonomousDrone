@@ -26,23 +26,21 @@ namespace ORB_SLAM2 {
         int idx = 0;
         for (size_t i = 0, iend = vpMapPointMatches.size(); i < iend; i++) {
             MapPoint *pMP = vpMapPointMatches[i];
+            if (pMP && !pMP->isBad()) {
+                const cv::KeyPoint &kp = F.mvKeysUn[i];
 
-            if (pMP) {
-                if (!pMP->isBad()) {
-                    const cv::KeyPoint &kp = F.mvKeysUn[i];
+                mvP2D.push_back(kp.pt);
+                mvSigma2.push_back(F.mvLevelSigma2[kp.octave]);
 
-                    mvP2D.push_back(kp.pt);
-                    mvSigma2.push_back(F.mvLevelSigma2[kp.octave]);
+                cv::Mat Pos = pMP->GetWorldPos();
+                mvP3Dw.emplace_back(Pos.at<float>(0), Pos.at<float>(1), Pos.at<float>(2));
 
-                    cv::Mat Pos = pMP->GetWorldPos();
-                    mvP3Dw.emplace_back(Pos.at<float>(0), Pos.at<float>(1), Pos.at<float>(2));
+                mvKeyPointIndices.push_back(i);
+                mvAllIndices.push_back(idx);
 
-                    mvKeyPointIndices.push_back(i);
-                    mvAllIndices.push_back(idx);
-
-                    idx++;
-                }
+                idx++;
             }
+
         }
 
         // Set camera calibration parameters
@@ -89,12 +87,12 @@ namespace ORB_SLAM2 {
         // Set RANSAC iterations according to probability, epsilon, and max iterations
         int nIterations;
 
-        if (mRansacMinInliers == N)
+        /*if (mRansacMinInliers == N)
             nIterations = 1;
         else
             nIterations = ceil(log(1 - mRansacProb) / log(1 - pow(mRansacEpsilon, 3)));
 
-        mRansacMaxIts = std::max(1, std::min(nIterations, mRansacMaxIts));
+        mRansacMaxIts = std::max(1, std::min(nIterations, mRansacMaxIts));*/
 
         mvMaxError.resize(mvSigma2.size());
         for (size_t i = 0; i < mvSigma2.size(); i++)

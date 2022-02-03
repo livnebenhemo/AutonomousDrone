@@ -256,11 +256,13 @@ namespace ORB_SLAM2 {
         cv::Mat Ow = -Rcw.t() * tcw;
 
         // Set of MapPoints already found in the KeyFrame
-        std::set<MapPoint *> spAlreadyFound(vpMatched.begin(), vpMatched.end());
-        spAlreadyFound.erase(static_cast<MapPoint *>(nullptr));
-
+        std::unordered_map<MapPoint *,unsigned  long> spAlreadyFound;
+        for(const auto &point : vpMatched){
+            if (point && !point->isBad()){
+                spAlreadyFound [point] = point->mnId;
+            }
+        }
         int nmatches = 0;
-
         // For each Candidate MapPoint Project and Match
         for (auto pMP: vpPoints) {
             // Discard Bad MapPoints and already found
@@ -328,16 +330,13 @@ namespace ORB_SLAM2 {
                 if (kpLevel < nPredictedLevel - 1 || kpLevel > nPredictedLevel)
                     continue;
 
-                const cv::Mat &dKF = pKF->mDescriptors.row(idx);
+                const int currentDist = DescriptorDistance(dMP, pKF->mDescriptors.row(idx));
 
-                const int dist = DescriptorDistance(dMP, dKF);
-
-                if (dist < bestDist) {
-                    bestDist = dist;
+                if (currentDist < bestDist) {
+                    bestDist = currentDist;
                     bestIdx = idx;
                 }
             }
-
             if (bestDist <= TH_LOW) {
                 vpMatched[bestIdx] = pMP;
                 nmatches++;
@@ -572,20 +571,17 @@ namespace ORB_SLAM2 {
         const DBoW2::FeatureVector &vFeatVec2 = pKF2->mFeatVec;
 
         //Compute epipole in second image
-        cv::Mat Cw = pKF1->GetCameraCenter();
-        cv::Mat R2w = pKF2->GetRotation();
-        cv::Mat t2w = pKF2->GetTranslation();
-        cv::Mat C2 = R2w * Cw + t2w;
-        const float invz = 1.0f / C2.at<float>(2);
-        const float ex = pKF2->fx * C2.at<float>(0) * invz + pKF2->cx;
-        const float ey = pKF2->fy * C2.at<float>(1) * invz + pKF2->cy;
-
+        //cv::Mat Cw = pKF1->GetCameraCenter();
+        //cv::Mat R2w = pKF2->GetRotation();
+        //cv::Mat t2w = pKF2->GetTranslation();
+        //cv::Mat C2 = R2w * Cw + t2w;
+        //const float invz = 1.0f / C2.at<float>(2);
         // Find matches between not tracked keypoints
         // Matching speed-up by ORB Vocabulary
         // Compare only ORB that share the same node
 
         int nmatches = 0;
-        std::vector<bool> vbMatched2(pKF2->N, false);
+        //std::vector<bool> vbMatched2(pKF2->N, false);
         std::vector<int> vMatches12(pKF1->N, -1);
 
         std::vector<int> rotHist[HISTO_LENGTH];
@@ -603,22 +599,13 @@ namespace ORB_SLAM2 {
             if (f1it->first == f2it->first) {
                 for (size_t i1 = 0, iend1 = f1it->second.size(); i1 < iend1; i1++) {
                     const size_t idx1 = f1it->second[i1];
-
                     MapPoint *pMP1 = pKF1->GetMapPoint(idx1);
-
                     // If there is already a MapPoint skip
                     if (pMP1)
                         continue;
-
-                    const bool bStereo1 = pKF1->mvuRight[idx1] >= 0;
-
-                    if (bOnlyStereo)
-                        if (!bStereo1)
-                            continue;
-
                     const cv::KeyPoint &kp1 = pKF1->mvKeysUn[idx1];
 
-                    const cv::Mat &d1 = pKF1->mDescriptors.row(idx1);
+                    //const cv::Mat &d1 = pKF1->mDescriptors.row(idx1);
 
                     int bestDist = TH_LOW;
                     int bestIdx2 = -1;
@@ -627,31 +614,16 @@ namespace ORB_SLAM2 {
                         MapPoint *pMP2 = pKF2->GetMapPoint(idx2);
 
                         // If we have already matched or there is a MapPoint skip
-                        if (vbMatched2[idx2] || pMP2)
+                        if (/*vbMatched2[idx2] ||*/ pMP2)
                             continue;
 
-                        const bool bStereo2 = pKF2->mvuRight[idx2] >= 0;
-
-                        if (bOnlyStereo)
-                            if (!bStereo2)
-                                continue;
-
-                        const cv::Mat &d2 = pKF2->mDescriptors.row(idx2);
-
-                        const int dist = DescriptorDistance(d1, d2);
+                        // const cv::Mat &d2 = pKF2->mDescriptors.row(idx2);
+                        const unsigned int dist = DescriptorDistance(pKF1->mDescriptors.row(idx1), pKF2->mDescriptors.row(idx2));
 
                         if (dist > TH_LOW || dist > bestDist)
                             continue;
 
                         const cv::KeyPoint &kp2 = pKF2->mvKeysUn[idx2];
-
-                        if (!bStereo1 && !bStereo2) {
-                            const float distex = ex - kp2.pt.x;
-                            const float distey = ey - kp2.pt.y;
-                            if (distex * distex + distey * distey < 100 * pKF2->mvScaleFactors[kp2.octave])
-                                continue;
-                        }
-
                         if (CheckDistEpipolarLine(kp1, kp2, F12, pKF2)) {
                             bestIdx2 = idx2;
                             bestDist = dist;

@@ -81,7 +81,7 @@ namespace ORB_SLAM2 {
 
         //Initialize the Loop Closing thread and launch
         mpLoopCloser = new LoopClosing(mpMap, mpKeyFrameDatabase, mpVocabulary, mSensor != MONOCULAR);
-        mptLoopClosing = new std::thread(&ORB_SLAM2::LoopClosing::Run, mpLoopCloser);
+        //mptLoopClosing = new std::thread(&ORB_SLAM2::LoopClosing::Run, mpLoopCloser);
 
         //Initialize the Viewer thread and launch
         if (bUseViewer) {
@@ -95,42 +95,30 @@ namespace ORB_SLAM2 {
         mpTracker->SetLoopClosing(mpLoopCloser);
 
         mpLocalMapper->SetTracker(mpTracker);
-        mpLocalMapper->SetLoopCloser(mpLoopCloser);
+        //mpLocalMapper->SetLoopCloser(mpLoopCloser);
 
         mpLoopCloser->SetTracker(mpTracker);
-        mpLoopCloser->SetLocalMapper(mpLocalMapper);
+        //mpLoopCloser->SetLocalMapper(mpLocalMapper);
     }
 
     cv::Mat System::TrackMonocular(const cv::Mat &im, const double &timestamp) {
-        if (mSensor != MONOCULAR) {
-            std::cerr << "ERROR: you called TrackMonocular but input sensor was not set to Monocular." << std::endl;
-            exit(-1);
-        }
-
         // Check mode change
         {
-            std::unique_lock<std::mutex> lock(mMutexMode);
+            //std::unique_lock<std::mutex> lock(mMutexMode);
             if (mbActivateLocalizationMode) {
-                mpLocalMapper->RequestStop();
-
-                // Wait until Local Mapping has effectively stopped
-                while (!mpLocalMapper->isStopped()) {
-                    usleep(1000);
-                }
-
                 mpTracker->InformOnlyTracking(true);
                 mbActivateLocalizationMode = false;
             }
             if (mbDeactivateLocalizationMode) {
                 mpTracker->InformOnlyTracking(false);
-                mpLocalMapper->Release();
+                // mpLocalMapper->Release();
                 mbDeactivateLocalizationMode = false;
             }
         }
 
         // Check reset
         {
-            std::unique_lock<std::mutex> lock(mMutexReset);
+            //std::unique_lock<std::mutex> lock(mMutexReset);
             if (mbReset) {
                 mpTracker->Reset();
                 mbReset = false;
@@ -138,25 +126,28 @@ namespace ORB_SLAM2 {
         }
 
         cv::Mat Tcw = mpTracker->GrabImageMonocular(im, timestamp);
-        std::unique_lock<std::mutex> lock2(mMutexState);
+        if (Tcw.empty()) {
+            return {};
+        }
+        //std::unique_lock<std::mutex> lock2(mMutexState);
         mTrackedMapPoints = mpTracker->mCurrentFrame.mvpMapPoints;
 
         return Tcw;
     }
 
     void System::ActivateLocalizationMode() {
-        std::unique_lock<std::mutex> lock(mMutexMode);
+        //std::unique_lock<std::mutex> lock(mMutexMode);
         mbActivateLocalizationMode = true;
     }
 
     void System::DeactivateLocalizationMode() {
-        std::unique_lock<std::mutex> lock(mMutexMode);
+        //std::unique_lock<std::mutex> lock(mMutexMode);
         mbDeactivateLocalizationMode = true;
     }
 
 
     void System::Reset() {
-        std::unique_lock<std::mutex> lock(mMutexReset);
+        //std::unique_lock<std::mutex> lock(mMutexReset);
         mbReset = true;
     }
 

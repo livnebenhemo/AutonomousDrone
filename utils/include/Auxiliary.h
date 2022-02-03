@@ -23,6 +23,8 @@ class Auxiliary {
 public:
     static Point GetCenterOfMass(const std::vector<Point> &points);
 
+    static Point rotationMatrixToEulerAngles(cv::Mat &R);
+
     static std::string GetGeneralSettingsPath();
 
     static double det(const Point &point1, const Point &point2);
@@ -86,7 +88,8 @@ public:
     static std::pair<double, double> GetMinMax(std::vector<double> &points);
 
     static void DrawMapPointsPangolin(const std::vector<Point> &cloud, const std::vector<Point> &redPoints,
-                                      const std::string &windowName, const std::pair<Point,Point> &lineFromCenter = {});
+                                      const std::string &windowName,
+                                      const std::pair<Point, Point> &lineFromCenter = {});
 
     static void SetupPangolin(const std::string &window_name);
 
@@ -94,8 +97,9 @@ public:
 
     static double norm2d(double x, double y);
 
-    static void drawPathPangolin(const std::vector<Point> &cloud, std::vector<Point> &path, const std::string &windowName,
-                          const std::pair<Point, Point> &lineFromCenter);
+    static void
+    drawPathPangolin(const std::vector<Point> &cloud, std::vector<Point> &path, const std::string &windowName,
+                     const std::pair<Point, Point> &lineFromCenter);
 };
 
 

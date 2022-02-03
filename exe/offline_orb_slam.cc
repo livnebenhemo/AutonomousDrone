@@ -22,25 +22,36 @@ void saveMap(ORB_SLAM2::System SLAM) {
     pointData.close();
 }
 
-void saveMap(int fileNumber) {
+void saveMap() {
     std::ofstream pointData;
-    pointData.open("/tmp/pointData" + std::to_string(fileNumber) + ".csv");
+    std::ofstream pointDataAfterFilter;
+
+    char time_buf[21];
+    time_t now;
+    std::time(&now);
+    std::strftime(time_buf, 21, "%Y-%m-%d_%H:%S:%MZ", gmtime(&now));
+    std::string currentTime(time_buf);
+    pointData.open("/tmp/pointData" + currentTime + ".csv");
+    int amountOfPoints;
     for (auto p: allMapPoints) {
-        if (p != nullptr) {
+        if (p != nullptr && !p->isBad()) {
             auto frame = p->GetReferenceKeyFrame();
             auto frameId = frame->mnFrameId;
             cv::Mat Tcw = frame->GetPose();
             auto point = p->GetWorldPos();
+            Eigen::Matrix<double, 3, 1> v = ORB_SLAM2::Converter::toVector3d(point);
             cv::Mat Rwc = Tcw.rowRange(0, 3).colRange(0, 3).t();
             cv::Mat twc = -Rwc * Tcw.rowRange(0, 3).col(3);
             auto q = ORB_SLAM2::Converter::toQuaternion(Rwc);
-            Eigen::Matrix<double, 3, 1> v = ORB_SLAM2::Converter::toVector3d(point);
             pointData << v.x() << "," << v.y() << "," << v.z() << "," << q[0]
                       << "," << q[1] << "," << q[2] << "," << q[3] << "," << frameId <<
                       "," << twc.at<float>(0) << "," << twc.at<float>(1) << "," << twc.at<float>(2) << std::endl;
+            amountOfPoints++;
         }
     }
     pointData.close();
+    std::cout << "amount of points: " << amountOfPoints << std::endl;
+
     std::cout << "saved map" << std::endl;
 
 }
@@ -71,7 +82,7 @@ int main() {
         cv::Mat frame;
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
         for (int i = 0; i < 170; ++i) {
-        capture >> frame;
+            capture >> frame;
 
         }
 
@@ -80,14 +91,18 @@ int main() {
 
         for (;;) {
             SLAM.TrackMonocular(frame, capture.get(CV_CAP_PROP_POS_MSEC));
-                capture >> frame;
+            capture >> frame;
 
             if (frame.empty()) {
                 break;
             }
-            std::cout << "frame:" << amount_of_frames++ << std::endl;
+            //std::cout << "frame:" << amount_of_frames++ << std::endl;
             cv::resize(frame, frame, cv::Size(960, 720));
 
+        }
+        allMapPoints = SLAM.GetMap()->GetAllMapPoints();
+        if (!allMapPoints.empty()) {
+            saveMap();
         }
         std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
@@ -99,7 +114,7 @@ int main() {
 
     allMapPoints = SLAM.GetMap()->GetAllMapPoints();
     if (!allMapPoints.empty()) {
-        saveMap(0);
+        saveMap();
     }
     sleep(20);
     SLAM.Shutdown();

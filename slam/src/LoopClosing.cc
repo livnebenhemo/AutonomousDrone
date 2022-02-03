@@ -38,13 +38,13 @@ namespace ORB_SLAM2 {
     }
 
     void LoopClosing::SetLocalMapper(LocalMapping *pLocalMapper) {
-        mpLocalMapper = pLocalMapper;
+        //mpLocalMapper = pLocalMapper;
     }
 
 
     void LoopClosing::Run() {
         mbFinished = false;
-
+        return;
         while (true) {
             // Check if there are keyframes in the queue
             // Detect loop candidates and check covisibility consistency
@@ -73,25 +73,29 @@ namespace ORB_SLAM2 {
     }
 
     void LoopClosing::InsertKeyFrame(KeyFrame *pKF) {
-        std::unique_lock<std::mutex> lock(mMutexLoopQueue);
-        if (pKF->mnId != 0)
-            mlpLoopKeyFrameQueue.push_back(pKF);
+        //std::unique_lock<std::mutex>  lock(mMutexLoopQueue);
+        mpCurrentKF = pKF;
+        /*if (pKF->mnId != 0)
+            mlpLoopKeyFrameQueue.push_back(pKF);*/
     }
 
     bool LoopClosing::CheckNewKeyFrames() {
-        std::unique_lock<std::mutex> lock(mMutexLoopQueue);
+        //std::unique_lock<std::mutex>  lock(mMutexLoopQueue);
         return (!mlpLoopKeyFrameQueue.empty());
     }
 
     bool LoopClosing::DetectLoop() {
         {
-            if (mlpLoopKeyFrameQueue.empty()) {
+            /*if (mlpLoopKeyFrameQueue.empty()) {
                 return false;
             }
-            std::unique_lock<std::mutex> lock(mMutexLoopQueue);
+            //std::unique_lock<std::mutex>  lock(mMutexLoopQueue);
             mpCurrentKF = mlpLoopKeyFrameQueue.front();
-            mlpLoopKeyFrameQueue.pop_front();
+            mlpLoopKeyFrameQueue.pop_front();*/
             // Avoid that a keyframe can be erased while it is being process by this thread
+            if (!mpCurrentKF) {
+                return false;
+            }
             mpCurrentKF->SetNotErase();
         }
 
@@ -350,11 +354,11 @@ namespace ORB_SLAM2 {
 
         // Send a stop signal to Local Mapping
         // Avoid new keyframes are inserted while correcting the loop
-        mpLocalMapper->RequestStop();
+        //mpLocalMapper->RequestStop();
 
         // If a Global Bundle Adjustment is running, abort it
         if (isRunningGBA()) {
-            std::unique_lock<std::mutex> lock(mMutexGBA);
+            //std::unique_lock<std::mutex>  lock(mMutexGBA);
             mbStopGBA = true;
 
             mnFullBAIdx = true;
@@ -366,9 +370,9 @@ namespace ORB_SLAM2 {
         }
         std::cout << "bundle adjustment aborted" << std::endl;
         // Wait until Local Mapping has effectively stopped
-        while (!mpLocalMapper->isStopped()) {
+        /*while (!mpLocalMapper->isStopped()) {
             usleep(100);
-        }
+        }*/
         std::cout << "local map stopped" << std::endl;
         // Ensure current keyframe is updated
         mpCurrentKF->UpdateConnections();
@@ -384,7 +388,7 @@ namespace ORB_SLAM2 {
 
         {
             // Get Map Mutex
-            std::unique_lock<std::mutex> lock(mpMap->mMutexMapUpdate);
+            //std::unique_lock<std::mutex>  lock(mpMap->mMutexMapUpdate);
             for (auto pKFi: mvpCurrentConnectedKFs) {
                 if (pKFi) {
                     cv::Mat Tiw = pKFi->GetPose();
@@ -487,7 +491,7 @@ namespace ORB_SLAM2 {
         mpThreadGBA = new std::thread(&LoopClosing::RunGlobalBundleAdjustment, this, mpCurrentKF->mnId);
 
         // Loop closed. Release Local Mapping.
-        mpLocalMapper->Release();
+        //mpLocalMapper->Release();
 
         mLastLoopKFid = mpCurrentKF->mnId;
         std::cout << "done loop closing" << std::endl;
@@ -501,7 +505,7 @@ namespace ORB_SLAM2 {
 
             std::vector<MapPoint *> vpReplacePoints(mvpLoopMapPoints.size(), static_cast<MapPoint *>(nullptr));
             ORB_SLAM2::ORBmatcher::Fuse(pKF.first, cvScw, mvpLoopMapPoints, 4, vpReplacePoints);
-            std::unique_lock<std::mutex> lock(mpMap->mMutexMapUpdate);
+            //std::unique_lock<std::mutex>  lock(mpMap->mMutexMapUpdate);
             const int nLP = mvpLoopMapPoints.size();
             for (int i = 0; i < nLP; i++) {
                 MapPoint *pRep = vpReplacePoints[i];
@@ -515,13 +519,13 @@ namespace ORB_SLAM2 {
 
     void LoopClosing::RequestReset() {
         {
-            std::unique_lock<std::mutex> lock(mMutexReset);
+            //std::unique_lock<std::mutex>  lock(mMutexReset);
             mbResetRequested = true;
         }
 
         while (true) {
             {
-                std::unique_lock<std::mutex> lock2(mMutexReset);
+                //std::unique_lock<std::mutex>  lock2(mMutexReset);
                 if (!mbResetRequested)
                     break;
             }
@@ -530,7 +534,7 @@ namespace ORB_SLAM2 {
     }
 
     void LoopClosing::ResetIfRequested() {
-        std::unique_lock<std::mutex> lock(mMutexReset);
+        //std::unique_lock<std::mutex>  lock(mMutexReset);
         if (mbResetRequested) {
             mlpLoopKeyFrameQueue.clear();
             mLastLoopKFid = 0;
@@ -549,22 +553,22 @@ namespace ORB_SLAM2 {
         // not included in the Global BA and they are not consistent with the updated map.
         // We need to propagate the correction through the spanning tree
         {
-            std::unique_lock<std::mutex> lock(mMutexGBA);
+            //std::unique_lock<std::mutex>  lock(mMutexGBA);
             if (idx != mnFullBAIdx)
                 return;
 
             if (!mbStopGBA) {
                 std::cout << "Global Bundle Adjustment finished" << std::endl;
                 std::cout << "Updating map ..." << std::endl;
-                mpLocalMapper->RequestStop();
+                //mpLocalMapper->RequestStop();
                 // Wait until Local Mapping has effectively stopped
 
-                while (!mpLocalMapper->isStopped() && !mpLocalMapper->isFinished()) {
+                /*while (!mpLocalMapper->isStopped() && !mpLocalMapper->isFinished()) {
                     usleep(1000);
-                }
+                }*/
 
                 // Get Map Mutex
-                std::unique_lock<std::mutex> lock(mpMap->mMutexMapUpdate);
+                //std::unique_lock<std::mutex>  lock(mpMap->mMutexMapUpdate);
 
                 // Correct keyframes starting at map first keyframe
                 std::list<KeyFrame *> lpKFtoCheck(mpMap->mvpKeyFrameOrigins.begin(), mpMap->mvpKeyFrameOrigins.end());
@@ -620,7 +624,7 @@ namespace ORB_SLAM2 {
 
                 mpMap->InformNewBigChange();
 
-                mpLocalMapper->Release();
+                //mpLocalMapper->Release();
 
                 std::cout << "Map updated!" << std::endl;
             }
@@ -631,22 +635,22 @@ namespace ORB_SLAM2 {
     }
 
     void LoopClosing::RequestFinish() {
-        std::unique_lock<std::mutex> lock(mMutexFinish);
+        //std::unique_lock<std::mutex>  lock(mMutexFinish);
         mbFinishRequested = true;
     }
 
     bool LoopClosing::CheckFinish() {
-        std::unique_lock<std::mutex> lock(mMutexFinish);
+        //std::unique_lock<std::mutex>  lock(mMutexFinish);
         return mbFinishRequested;
     }
 
     void LoopClosing::SetFinish() {
-        std::unique_lock<std::mutex> lock(mMutexFinish);
+        //std::unique_lock<std::mutex>  lock(mMutexFinish);
         mbFinished = true;
     }
 
     bool LoopClosing::isFinished() {
-        std::unique_lock<std::mutex> lock(mMutexFinish);
+        //std::unique_lock<std::mutex>  lock(mMutexFinish);
         return mbFinished;
     }
 

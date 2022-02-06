@@ -19,14 +19,6 @@ std::vector<Point> getPointsFromFile(const std::string& fileName) {
         if (lineStream.peek() == ',') lineStream.ignore();
         lineStream >> point.y;
         if (lineStream.peek() == ',') lineStream.ignore();
-        lineStream >> point.qx;
-        if (lineStream.peek() == ',') lineStream.ignore();
-        lineStream >> point.qy;
-        if (lineStream.peek() == ',') lineStream.ignore();
-        lineStream >> point.qz;
-        if (lineStream.peek() == ',') lineStream.ignore();
-        lineStream >> point.qw;
-        if (lineStream.peek() == ',') lineStream.ignore();
         lineStream >> point.frameId;
         points.push_back(point);
     }
@@ -36,7 +28,7 @@ std::vector<Point> getPointsFromFile(const std::string& fileName) {
 
 int main() {
 
-    std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "buildings/Lab/pointData0.csv";
+    std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "buildings/Lab/pointDataAfterFilter.csv";
     auto points = getPointsFromFile(datasetFilePath);
     auto start = std::chrono::high_resolution_clock::now();
     Polygon polygon(points, Point());

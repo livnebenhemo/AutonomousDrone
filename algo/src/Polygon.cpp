@@ -14,7 +14,7 @@ Polygon::Polygon(std::vector<Point> points, const Point &polygonCenter, bool isE
 
 std::vector<Point> Polygon::getExitPointsByPolygon(bool isDebug) {
     //polygonCenter = Auxiliary::GetCenterOfMass(points);
-    createPointsWithDistance();
+    createPointsWithDistance(points);
     std::vector<std::pair<Point, double>> rawExitPoints = getRawPolygonCorners();
     double epsilon = 0.0;
     vertices = std::vector<Point>{};
@@ -23,11 +23,23 @@ std::vector<Point> Polygon::getExitPointsByPolygon(bool isDebug) {
         vertices.push_back(exitPoint.first);
     }
     epsilon /= (double) rawExitPoints.size();
-    if (isDebug) {
+    if (isDebug) {//isDebug //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         Auxiliary::showCloudPoint(vertices, points);
     }
     smoothPolygon();
     filterPointsInsidePolygon();
+
+    rawExitPoints = getRawPolygonCorners();
+    epsilon = 0.0;
+    vertices = std::vector<Point>{};
+    for (const auto &exitPoint: rawExitPoints) {
+        epsilon += exitPoint.second;
+        vertices.push_back(exitPoint.first);
+    }
+    epsilon /= (double) rawExitPoints.size();
+    if (isDebug) {//isDebug //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        Auxiliary::showCloudPoint(vertices, points);
+    }
     std::vector<Point> goodPoints {};//= filterPointsByVariances(getSlicesWithVariances(angle), epsilon);
     for(const auto &outSidePoint : pointsOutsidePolygon){
         goodPoints.push_back(outSidePoint.first);
@@ -190,9 +202,9 @@ std::vector<std::pair<double, std::vector<Point>>> Polygon::getSlicesWithVarianc
     return slices;
 }
 
-void Polygon::createPointsWithDistance() {
+void Polygon::createPointsWithDistance(const std::vector<Point> &CurrentPoints) {
     pointsWithDistance = std::vector<std::pair<Point, double>>{};
-    for (const Point &point: points) {
+    for (const Point &point: CurrentPoints) {
         pointsWithDistance.emplace_back(point, Auxiliary::calculateDistanceXY(polygonCenter, point));
     }
 }
@@ -247,19 +259,26 @@ void Polygon::smoothPolygon(int angleRange) {
 }
 
 std::vector<std::pair<Point, double>> Polygon::getRawPolygonCorners() {
-    std::vector<Line> lines = Pizza::createPizzaLines(polygonCenter, angle);
+    //std::vector<Line> lines = Pizza::createPizzaLines(polygonCenter, angle);
     auto slices = Pizza::createPizzaSlices(polygonCenter, pointsWithDistance, angle);
     std::vector<std::pair<Point, double>> polygonVertices;
     auto sortRule = [](const std::pair<Point, double> &point1, const std::pair<Point, double> &point2) -> bool {
         return point2.second > point1.second;
     };
     for (auto slice: slices) {
-        std::sort(slice.second.begin(), slice.second.end(), sortRule);
+        /*std::sort(slice.second.begin(), slice.second.end(), sortRule);
         Point point((polygonCenter.x + slice.second.back().first.x) / 2,
                     (polygonCenter.y + slice.second.back().first.y) / 2, polygonCenter.z);
         std::pair<Point, double> medianPoint = {point,
-                                                slice.second.back().second / 2};//slice.second[slice.second.size() / 2];
-        polygonVertices.push_back(medianPoint);
+                                                slice.second.back().second / 2};//slice.second[slice.second.size() / 2];*/
+        std::vector<Point> slicePoints{};
+        for(const auto &slicePoint : slice.second){
+            slicePoints.emplace_back(slicePoint.first);
+        }
+        Point meanPoint = Auxiliary::GetCenterOfMass(slicePoints);
+        //auto [eigvectors, eigvalues, meanPoint] = Auxiliary::pca(slicePoints);
+
+        polygonVertices.emplace_back(meanPoint,Auxiliary::calculateDistanceXY(polygonCenter,meanPoint));
     }
     return polygonVertices;
 }

@@ -26,7 +26,7 @@ private:
 
     void smoothPolygon(int angleRange = 10);
 
-    void createPointsWithDistance();
+    void createPointsWithDistance(const std::vector<Point> &CurrentPoints);
 
     void filterPointsInsidePolygon();
 
@@ -48,7 +48,8 @@ private:
     std::vector<std::pair<Point, double>> pointsOutsidePolygon;
     Point polygonCenter;
     std::vector<Line> edges;
-    int angle = 25;
+    int angle = 30;
+
     bool isExit;
 };
 

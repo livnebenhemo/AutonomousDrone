@@ -4,6 +4,8 @@
 
 #include <fstream>
 #include "include/Auxiliary.h"
+#include "opencv2/core.hpp"
+
 Point Auxiliary::rotationMatrixToEulerAngles(cv::Mat &R) {
 
     double sy = std::sqrt(R.at<double>(0, 0) * R.at<double>(0, 0) +
@@ -70,6 +72,30 @@ std::vector<double> Auxiliary::getZValues(const std::vector<Point> &points) {
         yValues.push_back(point.z);
     }
     return yValues;
+}
+
+ std::tuple<std::vector<cv::Point2d>, std::vector<double>, cv::Point2d> Auxiliary::pca(const std::vector<Point> &points) {
+    int sz = static_cast<int>(points.size());
+    cv::Mat data_pts = cv::Mat(sz, 2, CV_64F);
+    for (int i = 0; i < data_pts.rows; i++) {
+        data_pts.at<double>(i, 0) = points[i].x;
+        data_pts.at<double>(i, 1) = points[i].y;
+    }
+    //Perform PCA analysis
+    cv::PCA pca_analysis(data_pts, cv::Mat(), cv::PCA::DATA_AS_ROW);
+    //Store the center of the object
+    cv::Point2d cntr = cv::Point2d(pca_analysis.mean.at<double>(0, 0),pca_analysis.mean.at<double>(0, 1));
+    //Store the eigenvalues and eigenvectors
+    std::vector<cv::Point2d> eigen_vecs(2);
+    std::vector<double> eigen_val(2);
+    for (int i = 0; i < 2; i++) {
+        eigen_vecs[i] = cv::Point2d(pca_analysis.eigenvectors.at<double>(i, 0),
+                                    pca_analysis.eigenvectors.at<double>(i, 1));
+        eigen_val[i] = pca_analysis.eigenvalues.at<double>(i);
+    }
+
+    return {eigen_vecs, eigen_val, cntr};
+
 }
 
 //#ifdef NOTRPI
@@ -237,6 +263,8 @@ void Auxiliary::showCloudPoint3D(const std::vector<Point> &redPoints, const std:
     matplotlibcpp::scatter(getXValues(cloud), getYValues(cloud), getZValues(cloud), 0.1);
     matplotlibcpp::show();
 }
+
+
 
 //#endif
 double Auxiliary::distanceBetweenPointAndSegment(const Point &point, Line segment) {

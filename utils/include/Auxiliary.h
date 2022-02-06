@@ -78,6 +78,8 @@ public:
 
     static std::vector<double> getZValues(const std::vector<Point> &points);
 
+    static std::tuple<std::vector<cv::Point2d>, std::vector<double>, cv::Point2d> pca(const std::vector<Point> &points);
+
     static void exportToXYZFile(const std::vector<Point> &points, std::string fileName = "/tmp/result.xyz");
 
     static void showGraph(std::vector<double> &x, std::vector<double> &y, const std::string &pointsDisplay = "");

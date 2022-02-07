@@ -162,8 +162,8 @@ namespace ORB_SLAM2 {
         int nvisible, nfound;
         std::unordered_map<KeyFrame *, size_t> obs;
         {
-            std::unique_lock<std::mutex> lock1(mMutexFeatures);
-            std::unique_lock<std::mutex> lock2(mMutexPos);
+           // std::unique_lock<std::mutex> lock1(mMutexFeatures);
+            // std::unique_lock<std::mutex> lock2(mMutexPos);
             obs = mObservations;
             mObservations.clear();
             mbBad = true;
@@ -188,7 +188,7 @@ namespace ORB_SLAM2 {
 
     bool MapPoint::isBad() {
         // std::unique_lock<std::mutex> lock(mMutexFeatures);
-        std::unique_lock<std::mutex> lock2(mMutexPos);
+        //std::unique_lock<std::mutex> lock2(mMutexPos);
         return mbBad;
     }
 
@@ -214,7 +214,7 @@ namespace ORB_SLAM2 {
         std::unordered_map<KeyFrame *, size_t> observations;
 
         {
-            std::unique_lock<std::mutex> lock1(mMutexFeatures);
+            //std::unique_lock<std::mutex> lock1(mMutexFeatures);
             if (mbBad)
                 return;
             observations = mObservations;
@@ -278,7 +278,7 @@ namespace ORB_SLAM2 {
     }
 
     bool MapPoint::IsInKeyFrame(KeyFrame *pKF) {
-        //// std::unique_lock<std::mutex> lock(mMutexFeatures);
+        // std::unique_lock<std::mutex> lock(mMutexFeatures);
         return (mObservations.count(pKF));
     }
 
@@ -289,7 +289,7 @@ namespace ORB_SLAM2 {
         if (mObservations.empty() || !mpRefKF)
             return;
         {
-            std::unique_lock<std::mutex> lock1(mMutexFeatures);
+            //std::unique_lock<std::mutex> lock1(mMutexFeatures);
             //std::unique_lock<std::mutex> lock2(mMutexPos);
             if (mbBad)
                 return;
@@ -302,8 +302,7 @@ namespace ORB_SLAM2 {
         auto n = observations.size();
         for (auto observation: observations) {
             auto pKF = observation.first;
-            cv::Mat Owi = pKF->GetCameraCenter();
-            cv::Mat normali = Pos - Owi;
+            cv::Mat normali = Pos - pKF->GetCameraCenter();
             normal += normali / cv::norm(normali);
         }
 
@@ -314,7 +313,7 @@ namespace ORB_SLAM2 {
         const int nLevels = pRefKF->mnScaleLevels;
 
         {
-            std::unique_lock<std::mutex> lock3(mMutexPos);
+            // std::unique_lock<std::mutex> lock3(mMutexPos);
             mfMaxDistance = dist * levelScaleFactor;
             mfMinDistance = mfMaxDistance / pRefKF->mvScaleFactors[nLevels - 1];
             mNormalVector = normal / n;

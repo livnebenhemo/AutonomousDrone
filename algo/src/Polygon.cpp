@@ -270,15 +270,17 @@ std::vector<std::pair<Point, double>> Polygon::getRawPolygonCorners() {
         Point point((polygonCenter.x + slice.second.back().first.x) / 2,
                     (polygonCenter.y + slice.second.back().first.y) / 2, polygonCenter.z);
         std::pair<Point, double> medianPoint = {point,
-                                                slice.second.back().second / 2};//slice.second[slice.second.size() / 2];*/
-        std::vector<Point> slicePoints{};
+                                                slice.second.back().second / 2};//slice.second[slice.second.size() / 2];
+        polygonVertices.emplace_back(medianPoint);*/
+
+        /*std::vector<Point> slicePoints{};
         for(const auto &slicePoint : slice.second){
             slicePoints.emplace_back(slicePoint.first);
         }
         Point meanPoint = Auxiliary::GetCenterOfMass(slicePoints);
         //auto [eigvectors, eigvalues, meanPoint] = Auxiliary::pca(slicePoints);
 
-        polygonVertices.emplace_back(meanPoint,Auxiliary::calculateDistanceXY(polygonCenter,meanPoint));
+        polygonVertices.emplace_back(meanPoint,Auxiliary::calculateDistanceXY(polygonCenter,meanPoint));*/
     }
     return polygonVertices;
 }

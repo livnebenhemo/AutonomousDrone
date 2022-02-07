@@ -90,7 +90,7 @@ namespace ORB_SLAM2 {
 
     cv::Mat KeyFrame::GetCameraCenter() {
         //std::unique_lock<std::mutex> lock(mMutexPose);
-        return Ow.clone();
+        return Ow;
     }
 
 

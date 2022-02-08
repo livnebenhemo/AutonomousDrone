@@ -503,6 +503,8 @@ void AutonomousDrone::beginScan(bool findHome, int rotationAngle) {
     manageDroneCommand("up 40", 3, 3);
     isMinusUp = prevLocation.z > currentLocation.z;
     manageDroneCommand("down 40", 3);
+    orbSlamPointer->GetLoopClosing()->RunGlobalBundleAdjustment(orbSlamPointer->GetMap()->GetMaxKFid());
+
 }
 
 Point AutonomousDrone::convertFrameToPoint(Frame &frame) {

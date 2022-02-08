@@ -35,6 +35,12 @@ public:
 
     static long myGcd(long a, long b);
 
+    static cv::Mat convertPointToCVMat(const Point &point);
+
+    static std::vector<cv::Point3d> convertToCvPoints(const std::vector<Point> &points);
+
+    static std::pair<cv::Mat, cv::Mat> calculateAlignMatrices(std::vector<cv::Point3d> points);
+
     static std::tuple<int, int, int> getRationalInverse(double input);
 
     static double getAngleFromSlope(double slope);
@@ -102,6 +108,8 @@ public:
     static void
     drawPathPangolin(const std::vector<Point> &cloud, std::vector<Point> &path, const std::string &windowName,
                      const std::pair<Point, Point> &lineFromCenter);
+
+    static std::pair<cv::Mat, cv::Mat> alignMap(std::vector<Point> &points);
 };
 
 

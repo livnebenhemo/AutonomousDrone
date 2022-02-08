@@ -124,6 +124,8 @@ namespace ORB_SLAM2 {
         Tracking *GetTracker() { return mpTracker; };
 
         LocalMapping *GetLocalMapping() { return mpLocalMapper; };
+
+        LoopClosing *GetLoopClosing() { return mpLoopCloser; };
     private:
 
         // Input sensor

@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <iostream>
 #include <nlohmann/json.hpp>
+#include <ctello.h>
 #include "include/Auxiliary.h"
 
 // Defining the dimensions of checkerboard
@@ -21,7 +22,7 @@ int main() {
     std::vector<cv::Point3f> objp;
     for (int i{0}; i < CHECKERBOARD[1]; i++) {
         for (int j{0}; j < CHECKERBOARD[0]; j++)
-            objp.push_back(cv::Point3f(j, i, 0));
+            objp.push_back(cv::Point3f(j*6, i*6, 0));
     }
 
     std::string settingPath = Auxiliary::GetGeneralSettingsPath();
@@ -29,9 +30,14 @@ int main() {
     nlohmann::json data;
     programData >> data;
     programData.close();
-    int videoPath = data["onlineVideoPath"];
+    /*int videoPath = data["onlineVideoPath"];
     system("v4l2-ctl -d /dev/video0 -c exposure_auto=0");
-    system("v4l2-ctl -d /dev/video0 -c white_balance_temperature_auto=0");
+    system("v4l2-ctl -d /dev/video0 -c white_balance_temperature_auto=0");*/
+    sleep(10);
+    ctello::Tello tello;
+    tello.Bind();
+    tello.SendCommandWithResponse("streamon");
+    std::string videoPath = data["onlineVideoPath"];
     cv::VideoCapture capture(videoPath);
 
 
@@ -45,6 +51,11 @@ int main() {
     // Looping over all the images in the directory
     for (int i{0}; i < 100; i++) {
         capture >> frame;
+        if (frame.empty()){
+            i--;
+            continue;
+        }
+        //cv::resize(frame, frame, cv::Size(640, 480));
         cv::cvtColor(frame, gray, cv::COLOR_BGR2GRAY);
         // Finding checker board corners
         // If desired number of corners are found in the image then success = true
@@ -63,11 +74,19 @@ int main() {
 
             objpoints.push_back(objp);
             imgpoints.push_back(corner_pts);
-            waitKey = 1000;
-
+            cv::Mat junk;
+            for (int j = 0; j < 50; ++j) {
+                capture >> junk;
+                usleep(40000);
+            }
+            waitKey = 1;
         } else {
             i--;
             waitKey = 1;
+            for (int j = 0; j < 3; ++j) {
+                capture >> frame;
+                usleep(40000);
+            }
         }
 
         cv::imshow("Image", frame);

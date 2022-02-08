@@ -457,6 +457,68 @@ double Auxiliary::calculateVariance(const std::vector<double> &distances) {
     return variance;
 }
 
+cv::Mat points3d_to_mat(const std::vector<cv::Point3d> &points3d) {
+    std::size_t nPoints = points3d.size();
+    cv::Mat mat((int) nPoints, 3, CV_64FC1);
+    for (std::size_t i = 0; i < nPoints; i++) {
+        mat.at<double>(i, 0) = points3d[i].x;
+        mat.at<double>(i, 1) = points3d[i].y;
+        mat.at<double>(i, 2) = points3d[i].z;
+    }
+
+    return mat.t();
+}
+
+std::pair<cv::Mat, cv::Mat> Auxiliary::calculateAlignMatrices(std::vector<cv::Point3d> points) {
+    cv::Mat mu_align1;
+    cv::Mat R_align;
+    cv::reduce(points, mu_align1, 01, CV_REDUCE_AVG);
+
+    cv::Point3d mu_align_pnt(mu_align1.at<double>(0), mu_align1.at<double>(1), mu_align1.at<double>(2));
+    cv::Mat mu_align(mu_align_pnt);
+
+    std::cout << "Centering points" << std::endl;
+    for (auto &p: points) {
+        p = p - mu_align_pnt;
+    }
+
+    cv::Mat A = points3d_to_mat(points);
+    cv::Mat w, u, vt;
+    // cv::SVD::compute(A,w,u,vt,cv::SVD::MODIFY_A| cv::SVD::FULL_UV);
+    cv::SVDecomp(A, w, u, vt);
+    R_align = u.t();
+
+
+    return {R_align, mu_align};
+}
+std::vector<cv::Point3d> Auxiliary::convertToCvPoints(const std::vector<Point> &points) {
+    std::vector<cv::Point3d> cvPoints;
+    for (const auto &point: points) {
+        cvPoints.emplace_back(cv::Point3d(point.x, point.y, point.z));
+    }
+    return cvPoints;
+}
+cv::Mat Auxiliary::convertPointToCVMat(const Point &point) {
+    cv::Mat pnt3d(1, 3, CV_64FC1);
+    pnt3d.at<double>(0, 0) = point.x;
+    pnt3d.at<double>(0, 1) = point.y;
+    pnt3d.at<double>(0, 2) = point.z;
+    return pnt3d.t();
+}
+std::pair<cv::Mat, cv::Mat> Auxiliary::alignMap(std::vector<Point> &points) {
+    auto[R_align, mu_align] = calculateAlignMatrices(convertToCvPoints(points));
+
+    for (auto &point: points) {
+        auto pnt3d = convertPointToCVMat(point);
+        cv::Mat align_pos;
+        align_pos = R_align * (pnt3d - mu_align);
+
+        point.x = align_pos.at<double>(0, 0);
+        point.y = align_pos.at<double>(1, 0);
+        point.z = align_pos.at<double>(2, 0);
+    }
+    return {R_align, mu_align};
+}
 double Auxiliary::getAngleBySlopes(Line line1, Line line2) {
     Eigen::Vector3d vector1(1, line1.getSlope(), 0);
     Eigen::Vector3d vector2(1, line2.getSlope(), 0);

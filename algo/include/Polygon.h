@@ -37,7 +37,7 @@ private:
     std::vector<Point> getNavigationPoints(const std::vector<Point> &goodPoints, int minSamples = 15);
 
     std::vector<Point>
-    filterCheckpoints(const std::vector<Point> &rawNavigationPoints, int minAngleDistance = 45) const;
+    filterCheckpoints(const std::vector<Point> &rawNavigationPoints, int minAngleDistance =  25) const;
 
     Point getNavigationPointFromCluster(const std::vector<Point> &cluster);
 
@@ -48,9 +48,11 @@ private:
     std::vector<std::pair<Point, double>> pointsOutsidePolygon;
     Point polygonCenter;
     std::vector<Line> edges;
-    int angle = 30;
+    int pizzaAngle = 30;
 
     bool isExit;
+
+    std::vector<Point> getNavigationPointsByVertexSharpAngle(const std::vector<Point> &goodPoints, int maxAngle);
 };
 
 

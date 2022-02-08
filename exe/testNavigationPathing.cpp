@@ -85,68 +85,27 @@ std::pair<cv::Mat, cv::Mat> align_map(std::vector<Point> &points) {
     return {R_align, mu_align};
 }
 
-std::pair<std::vector<Frame>, std::vector<Point>> getFramesFromFile(const std::string &fileName) {
+std::vector<Point> getFramesFromFile(const std::string &fileName) {
     std::unordered_map<int, std::vector<Point>> framesMap;
     std::ifstream myFile(fileName);
     std::string line;
-    std::vector<Frame> frames;
     std::vector<Point> allPoints;
     while (std::getline(myFile, line)) {
         std::stringstream lineStream(line);
         Point point;
-        Frame frame;
         lineStream >> point.x;
         if (lineStream.peek() == ',') lineStream.ignore();
         lineStream >> point.z;
         if (lineStream.peek() == ',') lineStream.ignore();
         lineStream >> point.y;
         if (lineStream.peek() == ',') lineStream.ignore();
-        lineStream >> point.qx;
-        frame.qx = point.qx;
-        if (lineStream.peek() == ',') lineStream.ignore();
-        lineStream >> point.qy;
-        frame.qy = point.qy;
-
-        if (lineStream.peek() == ',') lineStream.ignore();
-        lineStream >> point.qz;
-        frame.qz = point.qz;
-
-        if (lineStream.peek() == ',') lineStream.ignore();
-        lineStream >> point.qw;
-        frame.qw = point.qw;
 
         if (lineStream.peek() == ',') lineStream.ignore();
         lineStream >> point.frameId;
-        frame.frameId = point.frameId;
-        if (lineStream.peek() == ',') lineStream.ignore();
-        lineStream >> frame.x;
-        if (lineStream.peek() == ',') lineStream.ignore();
-        lineStream >> frame.z;
-        if (lineStream.peek() == ',') lineStream.ignore();
-        lineStream >> frame.y;
-        if (!framesMap.count(point.frameId)) {
-            framesMap.insert({point.frameId, std::vector<Point>{point}});
-        } else {
-            framesMap.at(point.frameId).emplace_back(point);
-        }
+
         allPoints.emplace_back(point);
-        frames.emplace_back(frame);
     }
-    std::unordered_map<int, Frame> returnedFrames;
-    std::vector<Frame> frames2;
-    for (const auto &frame: frames) {
-        if (!returnedFrames.count(frame.frameId)) {
-            auto points = framesMap.at(frame.frameId);
-            returnedFrames.insert({frame.frameId,
-                                   Frame(frame.x, frame.y, frame.z, frame.qx, frame.qy, frame.qz, frame.qw,
-                                         frame.frameId, points,
-                                         points.size())});
-            frames2.emplace_back(
-                    Frame(frame.x, frame.y, frame.z, frame.qx, frame.qy, frame.qz, frame.qw, frame.frameId, points,
-                          points.size()));
-        }
-    }
-    return {frames2, allPoints};
+    return allPoints;
 
 }
 

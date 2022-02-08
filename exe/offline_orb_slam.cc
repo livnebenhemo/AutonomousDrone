@@ -100,6 +100,7 @@ int main() {
             cv::resize(frame, frame, cv::Size(960, 720));
 
         }
+        SLAM.GetLoopClosing()->RunGlobalBundleAdjustment(SLAM.GetMap()->GetMaxKFid());
         allMapPoints = SLAM.GetMap()->GetAllMapPoints();
         if (!allMapPoints.empty()) {
             saveMap();

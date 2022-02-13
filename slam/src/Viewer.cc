@@ -18,7 +18,7 @@
 * along with ORB-SLAM2. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "include/Viewer.h"
+#include "Viewer.h"
 #include <pangolin/pangolin.h>
 
 #include <mutex>
@@ -155,39 +155,39 @@ namespace ORB_SLAM2 {
     }
 
     void Viewer::RequestFinish() {
-        std::unique_lock<std::mutex> lock(mMutexFinish);
+        //std::unique_lock<std::mutex> lock(mMutexFinish);
         mbFinishRequested = true;
     }
 
     bool Viewer::CheckFinish() {
-        std::unique_lock<std::mutex> lock(mMutexFinish);
+        //std::unique_lock<std::mutex> lock(mMutexFinish);
         return mbFinishRequested;
     }
 
     void Viewer::SetFinish() {
-        std::unique_lock<std::mutex> lock(mMutexFinish);
+        //std::unique_lock<std::mutex> lock(mMutexFinish);
         mbFinished = true;
     }
 
     bool Viewer::isFinished() {
-        std::unique_lock<std::mutex> lock(mMutexFinish);
+        //std::unique_lock<std::mutex> lock(mMutexFinish);
         return mbFinished;
     }
 
     void Viewer::RequestStop() {
-        std::unique_lock<std::mutex> lock(mMutexStop);
+        //std::unique_lock<std::mutex> lock(mMutexStop);
         if (!mbStopped)
             mbStopRequested = true;
     }
 
     bool Viewer::isStopped() {
-        std::unique_lock<std::mutex> lock(mMutexStop);
+        //std::unique_lock<std::mutex> lock(mMutexStop);
         return mbStopped;
     }
 
     bool Viewer::Stop() {
-        std::unique_lock<std::mutex> lock(mMutexStop);
-        std::unique_lock<std::mutex> lock2(mMutexFinish);
+        //std::unique_lock<std::mutex> lock(mMutexStop);
+        //std::unique_lock<std::mutex> lock2(mMutexFinish);
 
         if (mbFinishRequested)
             return false;
@@ -202,7 +202,7 @@ namespace ORB_SLAM2 {
     }
 
     void Viewer::Release() {
-        std::unique_lock<std::mutex> lock(mMutexStop);
+        // std::unique_lock<std::mutex> lock(mMutexStop);
         mbStopped = false;
     }
 

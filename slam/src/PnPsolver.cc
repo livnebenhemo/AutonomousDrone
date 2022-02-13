@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-#include "include/PnPsolver.h"
+#include "PnPsolver.h"
 
 #include <vector>
 #include <cmath>
@@ -11,7 +11,7 @@
 namespace ORB_SLAM2 {
 
 
-    PnPsolver::PnPsolver(const Frame &F, const std::vector<MapPoint *> &vpMapPointMatches) :
+    PnPsolver::PnPsolver(const Frame &F, std::unordered_map<size_t, MapPoint *> &vpMapPointMatches) :
             pws(nullptr), us(nullptr), alphas(nullptr), pcs(nullptr), maximum_number_of_correspondences(0),
             number_of_correspondences(0),
             mnInliersi(0),

@@ -18,7 +18,7 @@
 * along with ORB-SLAM2. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "include/Optimizer.h"
+#include "Optimizer.h"
 
 namespace ORB_SLAM2 {
 
@@ -34,8 +34,7 @@ namespace ORB_SLAM2 {
     void Optimizer::BundleAdjustment(const std::vector<KeyFrame *> &vpKFs, const std::vector<MapPoint *> &vpMP,
                                      int nIterations, bool *pbStopFlag, const unsigned long nLoopKF,
                                      const bool bRobust) {
-        std::vector<bool> vbNotIncludedMP;
-        vbNotIncludedMP.resize(vpMP.size());
+        std::vector<bool> vbNotIncludedMP(vpMP.size(), false);
 
         g2o::SparseOptimizer optimizer;
         g2o::BlockSolver_6_3::LinearSolverType *linearSolver;
@@ -73,12 +72,10 @@ namespace ORB_SLAM2 {
                 continue;
             const std::unordered_map<KeyFrame *, size_t> observations = pMP->GetObservations();
 
-            int nEdges = observations.size();
-            if (nEdges == 0) {
+            if (observations.empty()) {
                 vbNotIncludedMP[i] = true;
                 continue;
             }
-            vbNotIncludedMP[i] = false;
             auto vPoint = new g2o::VertexSBAPointXYZ();
             vPoint->setEstimate(Converter::toVector3d(pMP->GetWorldPos()));
             const int id = pMP->mnId + maxKFid + 1;
@@ -192,7 +189,7 @@ namespace ORB_SLAM2 {
 
         const double deltaMono = sqrt(5.991);
         {
-            std::unique_lock<std::mutex> lock(MapPoint::mGlobalMutex);
+            //std::unique_lock<std::mutex> lock(MapPoint::mGlobalMutex);
 
             for (int i = 0; i < N; i++) {
                 MapPoint *pMP = pFrame->mvpMapPoints[i];
@@ -278,7 +275,7 @@ namespace ORB_SLAM2 {
         auto keyFramePose = ORB_SLAM2::Converter::toVector3d(pKF->GetPose());
         auto points = pKF->GetMapPointMatches();
         auto amountOfPoints = points.size();
-        for (auto mapPoint: pKF->GetMapPointMatches()) {
+        for (auto &[i, mapPoint]: pKF->GetMapPointMatches()) {
             if (mapPoint && !mapPoint->isBad()) {
                 auto v = ORB_SLAM2::Converter::toVector3d(mapPoint->GetWorldPos()) - keyFramePose;
                 double dist = std::sqrt(std::pow(v.x(), 2) + std::pow(v.y(), 2) + std::pow(v.z(), 2));
@@ -326,7 +323,7 @@ namespace ORB_SLAM2 {
         // Local MapPoints seen in Local KeyFrames
         std::vector<MapPoint *> lLocalMapPoints;
         for (auto vpMPs: lLocalKeyFrames) {
-            for (auto pMP: vpMPs->GetMapPointMatches()) {
+            for (auto &[i, pMP]: vpMPs->GetMapPointMatches()) {
                 if (pMP && !pMP->isBad())
                     if (pMP->mnBALocalForKF != pKF->mnId) {
                         lLocalMapPoints.push_back(pMP);
@@ -471,11 +468,16 @@ namespace ORB_SLAM2 {
             }
         }
         // Get Map Mutex
-        std::unique_lock<std::mutex> lock(pMap->mMutexMapUpdate);
+        //std::unique_lock<std::mutex> lock(pMap->mMutexMapUpdate);
         if (!vToErase.empty()) {
             for (auto erase: vToErase) {
-                erase.first->EraseMapPointMatch(erase.second);
-                erase.second->EraseObservation(erase.first);
+                if (erase.first) {
+
+                    erase.first->EraseMapPointMatch(erase.second);
+                }
+                if (erase.second) {
+                    erase.second->EraseObservation(erase.first);
+                }
             }
         }
         // Recover optimized data
@@ -667,7 +669,7 @@ namespace ORB_SLAM2 {
         optimizer.initializeOptimization();
         optimizer.optimize(20);
 
-        std::unique_lock<std::mutex> lock(pMap->mMutexMapUpdate);
+        //std::unique_lock<std::mutex> lock(pMap->mMutexMapUpdate);
 
 // SE3 Pose Recovering. Sim3:[sR t;0 1] -> SE3:[R t/s;0 1]
         for (auto pKFi: vpKFs) {
@@ -748,7 +750,7 @@ namespace ORB_SLAM2 {
 
         // Set MapPoint vertices
         const int N = vpMatches1.size();
-        const std::vector<MapPoint *> vpMapPoints1 = pKF1->GetMapPointMatches();
+        std::unordered_map<size_t, MapPoint *> vpMapPoints1 = pKF1->GetMapPointMatches();
         std::vector<g2o::EdgeSim3ProjectXYZ *> vpEdges12;
         std::vector<g2o::EdgeInverseSim3ProjectXYZ *> vpEdges21;
         std::vector<size_t> vnIndexEdge;

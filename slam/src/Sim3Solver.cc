@@ -19,14 +19,14 @@
 */
 
 
-#include "include/Sim3Solver.h"
+#include "Sim3Solver.h"
 
 #include <vector>
 #include <cmath>
 #include <opencv2/core/core.hpp>
 
-#include "include/KeyFrame.h"
-#include "include/ORBmatcher.h"
+#include "KeyFrame.h"
+#include "ORBmatcher.h"
 
 namespace ORB_SLAM2
 {
@@ -36,7 +36,7 @@ Sim3Solver::Sim3Solver(KeyFrame *pKF1, KeyFrame *pKF2, const std::vector<MapPoin
     mnIterations(0), mnBestInliers(0), mbFixScale(bFixScale)
 {
 
-    std::vector<MapPoint*> vpKeyFrameMP1 = pKF1->GetMapPointMatches();
+    std::unordered_map<size_t,MapPoint *> vpKeyFrameMP1 = pKF1->GetMapPointMatches();
 
     mN1 = vpMatched12.size();
 

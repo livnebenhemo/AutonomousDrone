@@ -18,7 +18,7 @@
 * along with ORB-SLAM2. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "include/MapPoint.h"
+#include "MapPoint.h"
 
 namespace ORB_SLAM2 {
 
@@ -134,18 +134,20 @@ namespace ORB_SLAM2 {
     }
 
     void MapPoint::SetBadFlag() {
-        std::unordered_map<KeyFrame *, size_t> obs;
-        {
+        //std::unordered_map<KeyFrame *, size_t> obs;
+        /*{
             std::unique_lock<std::mutex> lock1(mMutexFeatures);
-            std::unique_lock<std::mutex> lock2(mMutexPos);
+            //std::unique_lock<std::mutex> lock2(mMutexPos);
             mbBad = true;
             obs = mObservations;
             mObservations.clear();
+        }*/
+        if(!mObservations.empty()){
+            for (auto pKf: mObservations) {
+                pKf.first->EraseMapPointMatch(pKf.second);
+            }
+            mObservations.clear();
         }
-        for (auto pKf: obs) {
-            pKf.first->EraseMapPointMatch(pKf.second);
-        }
-
         mpMap->EraseMapPoint(this);
     }
 
@@ -162,7 +164,7 @@ namespace ORB_SLAM2 {
         int nvisible, nfound;
         std::unordered_map<KeyFrame *, size_t> obs;
         {
-           // std::unique_lock<std::mutex> lock1(mMutexFeatures);
+            // std::unique_lock<std::mutex> lock1(mMutexFeatures);
             // std::unique_lock<std::mutex> lock2(mMutexPos);
             obs = mObservations;
             mObservations.clear();

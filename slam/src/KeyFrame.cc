@@ -18,8 +18,8 @@
 * along with ORB-SLAM2. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "include/KeyFrame.h"
-#include "include/Converter.h"
+#include "KeyFrame.h"
+#include "Converter.h"
 #include<mutex>
 
 namespace ORB_SLAM2 {
@@ -184,13 +184,14 @@ namespace ORB_SLAM2 {
     }
 
     void KeyFrame::AddMapPoint(MapPoint *pMP, const size_t &idx) {
-        std::unique_lock<std::mutex> lock(mMutexFeatures);
+        //std::unique_lock<std::mutex> lock(mMutexFeatures);
         mvpMapPoints[idx] = pMP;
+
     }
 
     void KeyFrame::EraseMapPointMatch(const size_t &idx) {
-        std::unique_lock<std::mutex> lock(mMutexFeatures);
-        mvpMapPoints[idx] = static_cast<MapPoint *>(nullptr);
+        //std::unique_lock<std::mutex> lock(mMutexFeatures);
+        mvpMapPoints[idx] = static_cast<MapPoint *>(nullptr);;
     }
 
     void KeyFrame::EraseMapPointMatch(MapPoint *pMP) {
@@ -207,10 +208,9 @@ namespace ORB_SLAM2 {
     std::set<MapPoint *> KeyFrame::GetMapPoints() {
         std::unique_lock<std::mutex> lock(mMutexFeatures);
         std::set<MapPoint *> s;
-        for (auto &mvpMapPoint: mvpMapPoints) {
-            if (!mvpMapPoint)
+        for (auto &[i, pMP]: mvpMapPoints) {
+            if (!pMP)
                 continue;
-            MapPoint *pMP = mvpMapPoint;
             if (!pMP->isBad())
                 s.insert(pMP);
         }
@@ -238,7 +238,7 @@ namespace ORB_SLAM2 {
         return nPoints;
     }
 
-    std::vector<MapPoint *> KeyFrame::GetMapPointMatches() {
+    std::unordered_map<size_t, MapPoint *> KeyFrame::GetMapPointMatches() {
         //std::unique_lock<std::mutex> lock(mMutexFeatures);
         return mvpMapPoints;
     }
@@ -251,7 +251,7 @@ namespace ORB_SLAM2 {
     void KeyFrame::UpdateConnections() {
         std::unordered_map<KeyFrame *, int> KFcounter;
 
-        std::vector<MapPoint *> vpMP;
+        std::unordered_map<size_t, MapPoint *> vpMP;
 
         {
             std::unique_lock<std::mutex> lockMPs(mMutexFeatures);
@@ -260,7 +260,7 @@ namespace ORB_SLAM2 {
 
         //For all map points in keyframe check in which other keyframes are they seen
         //Increase counter for those keyframes
-        for (auto pMP: vpMP) {
+        for (auto &[i, pMP]: vpMP) {
 
             if (!pMP || pMP->isBad())
                 continue;
@@ -397,7 +397,7 @@ namespace ORB_SLAM2 {
         for (auto &mConnectedKeyFrameWeight: mConnectedKeyFrameWeights)
             mConnectedKeyFrameWeight.first->EraseConnection(this);
 
-        for (auto &mvpMapPoint: mvpMapPoints)
+        for (auto &[i, mvpMapPoint]: mvpMapPoints)
             if (mvpMapPoint)
                 mvpMapPoint->EraseObservation(this);
         {
@@ -534,7 +534,7 @@ namespace ORB_SLAM2 {
             const float y = (v - cy) * z * invfy;
             cv::Mat x3Dc = (cv::Mat_<float>(3, 1) << x, y, z);
 
-            std::unique_lock<std::mutex> lock(mMutexPose);
+            //std::unique_lock<std::mutex> lock(mMutexPose);
             return Twc.rowRange(0, 3).colRange(0, 3) * x3Dc + Twc.rowRange(0, 3).col(3);
         } else
             return cv::Mat();
@@ -570,7 +570,7 @@ namespace ORB_SLAM2 {
     }
 
     std::unordered_map<MapPoint *, int> KeyFrame::GetMapPointsDic() {
-        std::unique_lock<std::mutex> lock(mMutexFeatures);
+        //std::unique_lock<std::mutex> lock(mMutexFeatures);
         std::unordered_map<MapPoint *, int> s;
         for (size_t i = 0, iend = mvpMapPoints.size(); i < iend; i++) {
             MapPoint *pMP = mvpMapPoints[i];

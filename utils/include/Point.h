@@ -24,7 +24,7 @@ public:
      * q* is quaternion
      *
      * */
-    Point(double x, double y, double z, cv::Mat &rotationMatrix, int frameId = -1,
+    Point(double x, double y, double z,const cv::Mat &rotationMatrix, int frameId = -1,
           int label = -1);
 
     Point(double x, double y, double z);
@@ -32,7 +32,9 @@ public:
         return this->x == ref.x && this->y == ref.y && this->z == ref.z;
     }
 
-
+    Point operator -(const Point &ref) const {
+        return {this->x - ref.x,this->y - ref.y, this->z - ref.z,ref.rotationMatrix};
+    }
     std::string to_string() const {
         std::ostringstream ss;
         ss << this->x << "," << this->y << "," << this->z << "," << this->label;

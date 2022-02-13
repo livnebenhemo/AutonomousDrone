@@ -19,9 +19,9 @@
 */
 
 #include <execution>
-#include "include/LoopClosing.h"
-#include "include/Sim3Solver.h"
-#include "include/Optimizer.h"
+#include "LoopClosing.h"
+#include "Sim3Solver.h"
+#include "Optimizer.h"
 
 
 namespace ORB_SLAM2 {
@@ -313,8 +313,8 @@ namespace ORB_SLAM2 {
         vpLoopConnectedKFs.push_back(mpMatchedKF);
         mvpLoopMapPoints.clear();
         for (auto pKF: vpLoopConnectedKFs) {
-            std::vector<MapPoint *> vpMapPoints = pKF->GetMapPointMatches();
-            for (auto pMP: vpMapPoints) {
+            std::unordered_map<size_t, MapPoint *> vpMapPoints = pKF->GetMapPointMatches();
+            for (auto &[i, pMP]: vpMapPoints) {
                 if (pMP) {
                     if (!pMP->isBad() && pMP->mnLoopPointForKF != mpCurrentKF->mnId) {
                         mvpLoopMapPoints.push_back(pMP);
@@ -416,7 +416,7 @@ namespace ORB_SLAM2 {
 
                     g2o::Sim3 g2oSiw = NonCorrectedSim3[pKFi.first];
 
-                    for (auto pMPi: pKFi.first->GetMapPointMatches()) {
+                    for (auto &[i, pMPi]: pKFi.first->GetMapPointMatches()) {
                         if (!pMPi || pMPi->isBad() || pMPi->mnCorrectedByKF == mpCurrentKF->mnId)
                             continue;
 
@@ -543,10 +543,8 @@ namespace ORB_SLAM2 {
     }
 
     void LoopClosing::RunGlobalBundleAdjustment(unsigned long nLoopKF) {
-        std::cout << "Starting Global Bundle Adjustment" << std::endl;
-
         int idx = mnFullBAIdx;
-        Optimizer::GlobalBundleAdjustemnt(mpMap, 10, &mbStopGBA, nLoopKF, false);
+        Optimizer::GlobalBundleAdjustemnt(mpMap, 10, &mbStopGBA, nLoopKF, true);
 
         // Update all MapPoints and KeyFrames
         // Local Mapping was active during BA, that means that there might be new keyframes
@@ -558,8 +556,6 @@ namespace ORB_SLAM2 {
                 return;
 
             if (!mbStopGBA) {
-                std::cout << "Global Bundle Adjustment finished" << std::endl;
-                std::cout << "Updating map ..." << std::endl;
                 //mpLocalMapper->RequestStop();
                 // Wait until Local Mapping has effectively stopped
 
@@ -626,7 +622,6 @@ namespace ORB_SLAM2 {
 
                 //mpLocalMapper->Release();
 
-                std::cout << "Map updated!" << std::endl;
             }
 
             mbFinished = true;

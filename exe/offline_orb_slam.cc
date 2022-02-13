@@ -22,36 +22,39 @@ void saveMap(ORB_SLAM2::System SLAM) {
     pointData.close();
 }
 
-void saveMap() {
-    std::ofstream pointData;
-    std::ofstream pointDataAfterFilter;
+void saveFrame(cv::Mat &img, cv::Mat &pose, int frameCount, ORB_SLAM2::System &SLAM, std::string &resultFolderPath) {
+    std::ofstream frameData;
+    int currentFrameId = SLAM.GetTracker()->mCurrentFrame.mnId;
+    frameData.open(resultFolderPath + "frameData" +
+                   std::to_string(currentFrameId) + ".csv");
 
-    char time_buf[21];
-    time_t now;
-    std::time(&now);
-    std::strftime(time_buf, 21, "%Y-%m-%d_%H:%S:%MZ", gmtime(&now));
-    std::string currentTime(time_buf);
-    pointData.open("/tmp/pointData" + currentTime + ".csv");
+    cv::Mat Rwc = pose.rowRange(0, 3).colRange(0, 3);
+    cv::Mat twc = -Rwc.t() * pose.rowRange(0, 3).col(3);
+    frameData << currentFrameId << ',' << twc.at<float>(0) << ',' << twc.at<float>(2) << ',' << twc.at<float>(1) << ','
+              << Rwc.at<float>(0, 0) << ',' << Rwc.at<float>(0, 1) << ',' << Rwc.at<float>(0, 2)
+              << ',' << Rwc.at<float>(1, 0) << ',' << Rwc.at<float>(1, 1) << ',' << Rwc.at<float>(1, 2) << ','
+              << Rwc.at<float>(2, 0)
+              << ',' << Rwc.at<float>(2, 1) << ',' << Rwc.at<float>(2, 2) << std::endl;
+    cv::imwrite(
+            resultFolderPath + "frame_" + std::to_string(currentFrameId) + "_" + std::to_string(frameCount) + ".png",
+            img);
+    frameData.close();
+}
+
+void saveMap(std::string &resultFolderPath, int mapNumber) {
+    std::ofstream pointData;
+    pointData.open(resultFolderPath + "cloud" + std::to_string(mapNumber) + ".csv");
     int amountOfPoints;
     for (auto p: allMapPoints) {
         if (p != nullptr && !p->isBad()) {
-            auto frame = p->GetReferenceKeyFrame();
-            auto frameId = frame->mnFrameId;
-            cv::Mat Tcw = frame->GetPose();
+            auto frameId = p->GetReferenceKeyFrame()->mnFrameId;
             auto point = p->GetWorldPos();
             Eigen::Matrix<double, 3, 1> v = ORB_SLAM2::Converter::toVector3d(point);
-            cv::Mat Rwc = Tcw.rowRange(0, 3).colRange(0, 3).t();
-            cv::Mat twc = -Rwc * Tcw.rowRange(0, 3).col(3);
-            auto q = ORB_SLAM2::Converter::toQuaternion(Rwc);
-            pointData << v.x() << "," << v.y() << "," << v.z() << "," << q[0]
-                      << "," << q[1] << "," << q[2] << "," << q[3] << "," << frameId <<
-                      "," << twc.at<float>(0) << "," << twc.at<float>(1) << "," << twc.at<float>(2) << std::endl;
+            pointData << v.x() << "," << v.y() << "," << v.z() << "," << frameId << std::endl;
             amountOfPoints++;
         }
     }
     pointData.close();
-    std::cout << "amount of points: " << amountOfPoints << std::endl;
-
     std::cout << "saved map" << std::endl;
 
 }
@@ -62,15 +65,22 @@ int main() {
     nlohmann::json data;
     programData >> data;
     programData.close();
+    char currentDirPath[256];
+    getcwd(currentDirPath, 256);
+
+    char time_buf[21];
+    time_t now;
+    std::time(&now);
+    std::strftime(time_buf, 21, "%Y-%m-%d_%H:%S:%MZ", gmtime(&now));
+    std::string currentTime(time_buf);
+    std::filesystem::create_directory("../simulatorDataSets/" + currentTime);
+    std::string currentWorkingDir = std::string(currentDirPath) + "/../simulatorDataSets/" + currentTime + "/";
     std::string vocPath = data["VocabularyPath"];
     std::string droneYamlPathSlam = data["DroneYamlPathSlam"];
     std::string videoPath = data["offlineVideoTestPath"];
     ORB_SLAM2::System SLAM(vocPath, droneYamlPathSlam, ORB_SLAM2::System::MONOCULAR, true);
-    int amountOfAttepmpts = 2;
-
-    cv::Ptr<cv::BackgroundSubtractor> pBackSub =
-            cv::createBackgroundSubtractorMOG2(30, 100);
-    while (amountOfAttepmpts--) {
+    int amountOfAttepmpts = 0;
+    while (amountOfAttepmpts++ < 2) {
         cv::VideoCapture capture(videoPath);
         if (!capture.isOpened()) {
             std::cout << "Error opening video stream or file" << std::endl;
@@ -85,25 +95,22 @@ int main() {
             capture >> frame;
 
         }
-
-        cv::resize(frame, frame, cv::Size(960, 720));
         int amount_of_frames = 1;
 
         for (;;) {
-            SLAM.TrackMonocular(frame, capture.get(CV_CAP_PROP_POS_MSEC));
+            auto pose = SLAM.TrackMonocular(frame, capture.get(CV_CAP_PROP_POS_MSEC));
+            if (!pose.empty()) {
+                saveFrame(frame, pose, amount_of_frames++, SLAM, currentWorkingDir);
+            }
             capture >> frame;
 
             if (frame.empty()) {
                 break;
             }
-            //std::cout << "frame:" << amount_of_frames++ << std::endl;
-            cv::resize(frame, frame, cv::Size(960, 720));
-
         }
-        SLAM.GetLoopClosing()->RunGlobalBundleAdjustment(SLAM.GetMap()->GetMaxKFid());
         allMapPoints = SLAM.GetMap()->GetAllMapPoints();
         if (!allMapPoints.empty()) {
-            saveMap();
+            saveMap(currentWorkingDir, amountOfAttepmpts);
         }
         std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
@@ -115,7 +122,7 @@ int main() {
 
     allMapPoints = SLAM.GetMap()->GetAllMapPoints();
     if (!allMapPoints.empty()) {
-        saveMap();
+        saveMap(currentWorkingDir, amountOfAttepmpts);
     }
     sleep(20);
     SLAM.Shutdown();

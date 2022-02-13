@@ -44,3 +44,5 @@ cmake-build-debug/
 
 *CMakeCache.txt
 *MakeFile
+simulatorDataSets/*
+slam-tzuk

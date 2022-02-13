@@ -18,7 +18,7 @@
 * along with ORB-SLAM2. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "include/Initializer.h"
+#include "Initializer.h"
 
 
 namespace ORB_SLAM2

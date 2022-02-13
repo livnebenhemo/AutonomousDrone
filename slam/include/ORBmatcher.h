@@ -47,7 +47,7 @@ namespace ORB_SLAM2 {
 
         // Project MapPoints tracked in last frame into the current frame and search matches.
         // Used to track from previous frame (Tracking)
-        int SearchByProjection(Frame &CurrentFrame, const Frame &LastFrame, const float th) const;
+        int SearchByProjection(Frame &CurrentFrame, Frame &LastFrame, const float th) const;
 
         // Project MapPoints seen in KeyFrame into the Frame and search matches.
         // Used in relocalisation (Tracking)
@@ -62,7 +62,7 @@ namespace ORB_SLAM2 {
         // Search matches between MapPoints in a KeyFrame and ORB in a Frame.
         // Brute force constrained to ORB that belong to the same vocabulary node (at a certain level)
         // Used in Relocalisation and Loop Detection
-        int SearchByBoW(KeyFrame *pKF, Frame &F, std::vector<MapPoint *> &vpMapPointMatches);
+        int SearchByBoW(KeyFrame *pKF, Frame &F, std::unordered_map<size_t, MapPoint *> &vpMapPointMatches);
 
         int SearchByBoW(KeyFrame *pKF1, KeyFrame *pKF2, std::vector<MapPoint *> &vpMatches12);
 
@@ -80,7 +80,7 @@ namespace ORB_SLAM2 {
                                 const cv::Mat &R12, const cv::Mat &t12, const float th);
 
         // Project MapPoints into KeyFrame and search for duplicated MapPoints.
-        static int Fuse(KeyFrame *pKF, const std::vector<MapPoint *> &vpMapPoints, const float th = 3.0);
+        static int Fuse(KeyFrame *pKF, std::unordered_map<size_t, MapPoint *> &vpMapPoints, const float th = 3.0);
 
         // Project MapPoints into KeyFrame using a given Sim3 and search for duplicated MapPoints.
         static int Fuse(KeyFrame *pKF, const cv::Mat &Scw, const std::vector<MapPoint *> &vpPoints, float th,

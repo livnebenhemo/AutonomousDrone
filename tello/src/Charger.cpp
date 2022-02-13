@@ -145,7 +145,7 @@ std::tuple<int, int, int, int> Charger::searchBoxCharger(int *amountOfSearch) {
 }
 
 void Charger::navigateToBox() {
-    manageDroneCommand("down 60", 10, 3);
+    manageDroneCommand("down 45", 10, 3);
     std::vector<double> yawErrorQueue{10}, upDownQueue{10}, leftRightQueue{10}, forwardBackwardQueue{10};
     std::vector<std::vector<cv::Point2f>> corners;
     std::vector<int> ids;
@@ -191,9 +191,7 @@ void Charger::navigateToBox() {
         }
         if (canContinue) {
             auto info = getArucoInfo(corners[rightId]);
-            rcSpeeds = landInBox(info, yawErrorQueue, upDownQueue, leftRightQueue, forwardBackwardQueue,
-                                 errorYawEpsilon, errorLeftRightEpsilon, errorForwardBackwardEpsilon,
-                                 errorUpDownEpsilon);
+
             double errorSide = leftRightQueue.front() -
                                (60 + forwardBackwardQueue.front()) * std::sin(yawErrorQueue.front() * M_PI / 180);
             if (std::abs(upDownQueue.front()) < errorUpDownEpsilon && std::abs(errorSide) < errorSideEpsilon &&
@@ -201,14 +199,22 @@ void Charger::navigateToBox() {
                 std::abs(forwardBackwardQueue.front()) < errorForwardBackwardEpsilon) {
                 amountOfTimesInTheBox += 1;
                 std::cout << "in a box: " << amountOfTimesInTheBox << std::endl;
-                drone->SendCommand("rc 0 0 0 0");
-                drone->SendCommand("rc 0 0 0 0");
-                drone->SendCommand("rc 0 0 0 0");
+                drone->SendCommand(
+                        "rc " + std::to_string(int(std::get<0>(rcSpeeds)/2)) + " " + std::to_string(int(std::get<1>(rcSpeeds)/2)) +
+                        " " + std::to_string(int(std::get<2>(rcSpeeds)/2)) + " " + std::to_string(int(std::get<3>(rcSpeeds)/2)));
+                usleep(250);
+                drone->SendCommand(
+                        "rc " + std::to_string(int(std::get<0>(rcSpeeds)/3)) + " " + std::to_string(int(std::get<1>(rcSpeeds)/3)) +
+                        " " + std::to_string(int(std::get<2>(rcSpeeds)/3)) + " " + std::to_string(int(std::get<3>(rcSpeeds)/3)));
+                usleep(250);
+                drone->SendCommand(
+                        "rc " + std::to_string(int(std::get<0>(rcSpeeds)/4)) + " " + std::to_string(int(std::get<1>(rcSpeeds)/4)) +
+                        " " + std::to_string(int(std::get<2>(rcSpeeds)/4)) + " " + std::to_string(int(std::get<3>(rcSpeeds)/4)));
+                usleep(250);
                 if (amountOfTimesInTheBox == 20) {
                     drone->SendCommand("rc 0 0 0 0");
                     drone->SendCommand("rc 0 0 0 0");
                     drone->SendCommand("rc 0 0 0 0");
-                    sleep(3);
                     double forwardBackwardFactor = 1.0;
                     if (std::abs(forwardBackwardQueue.front()) >= 5) {
                         forwardBackwardFactor = 1.2;
@@ -218,18 +224,28 @@ void Charger::navigateToBox() {
                             int(lastStep - forwardBackwardQueue.front() * forwardBackwardFactor)), 3, 5);
                     manageDroneCommand("land");
                     return;
+                }else{
+                    std::get<0>(rcSpeeds) *=-1;
+                    std::get<1>(rcSpeeds) *=-1;
+                    std::get<2>(rcSpeeds) *=-1;
+                    std::get<3>(rcSpeeds) *=-1;
                 }
             } else {
                 amountOfTimesInTheBox = 0;
+                rcSpeeds = landInBox(info, yawErrorQueue, upDownQueue, leftRightQueue, forwardBackwardQueue,
+                                     errorYawEpsilon, errorLeftRightEpsilon, errorForwardBackwardEpsilon,
+                                     errorUpDownEpsilon);
+
+                if (std::get<2>(info).x != 0) {
+                    drone->SendCommand(
+                            "rc " + std::to_string(std::get<0>(rcSpeeds)) + " " + std::to_string(std::get<1>(rcSpeeds)) +
+                            " " + std::to_string(std::get<2>(rcSpeeds)) + " " + std::to_string(std::get<3>(rcSpeeds)));
+                    usleep(250);
+                } else {
+                    drone->SendCommand("rc 0 0 0 0");
+                }
             }
-            if (std::get<2>(info).x != 0) {
-                drone->SendCommand(
-                        "rc " + std::to_string(std::get<0>(rcSpeeds)) + " " + std::to_string(std::get<1>(rcSpeeds)) +
-                        " " + std::to_string(std::get<2>(rcSpeeds)) + " " + std::to_string(std::get<3>(rcSpeeds)));
-                usleep(250);
-            } else {
-                drone->SendCommand("rc 0 0 0 0");
-            }
+
 
             cv::putText(currentFrame, "lr: " + std::to_string(leftRightQueue.front()), cv::Point2i(20, 20),
                         cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0));

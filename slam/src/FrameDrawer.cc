@@ -1,7 +1,7 @@
 
 
-#include "include/FrameDrawer.h"
-#include "include/Tracking.h"
+#include "FrameDrawer.h"
+#include "Tracking.h"
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -25,7 +25,7 @@ namespace ORB_SLAM2 {
 
         //Copy variables within scoped mutex
         {
-            std::unique_lock<std::mutex> lock(mMutex);
+            //std::unique_lock<std::mutex> lock(mMutex);
             state = mState;
             if (mState == Tracking::SYSTEM_NOT_READY)
                 mState = Tracking::NO_IMAGES_YET;

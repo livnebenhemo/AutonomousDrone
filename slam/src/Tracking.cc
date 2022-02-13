@@ -19,16 +19,16 @@
 */
 
 
-#include "include/Tracking.h"
+#include "Tracking.h"
 
 #include<opencv2/core/core.hpp>
 
-#include"include/ORBmatcher.h"
-#include"include/FrameDrawer.h"
-#include"include/Initializer.h"
+#include"ORBmatcher.h"
+#include"FrameDrawer.h"
+#include"Initializer.h"
 
-#include"include/Optimizer.h"
-#include"include/PnPsolver.h"
+#include"Optimizer.h"
+#include"PnPsolver.h"
 
 #include<iostream>
 
@@ -163,9 +163,9 @@ namespace ORB_SLAM2 {
                 cvtColor(mImGray, mImGray, CV_BGRA2GRAY);
         }
 
-        if (mState == NOT_INITIALIZED || mState == NO_IMAGES_YET)
+        if (mState == NOT_INITIALIZED || mState == NO_IMAGES_YET) {
             mCurrentFrame = Frame(mImGray, timestamp, mpIniORBextractor, mpORBVocabulary, mK, mDistCoef, mbf, mThDepth);
-        else
+        } else
             mCurrentFrame = Frame(mImGray, timestamp, mpORBextractorLeft, mpORBVocabulary, mK, mDistCoef, mbf,
                                   mThDepth);
 
@@ -234,7 +234,7 @@ namespace ORB_SLAM2 {
                         // the "visual odometry" solution.
                         bool bOKMM = false;
                         bool bOKReloc = false;
-                        std::vector<MapPoint *> vpMPsMM;
+                        std::unordered_map<size_t, MapPoint *> vpMPsMM;
                         std::vector<bool> vbOutMM;
                         cv::Mat TcwMM;
                         if (!mVelocity.empty()) {
@@ -400,7 +400,7 @@ namespace ORB_SLAM2 {
                                                            100);
 
             // Check if there are enough correspondences
-            if (nmatches < 100) {
+            if (nmatches < 300) {
                 delete mpInitializer;
                 mpInitializer = static_cast<Initializer *>(nullptr);
                 return;
@@ -497,8 +497,8 @@ namespace ORB_SLAM2 {
         pKFcur->SetPose(Tc2w);
 
         // Scale points
-        std::vector<MapPoint *> vpAllMapPoints = pKFini->GetMapPointMatches();
-        for (auto &vpAllMapPoint: vpAllMapPoints) {
+        std::unordered_map<size_t, MapPoint *> vpAllMapPoints = pKFini->GetMapPointMatches();
+        for (auto &[i, vpAllMapPoint]: vpAllMapPoints) {
             if (vpAllMapPoint) {
                 MapPoint *pMP = vpAllMapPoint;
                 pMP->SetWorldPos(pMP->GetWorldPos() * invMedianDepth);
@@ -530,7 +530,7 @@ namespace ORB_SLAM2 {
     }
 
     void Tracking::CheckReplacedInLastFrame() {
-        for (auto &mapPoint: mLastFrame.mvpMapPoints) {
+        for (auto &[i, mapPoint]: mLastFrame.mvpMapPoints) {
             if (mapPoint && mapPoint->GetReplaced()) {
                 mapPoint = mapPoint->GetReplaced();
             }
@@ -554,7 +554,7 @@ namespace ORB_SLAM2 {
         // We perform first an ORB matching with the reference keyframe
         // If enough matches are found we setup a PnP solver
         ORBmatcher matcher(0.7, true);
-        std::vector<MapPoint *> vpMapPointMatches;
+        std::unordered_map<size_t, MapPoint *> vpMapPointMatches;
 
         int nmatches = matcher.SearchByBoW(mpReferenceKF, mCurrentFrame, vpMapPointMatches);
 
@@ -650,8 +650,9 @@ namespace ORB_SLAM2 {
         UpdateLastFrame();
 
         mCurrentFrame.SetPose(mVelocity * mLastFrame.mTcw);
-
-        fill(mCurrentFrame.mvpMapPoints.begin(), mCurrentFrame.mvpMapPoints.end(), static_cast<MapPoint *>(nullptr));
+        for(auto &point: mCurrentFrame.mvpMapPoints){
+            mCurrentFrame.mvpMapPoints[point.first] = static_cast<MapPoint *>(nullptr);
+        }
 
         // Project points seen in previous frame
         int th = 15;
@@ -659,8 +660,9 @@ namespace ORB_SLAM2 {
 
         // If few matches, uses a wider window search
         if (nmatches < 20) {
-            fill(mCurrentFrame.mvpMapPoints.begin(), mCurrentFrame.mvpMapPoints.end(),
-                 static_cast<MapPoint *>(nullptr));
+            for(auto &point: mCurrentFrame.mvpMapPoints){
+                mCurrentFrame.mvpMapPoints[point.first] = static_cast<MapPoint *>(nullptr);
+            }
             nmatches = matcher.SearchByProjection(mCurrentFrame, mLastFrame, 2 * th);
         }
 
@@ -779,7 +781,7 @@ namespace ORB_SLAM2 {
 
     void Tracking::SearchLocalPoints() {
         // Do not search map points already matched
-        for (auto &mvpMapPoint: mCurrentFrame.mvpMapPoints) {
+        for (auto &[i, mvpMapPoint]: mCurrentFrame.mvpMapPoints) {
             MapPoint *pMP = mvpMapPoint;
             if (pMP) {
                 if (pMP->isBad()) {
@@ -832,9 +834,9 @@ namespace ORB_SLAM2 {
         mvpLocalMapPoints.clear();
 
         for (auto pKF: mvpLocalKeyFrames) {
-            const std::vector<MapPoint *> vpMPs = pKF->GetMapPointMatches();
+            std::unordered_map<size_t,MapPoint *> vpMPs = pKF->GetMapPointMatches();
 
-            for (auto pMP: vpMPs) {
+            for (auto &[i,pMP]: vpMPs) {
                 if (!pMP)
                     continue;
                 if (pMP->mnTrackReferenceForFrame == mCurrentFrame.mnId)
@@ -955,7 +957,7 @@ namespace ORB_SLAM2 {
         std::vector<PnPsolver *> vpPnPsolvers;
         vpPnPsolvers.resize(nKFs);
 
-        std::vector<std::vector<MapPoint *>> vvpMapPointMatches;
+        std::vector<std::unordered_map<size_t,MapPoint *>> vvpMapPointMatches;
         vvpMapPointMatches.resize(nKFs);
 
         std::vector<bool> vbDiscarded;
@@ -1061,7 +1063,7 @@ namespace ORB_SLAM2 {
                         }
                     }
                     // If the pose is supported by enough inliers stop ransacs and continue
-                    if (nGood >= 20) {
+                    if (nGood >= 10) {
                         bMatch = true;
                         break;
                     } else {
@@ -1081,21 +1083,16 @@ namespace ORB_SLAM2 {
     }
 
     void Tracking::Reset() {
-        std::cout << "System Reseting" << std::endl;
-
-        // Reset Local Mapping
-        std::cout << "Reseting Local Mapper...";
-        //mpLocalMapper->RequestReset();
-        std::cout << " done" << std::endl;
-        // Reset Loop Closing
-        //std::cout << "Reseting Loop Closing...";
-        //mpLoopClosing->RequestReset();
-        // Clear BoW Database
-        std::cout << "Reseting Database...";
+        std::cout << "System reset" << std::endl;
+        std::cout << "Reset database...";
         mpKeyFrameDB->clear();
         std::cout << " done" << std::endl;
         // Clear Map (this erase MapPoints and KeyFrames)
+        std::cout << "Reset map...";
+
         mpMap->clear();
+        std::cout << " done" << std::endl;
+
         KeyFrame::nNextId = 0;
         Frame::nNextId = 0;
         mState = NO_IMAGES_YET;

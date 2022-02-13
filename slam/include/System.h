@@ -36,7 +36,7 @@
 #include "Viewer.h"
 #include "Converter.h"
 #include "LoopClosing.h"
-#include "include/Converter.h"
+#include "Converter.h"
 #include <thread>
 #include <pangolin/pangolin.h>
 #include <iomanip>
@@ -174,7 +174,7 @@ namespace ORB_SLAM2 {
         bool mbDeactivateLocalizationMode;
 
         // Tracking state
-        std::vector<MapPoint *> mTrackedMapPoints;
+        std::unordered_map<size_t,MapPoint *> mTrackedMapPoints;
         std::mutex mMutexState;
     };
 

@@ -32,7 +32,6 @@
 #include "ORBextractor.h"
 
 #include <opencv2/opencv.hpp>
-#include <mutex>
 
 namespace ORB_SLAM2 {
 #define FRAME_GRID_ROWS 48
@@ -67,28 +66,23 @@ namespace ORB_SLAM2 {
 
         // Returns the camera center.
         inline cv::Mat GetCameraCenter() {
-            std::unique_lock<std::mutex> lock(*mutex);
             return mOw.clone();
         }
 
         // Returns inverse of rotation
         inline cv::Mat GetRotationInverse() {
-            std::unique_lock<std::mutex> lock(*mutex);
             return mRwc.clone();
         }
 
         inline cv::Mat getCameraTranslation() {
-            std::unique_lock<std::mutex> lock(*mutex);
             return mTcw.clone();
         }
 
         inline int getFrameId() {
-            std::unique_lock<std::mutex> lock(*mutex);
             return mnId;
         }
 
         inline cv::Mat getCameraRotation() {
-            std::unique_lock<std::mutex> lock(*mutex);
             return mRwc.clone();
         }
 
@@ -163,13 +157,12 @@ namespace ORB_SLAM2 {
         // ORB descriptor, each row associated to a keypoint.
         cv::Mat mDescriptors, mDescriptorsRight;
 
-        std::vector<MapPoint *> GetMvpMapPoints() {
-            //std::unique_lock<std::mutex> lock(*mutex);
+        std::unordered_map<size_t,MapPoint *>  GetMvpMapPoints() {
             return mvpMapPoints;
         }
 
         // MapPoints associated to keypoints, NULL pointer if no association.
-        std::vector<MapPoint *> mvpMapPoints;
+        std::unordered_map<size_t,MapPoint *> mvpMapPoints;
 
         // Flag to identify outlier associations.
         std::vector<bool> mvbOutlier;
@@ -224,7 +217,6 @@ namespace ORB_SLAM2 {
         // Rotation, translation and camera center
         cv::Mat mRcw;
         cv::Mat mtcw;
-        std::shared_ptr<std::mutex> mutex;
 
         //==mtwc
     };

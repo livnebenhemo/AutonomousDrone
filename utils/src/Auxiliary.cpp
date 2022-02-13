@@ -25,6 +25,7 @@ Point Auxiliary::rotationMatrixToEulerAngles(cv::Mat &R) {
     }
     return {x * 180 / CV_PI, y * 180 / CV_PI, z * 180 / CV_PI};
 }
+
 Point Auxiliary::GetCenterOfMass(const std::vector<Point> &points) {
     double x = 0.0;
     double y = 0.0;
@@ -74,7 +75,8 @@ std::vector<double> Auxiliary::getZValues(const std::vector<Point> &points) {
     return yValues;
 }
 
- std::tuple<std::vector<cv::Point2d>, std::vector<double>, cv::Point2d> Auxiliary::pca(const std::vector<Point> &points) {
+std::tuple<std::vector<cv::Point2d>, std::vector<double>, cv::Point2d>
+Auxiliary::pca(const std::vector<Point> &points) {
     int sz = static_cast<int>(points.size());
     cv::Mat data_pts = cv::Mat(sz, 2, CV_64F);
     for (int i = 0; i < data_pts.rows; i++) {
@@ -84,7 +86,7 @@ std::vector<double> Auxiliary::getZValues(const std::vector<Point> &points) {
     //Perform PCA analysis
     cv::PCA pca_analysis(data_pts, cv::Mat(), cv::PCA::DATA_AS_ROW);
     //Store the center of the object
-    cv::Point2d cntr = cv::Point2d(pca_analysis.mean.at<double>(0, 0),pca_analysis.mean.at<double>(0, 1));
+    cv::Point2d cntr = cv::Point2d(pca_analysis.mean.at<double>(0, 0), pca_analysis.mean.at<double>(0, 1));
     //Store the eigenvalues and eigenvectors
     std::vector<cv::Point2d> eigen_vecs(2);
     std::vector<double> eigen_val(2);
@@ -265,7 +267,6 @@ void Auxiliary::showCloudPoint3D(const std::vector<Point> &redPoints, const std:
 }
 
 
-
 //#endif
 double Auxiliary::distanceBetweenPointAndSegment(const Point &point, Line segment) {
     auto point1 = segment.getPoint1();
@@ -386,12 +387,24 @@ Auxiliary::GetMinDistance(const std::vector<Point> &points, const std::function<
 }
 
 std::pair<int, bool> Auxiliary::getRotationToTargetInFront(const Point &point1, const Point &point2) {
-    Eigen::Vector3d vector1(point1.x, point1.y, 0);
+    /*Eigen::Vector3d vector1(point1.x, point1.y, 0);
     Eigen::Vector3d vector2(point2.x, point2.y, 0);
     Eigen::Vector3d unitVector1 = vector1 / vector1.norm();
     Eigen::Vector3d unitVector2 = vector2 / vector2.norm();
     int angle = int(radiansToAngle(acos(unitVector1.dot(unitVector2))));
     bool clockwise = unitVector1.cross(unitVector2).z() <= 0;
+    std::cout << "getRotationToTargetInFront angle: " << angle << " clockwise: " << clockwise << std::endl;
+    if (angle > 90) {
+        angle = 180 - angle;
+    }*/
+    auto dot = point1.x * point2.x + point1.y * point2.y;
+    auto det = point1.x * point2.y - point1.y * point2.x;
+    int angle = std::ceil(Auxiliary::radiansToAngle(std::atan2(det, dot)));
+    bool clockwise = angle > 0;
+    std::cout << "getRotationToTargetInFront angle: " << angle << " clockwise: " << clockwise << std::endl;
+    if (angle < 0) {
+        angle *= -1;
+    }
     if (angle > 90) {
         angle = 180 - angle;
         clockwise = !clockwise;
@@ -430,7 +443,6 @@ std::tuple<int, int, int> Auxiliary::getRationalInverse(double input) {
 std::string Auxiliary::GetGeneralSettingsPath() {
     char currentDirPath[256];
     getcwd(currentDirPath, 256);
-    std::cout << "Current working directory: " << currentDirPath << std::endl;
     std::string settingPath = currentDirPath;
     settingPath += "/../generalSettings.json";
     return settingPath;
@@ -491,6 +503,7 @@ std::pair<cv::Mat, cv::Mat> Auxiliary::calculateAlignMatrices(std::vector<cv::Po
 
     return {R_align, mu_align};
 }
+
 std::vector<cv::Point3d> Auxiliary::convertToCvPoints(const std::vector<Point> &points) {
     std::vector<cv::Point3d> cvPoints;
     for (const auto &point: points) {
@@ -498,6 +511,7 @@ std::vector<cv::Point3d> Auxiliary::convertToCvPoints(const std::vector<Point> &
     }
     return cvPoints;
 }
+
 cv::Mat Auxiliary::convertPointToCVMat(const Point &point) {
     cv::Mat pnt3d(1, 3, CV_64FC1);
     pnt3d.at<double>(0, 0) = point.x;
@@ -505,6 +519,7 @@ cv::Mat Auxiliary::convertPointToCVMat(const Point &point) {
     pnt3d.at<double>(0, 2) = point.z;
     return pnt3d.t();
 }
+
 std::pair<cv::Mat, cv::Mat> Auxiliary::alignMap(std::vector<Point> &points) {
     auto[R_align, mu_align] = calculateAlignMatrices(convertToCvPoints(points));
 
@@ -519,6 +534,7 @@ std::pair<cv::Mat, cv::Mat> Auxiliary::alignMap(std::vector<Point> &points) {
     }
     return {R_align, mu_align};
 }
+
 double Auxiliary::getAngleBySlopes(Line line1, Line line2) {
     Eigen::Vector3d vector1(1, line1.getSlope(), 0);
     Eigen::Vector3d vector2(1, line2.getSlope(), 0);

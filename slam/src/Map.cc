@@ -18,129 +18,133 @@
 * along with ORB-SLAM2. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "include/Map.h"
+#include "Map.h"
 
 #include<mutex>
 
-namespace ORB_SLAM2
-{
+namespace ORB_SLAM2 {
 
-Map::Map():mnMaxKFid(0),mnBigChangeIdx(0)
-{
-}
-
-void Map::AddKeyFrame(KeyFrame *pKF)
-{
-    std::unique_lock<std::mutex> lock(mMutexMap);
-    if (!mspKeyFrames.count(pKF)){
-        mspKeyFrames.insert({pKF,pKF->mnId});
-
-        if(pKF->mnId>mnMaxKFid)
-            mnMaxKFid=pKF->mnId;
+    Map::Map() : mnMaxKFid(0), mnBigChangeIdx(0) {
     }
-}
 
-void Map::AddMapPoint(MapPoint *pMP)
-{
-    std::unique_lock<std::mutex> lock(mMutexMap);
-    if (!mspMapPoints.count(pMP)){
-        mspMapPoints[pMP] = pMP->mnId;
+    void Map::AddKeyFrame(KeyFrame *pKF) {
+        //std::unique_lock<std::mutex> lock(mMutexMap);
+        if (!mspKeyFrames.count(pKF)) {
+            mspKeyFrames.insert({pKF, pKF->mnId});
+
+            if (pKF->mnId > mnMaxKFid)
+                mnMaxKFid = pKF->mnId;
+        }
     }
-}
 
-void Map::EraseMapPoint(MapPoint *pMP)
-{
-    std::unique_lock<std::mutex> lock(mMutexMap);
-    mspMapPoints.erase(pMP);
-
-    // TODO: This only erase the pointer.
-    // Delete the MapPoint
-}
-
-void Map::EraseKeyFrame(KeyFrame *pKF)
-{
-    std::unique_lock<std::mutex> lock(mMutexMap);
-    mspKeyFrames.erase(pKF);
-
-    // TODO: This only erase the pointer.
-    // Delete the MapPoint
-}
-
-void Map::SetReferenceMapPoints(const std::vector<MapPoint *> &vpMPs)
-{
-    std::unique_lock<std::mutex> lock(mMutexMap);
-    mvpReferenceMapPoints = vpMPs;
-}
-
-void Map::InformNewBigChange()
-{
-    std::unique_lock<std::mutex> lock(mMutexMap);
-    mnBigChangeIdx++;
-}
-
-int Map::GetLastBigChangeIdx()
-{
-    std::unique_lock<std::mutex> lock(mMutexMap);
-    return mnBigChangeIdx;
-}
-
-    std::vector<KeyFrame*> Map::GetAllKeyFrames()
-{
-    std::unique_lock<std::mutex> lock(mMutexMap);
-    std::vector<KeyFrame*> keyFrames;
-    for(const auto &keyFrame : mspKeyFrames){
-        keyFrames.emplace_back(keyFrame.first);
+    void Map::AddMapPoint(MapPoint *pMP) {
+        //std::unique_lock<std::mutex> lock(mMutexMap);
+        if (!mspMapPoints.count(pMP)) {
+            mspMapPoints[pMP] = pMP->mnId;
+        }
     }
-    return keyFrames;
-}
 
-    std::vector<MapPoint*> Map::GetAllMapPoints()
-{
-    std::unique_lock<std::mutex> lock(mMutexMap);
-    std::vector<MapPoint*> mapPoints;
-    for(const auto &mapPoint: mspMapPoints){
-        mapPoints.emplace_back(mapPoint.first);
+    void Map::EraseMapPoint(MapPoint *pMP) {
+        //std::unique_lock<std::mutex> lock(mMutexMap);
+        mspMapPoints.erase(pMP);
+
+        // TODO: This only erase the pointer.
+        // Delete the MapPoint
     }
-    return mapPoints;
-}
 
-long unsigned int Map::MapPointsInMap()
-{
-    std::unique_lock<std::mutex> lock(mMutexMap);
-    return mspMapPoints.size();
-}
+    void Map::EraseKeyFrame(KeyFrame *pKF) {
+        //std::unique_lock<std::mutex> lock(mMutexMap);
+        mspKeyFrames.erase(pKF);
 
-long unsigned int Map::KeyFramesInMap()
-{
-    std::unique_lock<std::mutex> lock(mMutexMap);
-    return mspKeyFrames.size();
-}
+        // TODO: This only erase the pointer.
+        // Delete the MapPoint
+    }
 
-    std::vector<MapPoint*> Map::GetReferenceMapPoints()
-{
-    std::unique_lock<std::mutex> lock(mMutexMap);
-    return mvpReferenceMapPoints;
-}
+    void Map::SetReferenceMapPoints(const std::vector<MapPoint *> &vpMPs) {
+        //std::unique_lock<std::mutex> lock(mMutexMap);
+        mvpReferenceMapPoints = vpMPs;
+    }
 
-long unsigned int Map::GetMaxKFid()
-{
-    std::unique_lock<std::mutex> lock(mMutexMap);
-    return mnMaxKFid;
-}
+    void Map::InformNewBigChange() {
+        //std::unique_lock<std::mutex> lock(mMutexMap);
+        mnBigChangeIdx++;
+    }
 
-void Map::clear()
-{
-    for(auto mspMapPoint : mspMapPoints)
-        delete mspMapPoint.first;
+    int Map::GetLastBigChangeIdx() {
+        //std::unique_lock<std::mutex> lock(mMutexMap);
+        return mnBigChangeIdx;
+    }
 
-    for(auto mspKeyFrame : mspKeyFrames)
-        delete mspKeyFrame.first;
+    std::vector<KeyFrame *> Map::GetAllKeyFrames() {
+        // std::unique_lock<std::mutex> lock(mMutexMap);
+        std::vector<KeyFrame *> keyFrames;
+        for (const auto &keyFrame: mspKeyFrames) {
+            keyFrames.emplace_back(keyFrame.first);
+        }
+        return keyFrames;
+    }
 
-    mspMapPoints.clear();
-    mspKeyFrames.clear();
-    mnMaxKFid = 0;
-    mvpReferenceMapPoints.clear();
-    mvpKeyFrameOrigins.clear();
-}
+    std::vector<MapPoint *> Map::GetAllMapPoints() {
+        //std::unique_lock<std::mutex> lock(mMutexMap);
+        std::vector<MapPoint *> mapPoints;
+        for (const auto &mapPoint: mspMapPoints) {
+            mapPoints.emplace_back(mapPoint.first);
+        }
+        return mapPoints;
+    }
+
+    long unsigned int Map::MapPointsInMap() {
+        //std::unique_lock<std::mutex> lock(mMutexMap);
+        return mspMapPoints.size();
+    }
+
+    long unsigned int Map::KeyFramesInMap() {
+        //std::unique_lock<std::mutex> lock(mMutexMap);
+        return mspKeyFrames.size();
+    }
+
+    std::vector<MapPoint *> Map::GetReferenceMapPoints() {
+        //std::unique_lock<std::mutex> lock(mMutexMap);
+        return mvpReferenceMapPoints;
+    }
+
+    long unsigned int Map::GetMaxKFid() {
+        //std::unique_lock<std::mutex> lock(mMutexMap);
+        return mnMaxKFid;
+    }
+
+    void Map::clear() {
+        for (auto &mspMapPoint: mspMapPoints) {
+            delete mspMapPoint.first;
+            auto point = mspMapPoint.first;
+            point = nullptr;
+        }
+
+        for (auto mspKeyFrame: mspKeyFrames) {
+            delete mspKeyFrame.first;
+            auto keyFrame = mspKeyFrame.first;
+            keyFrame = nullptr;
+        }
+        if (!mspMapPoints.empty()) {
+            mspMapPoints.clear();
+        }
+        if (!mspKeyFrames.empty()) {
+            mspKeyFrames.clear();
+
+        }
+        mnMaxKFid = 0;
+        /*for (auto mvpReferenceMapPoint: mvpReferenceMapPoints){
+            std::cout << mvpReferenceMapPoint <<std::endl;
+            delete mvpReferenceMapPoint;
+        }
+
+
+        for (auto mvpKeyFrameOrigin: mvpKeyFrameOrigins){
+            std::cout << mvpKeyFrameOrigin <<std::endl;
+            delete mvpKeyFrameOrigin;
+        }*/
+        mvpReferenceMapPoints.clear();
+        mvpReferenceMapPoints.clear();
+    }
 
 } //namespace ORB_SLAM

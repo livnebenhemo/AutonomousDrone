@@ -19,8 +19,8 @@
 */
 
 #include "include/Frame.h"
-#include "include/Converter.h"
-#include "include/ORBmatcher.h"
+#include "Converter.h"
+#include "ORBmatcher.h"
 #include <thread>
 
 namespace ORB_SLAM2 {
@@ -32,7 +32,7 @@ namespace ORB_SLAM2 {
     float Frame::mfGridElementWidthInv, Frame::mfGridElementHeightInv;
 
     Frame::Frame() {
-        mutex = std::make_shared<std::mutex>();
+        //mutex = std::make_shared<std::mutex>();
     };
 
 //Copy Constructor
@@ -54,7 +54,7 @@ namespace ORB_SLAM2 {
                 mGrid[i][j] = frame.mGrid[i][j];
         if (!frame.mTcw.empty())
             SetPose(frame.mTcw);
-        mutex = std::make_shared<std::mutex>();
+        //mutex = std::make_shared<std::mutex>();
     }
 
 
@@ -65,7 +65,7 @@ namespace ORB_SLAM2 {
               mTimeStamp(timeStamp), mK(K.clone()), mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth) {
         // Frame ID
         mnId = nNextId++;
-        mutex = std::make_shared<std::mutex>();
+        //mutex = std::make_shared<std::mutex>();
 
         // Scale Level Info
         mnScaleLevels = mpORBextractorLeft->GetLevels();
@@ -89,8 +89,9 @@ namespace ORB_SLAM2 {
         // Set no stereo information
         mvuRight = std::vector<float>(N, -1);
         mvDepth = std::vector<float>(N, -1);
-
-        mvpMapPoints = std::vector<MapPoint *>(N, static_cast<MapPoint *>(nullptr));
+        for (int i = 0; i < N; ++i) {
+            mvpMapPoints[i] = static_cast<MapPoint *>(nullptr);
+        }
         mvbOutlier = std::vector<bool>(N, false);
 
         // This is done only for the first Frame (or after a change in the calibration)

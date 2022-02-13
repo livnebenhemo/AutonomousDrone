@@ -31,7 +31,7 @@ Point::Point(const Point &point) {
     this->frameId = point.frameId;
 }
 
-Point::Point(double x, double y, double z, cv::Mat &rotationMatrix, int frameId, int label) {
+Point::Point(double x, double y, double z,const cv::Mat &rotationMatrix, int frameId, int label) {
     this->x = x;
     this->y = y;
     this->z = z;

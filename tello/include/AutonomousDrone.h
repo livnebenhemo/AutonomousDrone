@@ -4,6 +4,7 @@
 
 #ifndef TELLO_AUTONOMOUSDRONE_H
 #define TELLO_AUTONOMOUSDRONE_H
+
 #include "include/Navigation.h"
 #include "include/Room.h"
 #include "include/Polygon.h"
@@ -14,7 +15,7 @@
 #include "../slam/include/System.h"
 #include <iostream>
 #include <unistd.h>
-#include "include/Converter.h"
+#include "Converter.h"
 #include <string>
 #include <thread>
 #include "Charger.h"
@@ -27,6 +28,8 @@ public:
                     bool withPlot = false, std::string chargerBluetoothAddress = "3C:61:05:03:81:E2");
 
     void run();
+
+    void runSimulator(int maxForwardDistance, int forwardAmount);
 
 private:
     bool updateCurrentFrame(ORB_SLAM2::Frame frame);
@@ -131,6 +134,7 @@ private:
     bool isExit = true;
     bool commandingDrone = false;
     bool statusingDrone = false;
+    int forwardAdvance = 40;
     int speed = 20;
     const char *const TELLO_STREAM_URL{"udp://0.0.0.0:11111?overrun_nonfatal=1&fifo_size=5000"};
     std::vector<Room> rooms;
@@ -163,6 +167,15 @@ private:
     double colorDetection();
 
     bool manageAngleDroneCommand(int angle, bool clockwise, int amountOfAttempt, int amountOfSleep);
+
+
+    void buildSimulatorMap(int rotationAngle);
+
+    void exhaustiveGlobalAdjustment();
+
+    bool exhaustiveGlobalAdjustmentInProgress = false;
+
+    void takeOffWithLocalization();
 };
 
 #endif //TELLO_AUTONOMOUSDRONE_H

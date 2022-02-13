@@ -11,7 +11,7 @@
 #include "Frame.h"
 #include "KeyFrameDatabase.h"
 
-#include <mutex>
+//#include <mutex>
 
 
 namespace ORB_SLAM2 {
@@ -96,7 +96,7 @@ namespace ORB_SLAM2 {
 
         std::set<MapPoint *> GetMapPoints();
 
-        std::vector<MapPoint *> GetMapPointMatches();
+        std::unordered_map<size_t,MapPoint *>  GetMapPointMatches();
 
         int TrackedMapPoints(const int &minObs);
 
@@ -212,7 +212,7 @@ namespace ORB_SLAM2 {
 
 
         // MapPoints associated to keypoints
-        std::vector<MapPoint *> mvpMapPoints;
+        std::unordered_map<size_t,MapPoint *> mvpMapPoints;
 
         // BoW
         KeyFrameDatabase *mpKeyFrameDB;

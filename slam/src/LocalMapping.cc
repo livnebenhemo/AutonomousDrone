@@ -18,10 +18,10 @@
 * along with ORB-SLAM2. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "include/LocalMapping.h"
-#include "include/LoopClosing.h"
-#include "include/ORBmatcher.h"
-#include "include/Optimizer.h"
+#include "LocalMapping.h"
+#include "LoopClosing.h"
+#include "ORBmatcher.h"
+#include "Optimizer.h"
 
 #include<mutex>
 
@@ -50,7 +50,7 @@ namespace ORB_SLAM2 {
             return;
         }
         // BoW conversion and insertion in Map
-        if (mlNewKeyFrames.empty()){
+        if (mlNewKeyFrames.empty()) {
             return;
         }
         ProcessNewKeyFrame();
@@ -65,7 +65,7 @@ namespace ORB_SLAM2 {
             Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame, &mbAbortBA, mpMap);
         }
         KeyFrameCulling();
-        if (mpCurrentKeyFrame){
+        if (mpCurrentKeyFrame) {
             //mpLoopCloser->InsertKeyFrame(mpCurrentKeyFrame);
 
         }
@@ -108,7 +108,7 @@ namespace ORB_SLAM2 {
                     }
                 }
 
-               // mpLoopCloser->InsertKeyFrame(mpCurrentKeyFrame);
+                // mpLoopCloser->InsertKeyFrame(mpCurrentKeyFrame);
             } else if (Stop()) {
                 // Safe area to stop
                 while (isStopped() && !CheckFinish()) {
@@ -134,7 +134,7 @@ namespace ORB_SLAM2 {
 
     void LocalMapping::InsertKeyFrame(KeyFrame *pKF) {
         //std::unique_lock<std::mutex> lock(mMutexNewKFs);
-        if (pKF){
+        if (pKF) {
             mlNewKeyFrames.push_back(pKF);
             mbAbortBA = true;
         }
@@ -158,10 +158,8 @@ namespace ORB_SLAM2 {
         mpCurrentKeyFrame->ComputeBoW();
 
         // Associate MapPoints to the new keyframe and update normal and descriptor
-        const std::vector<MapPoint *> vpMapPointMatches = mpCurrentKeyFrame->GetMapPointMatches();
-
-        for (size_t i = 0; i < vpMapPointMatches.size(); i++) {
-            MapPoint *pMP = vpMapPointMatches[i];
+        std::unordered_map<size_t, MapPoint *> vpMapPointMatches = mpCurrentKeyFrame->GetMapPointMatches();
+        for (auto &[i, pMP]: vpMapPointMatches) {
             if (pMP && !pMP->isBad()) {
                 if (!pMP->IsInKeyFrame(mpCurrentKeyFrame)) {
                     pMP->AddObservation(mpCurrentKeyFrame, i);
@@ -174,7 +172,6 @@ namespace ORB_SLAM2 {
 
             }
         }
-
         // Update links in the Covisibility Graph
         mpCurrentKeyFrame->UpdateConnections();
 
@@ -417,25 +414,24 @@ namespace ORB_SLAM2 {
                 vpTargetKFs.push_back(pKFi2);
             }
         }
-        std::vector<MapPoint *> vpMapPointMatches = mpCurrentKeyFrame->GetMapPointMatches();
+        std::unordered_map<size_t, MapPoint *> vpMapPointMatches = mpCurrentKeyFrame->GetMapPointMatches();
         for (auto pKFi: vpTargetKFs) {
             ORB_SLAM2::ORBmatcher::Fuse(pKFi, vpMapPointMatches);
         }
 
         // Search matches by projection from target KFs in current KF
-        std::vector<MapPoint *> vpFuseCandidates;
-        vpFuseCandidates.reserve(vpTargetKFs.size() * vpMapPointMatches.size());
+        std::unordered_map<size_t, MapPoint *> vpFuseCandidates;
 
         for (auto pKFi: vpTargetKFs) {
-            std::vector<MapPoint *> vpMapPointsKFi = pKFi->GetMapPointMatches();
+            std::unordered_map<size_t, MapPoint *> vpMapPointsKFi = pKFi->GetMapPointMatches();
 
-            for (auto pMP: vpMapPointsKFi) {
+            for (auto &[i, pMP]: vpMapPointsKFi) {
                 if (!pMP)
                     continue;
                 if (pMP->isBad() || pMP->mnFuseCandidateForKF == mpCurrentKeyFrame->mnId)
                     continue;
                 pMP->mnFuseCandidateForKF = mpCurrentKeyFrame->mnId;
-                vpFuseCandidates.push_back(pMP);
+                vpFuseCandidates[i] = pMP;
             }
         }
 
@@ -444,7 +440,7 @@ namespace ORB_SLAM2 {
 
         // Update points
         vpMapPointMatches = mpCurrentKeyFrame->GetMapPointMatches();
-        for (auto pMP: vpMapPointMatches) {
+        for (auto &[i, pMP]: vpMapPointMatches) {
             if (pMP) {
                 if (!pMP->isBad()) {
                     pMP->ComputeDistinctiveDescriptors();
@@ -546,7 +542,7 @@ namespace ORB_SLAM2 {
         for (auto pKF: vpLocalKeyFrames) {
             if (pKF->mnId == 0)
                 continue;
-            const std::vector<MapPoint *> vpMapPoints = pKF->GetMapPointMatches();
+            std::unordered_map<size_t,MapPoint *> vpMapPoints = pKF->GetMapPointMatches();
             const int thObs = 3;
             int nRedundantObservations = 0;
             int nMPs = 0;

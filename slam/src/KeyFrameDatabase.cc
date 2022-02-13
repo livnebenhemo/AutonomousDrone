@@ -1,10 +1,10 @@
 
 
-#include "include/KeyFrameDatabase.h"
+#include "KeyFrameDatabase.h"
 
-#include "include/KeyFrame.h"
+#include "KeyFrame.h"
 
-#include<mutex>
+//#include<mutex>
 
 
 namespace ORB_SLAM2 {
@@ -17,12 +17,12 @@ namespace ORB_SLAM2 {
 
     void KeyFrameDatabase::add(KeyFrame *pKF) {
         for (const auto &vit: pKF->mBowVec) {
-            mvInvertedFile[vit.first][pKF]=1;
+            mvInvertedFile[vit.first][pKF] = 1;
         }
     }
 
     void KeyFrameDatabase::erase(KeyFrame *pKF) {
-        std::unique_lock<std::mutex> lock(mMutex);
+        //std::unique_lock<std::mutex> lock(mMutex);
         for (const auto &vit: pKF->mBowVec) {
             mvInvertedFile[vit.first].erase(pKF);
             /*std::list<KeyFrame *> &lKFs = mvInvertedFile[vit.first];
@@ -47,7 +47,7 @@ namespace ORB_SLAM2 {
         std::list<KeyFrame *> lKFsSharingWords;
 
         for (const auto &vit: pKF->mBowVec) {
-            for (auto [pKFi,junk]: mvInvertedFile[vit.first]) {
+            for (auto[pKFi, junk]: mvInvertedFile[vit.first]) {
                 if (pKFi->mnLoopQuery != pKF->mnId) {
                     pKFi->mnLoopWords = 0;
                     if (!spConnectedKeyFrames.count(pKFi)) {
@@ -146,13 +146,15 @@ namespace ORB_SLAM2 {
 
         //std::unique_lock<std::mutex> lock(mMutex);
         for (const auto &vit: F->mBowVec) {
-            for (auto [pKFi,junk]: mvInvertedFile[vit.first]) {
-                if (pKFi->mnRelocQuery != F->mnId) {
-                    pKFi->mnRelocWords = 0;
-                    pKFi->mnRelocQuery = F->mnId;
-                    lKFsSharingWords.push_back(pKFi);
+            if (mvInvertedFile.count(vit.first)) {
+                for (auto[pKFi, junk]: mvInvertedFile[vit.first]) {
+                    if (pKFi->mnRelocQuery != F->mnId) {
+                        pKFi->mnRelocWords = 0;
+                        pKFi->mnRelocQuery = F->mnId;
+                        lKFsSharingWords.push_back(pKFi);
+                    }
+                    pKFi->mnRelocWords++;
                 }
-                pKFi->mnRelocWords++;
             }
         }
 

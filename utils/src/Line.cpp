@@ -15,7 +15,7 @@ Line::Line(const Point& point1, const Point& point2) {
 Line::Line(const Point& point, double slope) {
     point1 = point;
     yIntercept = point.y - point.x * slope;
-    point2 = Point(point.x + 1,(point.x +1 )*slope + yIntercept,point.z);
+    point2 = Point(point.x + 100,(point.x +100 )*slope + yIntercept,point.z);
     this->slope = slope;
 
 }

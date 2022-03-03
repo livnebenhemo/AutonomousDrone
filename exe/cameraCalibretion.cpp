@@ -35,7 +35,6 @@ int main() {
     system("v4l2-ctl -d /dev/video0 -c white_balance_temperature_auto=0");*/
     sleep(10);
     ctello::Tello tello;
-    tello.Bind();
     tello.SendCommandWithResponse("streamon");
     std::string videoPath = data["onlineVideoPath"];
     cv::VideoCapture capture(videoPath);

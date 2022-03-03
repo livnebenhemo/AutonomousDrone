@@ -6,7 +6,7 @@
   "WithPlot": false,
   "sizeOfFrameStack": 20,
   "offlineVideoTestPath": "/home/tzuk/Documents/AutonomousDroneResults/videos/outcpp2022-02-01T07:20:21Z.avi",
-  "onlineVideoPath": "udp://0.0.0.0:11111?overrun_nonfatal=1&fifo_size=5000",
+  "onlineVideoPath": "udp://0.0.0.0:11111?overrun_nonfatal=1&fifo_size=1000",
   "onlineVideoSettingsPath": "/home/tzuk/AutonomousDroneCPP/config/tzukComputerCamera.yaml",
   "runSimulator": true,
   "maxForwardForSimulator" : 1500,

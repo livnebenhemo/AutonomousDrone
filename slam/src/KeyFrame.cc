@@ -398,11 +398,12 @@ namespace ORB_SLAM2 {
             mConnectedKeyFrameWeight.first->EraseConnection(this);
 
         for (auto &[i, mvpMapPoint]: mvpMapPoints)
-            if (mvpMapPoint)
+            if (mvpMapPoint) {
                 mvpMapPoint->EraseObservation(this);
+            }
         {
             // std::unique_lock<std::mutex> lock(mMutexConnections);
-            std::unique_lock<std::mutex> lock1(mMutexFeatures);
+            //std::unique_lock<std::mutex> lock1(mMutexFeatures);
 
             mConnectedKeyFrameWeights.clear();
             mvpOrderedConnectedKeyFrames.clear();

@@ -100,25 +100,15 @@ namespace ORB_SLAM2 {
     void MapPoint::EraseObservation(KeyFrame *pKF) {
         bool bBad = false;
         {
-            // std::unique_lock<std::mutex> lock(mMutexFeatures);
-            if (mObservations.count(pKF)) {
-                int idx = mObservations[pKF];
-                if (pKF->mvuRight[idx] >= 0)
-                    nObs -= 2;
-                else
-                    nObs--;
-
-                mObservations.erase(pKF);
-
-                if (mpRefKF == pKF)
+            //std::unique_lock<std::mutex> lock(mMutexFeatures);
+            if (pKF && mObservations.erase(pKF)) {
+                nObs--;
+                if (mpRefKF == pKF && !mObservations.empty() && mObservations.begin()->first)
                     mpRefKF = mObservations.begin()->first;
-
                 // If only 2 observations or less, discard point
-                if (nObs <= 2)
-                    bBad = true;
+                bBad = nObs <= 2;
             }
         }
-
         if (bBad)
             SetBadFlag();
     }
@@ -142,7 +132,7 @@ namespace ORB_SLAM2 {
             obs = mObservations;
             mObservations.clear();
         }*/
-        if(!mObservations.empty()){
+        if (!mObservations.empty()) {
             for (auto pKf: mObservations) {
                 pKf.first->EraseMapPointMatch(pKf.second);
             }

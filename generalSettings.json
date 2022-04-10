@@ -1,14 +1,14 @@
 {
-  "VocabularyPath": "/home/tzuk/AutonomousDroneCPP/Vocabulary/ORBvoc.bin",
-  "DroneYamlPathSlam": "/home/tzuk/AutonomousDroneCPP/config/tello_5BFA7F.yaml",
-  "DroneYamlPathAruco": "/home/tzuk/AutonomousDroneCPP/config/tello_aruco_5BFA7F.yaml",
-  "DroneName": "TELLO-5C023B",
+  "VocabularyPath": "/home/ronel/AutonomousDroneCPP/Vocabulary/ORBvoc.bin",
+  "DroneYamlPathSlam": "/home/ronel/AutonomousDroneCPP/config/tello_5BFA7F.yaml",
+  "DroneYamlPathAruco": "/home/ronel/AutonomousDroneCPP/config/tello_aruco_5BFA7F.yaml",
+  "DroneName": "TELLO-DC9D6D",
   "WithPlot": false,
   "sizeOfFrameStack": 20,
-  "offlineVideoTestPath": "/home/tzuk/Documents/AutonomousDroneResults/videos/outcpp2022-02-01T07:20:21Z.avi",
+  "offlineVideoTestPath": "/home/ronel/Documents/AutonomousDroneResults/videos/outcpp2022-02-01T07:20:21Z.avi",
   "onlineVideoPath": "udp://0.0.0.0:11111?overrun_nonfatal=1&fifo_size=1000",
-  "onlineVideoSettingsPath": "/home/tzuk/AutonomousDroneCPP/config/tzukComputerCamera.yaml",
-  "runSimulator": true,
+  "onlineVideoSettingsPath": "/home/ronel/AutonomousDroneCPP/config/tzukComputerCamera.yaml",
+  "runSimulator": false,
   "maxForwardForSimulator" : 1500,
   "sizeOfForwardStepSimulator": 200
 }

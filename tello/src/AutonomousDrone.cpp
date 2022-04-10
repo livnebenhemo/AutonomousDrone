@@ -121,7 +121,7 @@ void AutonomousDrone::runOrbSlam() {
                     if (orbSlamTracker->mCurrentFrame.getFrameId() != currentFrame.frameId) {
                         int frameId = orbSlamTracker->mCurrentFrame.getFrameId();
                         std::vector<Point> framePoints;
-                        for (auto &[i,p]: orbSlamTracker->mCurrentFrame.GetMvpMapPoints()) {
+                        for (auto &[i, p]: orbSlamTracker->mCurrentFrame.GetMvpMapPoints()) {
                             if (p && !p->isBad()) {
                                 Eigen::Matrix<double, 3, 1> v = ORB_SLAM2::Converter::toVector3d(p->GetWorldPos());
                                 framePoints.emplace_back(
@@ -164,7 +164,7 @@ bool AutonomousDrone::updateCurrentFrame(ORB_SLAM2::Frame frame) {
     if (frame.getFrameId() != currentFrame.frameId) {
         int frameId = frame.getFrameId();
         std::vector<Point> framePoints;
-        for (auto [i,p]: frame.GetMvpMapPoints()) {
+        for (auto[i, p]: frame.GetMvpMapPoints()) {
             if (p && !p->isBad()) {
                 Eigen::Matrix<double, 3, 1> v = ORB_SLAM2::Converter::toVector3d(p->GetWorldPos());
                 framePoints.emplace_back(
@@ -250,7 +250,7 @@ bool AutonomousDrone::manageDroneCommand(const std::string &command, int amountO
         }
         commandingDrone = true;
         while (amountOfAttempt--) {
-            if (drone->SendCommandWithResponseByThread(command, 10000)) {
+            if (drone->SendCommandWithResponse(command, 10000)) {
                 commandingDrone = false;
                 if (amountOfSleep) {
                     sleep(amountOfSleep);
@@ -283,7 +283,7 @@ AutonomousDrone::manageAngleDroneCommand(int angle, bool clockwise, int amountOf
 }
 
 bool AutonomousDrone::doTriangulation() {
-    return manageDroneCommand("up 30", 5, 3) && manageDroneCommand("down 30", 5, 3);
+    return manageDroneCommand("forward 30", 5, 3) && manageDroneCommand("back 30", 5, 3);
 }
 
 void AutonomousDrone::rotateDrone(int angle, bool clockwise, bool buildMap) {
@@ -363,7 +363,7 @@ void AutonomousDrone::alertLowBattery() {
         while (true) {
             if (!commandingDrone) {
                 statusingDrone = true;
-                battery = drone->GetBattery();
+                battery = drone->GetBatteryStatus();
                 statusingDrone = false;
                 std::cout << "battery:" << battery << std::endl;
                 break;
@@ -371,7 +371,7 @@ void AutonomousDrone::alertLowBattery() {
                 usleep(300000);
             }
         }
-        if (battery < 50) {
+        if (battery < 30) {
             if (!(amountOfAttempts--)) {
                 if (current_drone_mode == navigation && navigationDestination == Point()) {
                     current_drone_mode = noBattery;
@@ -536,7 +536,8 @@ void AutonomousDrone::beginScan(bool findHome, int rotationAngle) {
 
     }
     rotationAngle = maxRotationAngle < rotationAngle ? maxRotationAngle : rotationAngle;
-    for (int i = 0; i < std::ceil(360 / rotationAngle) + 2; i++) {
+    std::cout << "starting scan" <<std::endl;
+    for (int i = 0; i < std::ceil(360 / rotationAngle) + 1; i++) {
         if (lowBattery) {
             return;
         }
@@ -548,8 +549,15 @@ void AutonomousDrone::beginScan(bool findHome, int rotationAngle) {
             }
         }
         howToRotate(rotationAngle, true, true);
-        i -= 1;
+        std::cout << "we did: " << i * rotationAngle << std::endl;
     }
+    std::cout << "starting global bundle Adjustments" << std::endl;
+    std::thread exhaustiveGlobalAdjustmentThread(&AutonomousDrone::exhaustiveGlobalAdjustment, this);
+    exhaustiveGlobalAdjustmentInProgress = true;
+    while (exhaustiveGlobalAdjustmentInProgress) {
+        doTriangulation();
+    }
+    exhaustiveGlobalAdjustmentThread.join();
     auto prevLocation = currentLocation;
     manageDroneCommand("up 40", 3, 3);
     isMinusUp = prevLocation.z > currentLocation.z;
@@ -598,7 +606,7 @@ std::pair<int, bool> AutonomousDrone::getRotationToFrameAngle(const Point &point
     Point directionVector(point.x - currentLocation.x, point.y - currentLocation.y, point.z - currentLocation.z);
     double directionVectorYaw = Auxiliary::radiansToAngle(std::atan2(directionVector.z, directionVector.x));
     currentYaw = currentYaw + 90;
-    double angleDifference = -1*(directionVectorYaw - currentYaw);
+    double angleDifference = -1 * (directionVectorYaw - currentYaw);
     while (angleDifference > 180) {
         angleDifference -= 360;
     }
@@ -1076,7 +1084,7 @@ void AutonomousDrone::runSimulator(int maxForwardDistance, int forwardAmount) {
         if (canStart) {
             //std::thread batteryThread(&AutonomousDrone::alertLowBattery, this);
             takeOffWithLocalization();
-            manageDroneCommand("forward 100",10,3);
+            manageDroneCommand("forward 100", 10, 3);
             buildSimulatorMap(maxRotationAngle);
             while (true) {
                 for (int i = 0; i < maxForwardDistance / forwardAmount; ++i) {
@@ -1133,17 +1141,16 @@ void AutonomousDrone::run() {
     //blobThread.join();
     while (true) {
         if (canStart) {
-            //std::thread batteryThread(&AutonomousDrone::alertLowBattery, this);
+            std::thread batteryThread(&AutonomousDrone::alertLowBattery, this);
             rooms.emplace_back(Room());
             currentRoom = rooms.back();
             home = Point();
             std::cout << "taking off" << std::endl;
             manageDroneCommand("takeoff", 3);
-            std::cout << drone->GetHeight() << std::endl;
-            beginScan(true);
+            beginScan(false);
             while (true) {
                 if (!lowBattery) {
-                    std::thread getNavigationPoints(&AutonomousDrone::getNavigationPoints, this, false);
+                    std::thread getNavigationPoints(&AutonomousDrone::getNavigationPoints, this, true);
                     stayInTheAir();
                     getNavigationPoints.join();
                     flyToNavigationPoints();
@@ -1154,7 +1161,7 @@ void AutonomousDrone::run() {
                         }
                         navigateDrone(home, false);
                         //orbSlamPointer->Reset();
-                        beginScan(true);
+                        beginScan(false);
                     }
                 }
                 if (lowBattery) {

@@ -112,5 +112,6 @@ public:
     static std::pair<cv::Mat, cv::Mat> alignMap(std::vector<Point> &points);
 };
 
+static cv::Mat points3d_to_mat(const std::vector<cv::Point3d> &points3d);
 
 #endif //ORB_SLAM2_AUXILIARY_H

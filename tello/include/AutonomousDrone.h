@@ -25,7 +25,8 @@ public:
     AutonomousDrone(std::shared_ptr<ctello::Tello> drone,/*std::shared_ptr<cv::VideoCapture> capture,*/
                     std::string vocabularyFilePath, std::string cameraYamlPath, const std::string &arucoYamlPath,
                     std::string droneWifiName, int sizeOfFrameStack = 20,
-                    bool withPlot = false, std::string chargerBluetoothAddress = "3C:61:05:03:81:E2");
+                    bool withPlot = false, bool isManual=false,
+                    std::string chargerBluetoothAddress = "3C:61:05:03:81:E2");
 
     void run();
 
@@ -150,6 +151,8 @@ private:
     bool loopCloserHappened = false;
     double desiredAngle = 0.0;
     bool lowBattery = false;
+    bool droneNotFly = false;
+    bool isManual = false;
     int maxRotationAngle = 15;
     bool reachedCheckpoint = false;
     bool gettingFurther = false;
@@ -176,6 +179,12 @@ private:
     bool exhaustiveGlobalAdjustmentInProgress = false;
 
     void takeOffWithLocalization();
+
+    void manuallyFlyToNavigationPoints();
+
+    bool manuallyNavigateDrone(const Point &destination, bool rotateToFrameAngle = true);
+
+    void moveWithKeyboard();
 };
 
 #endif //TELLO_AUTONOMOUSDRONE_H

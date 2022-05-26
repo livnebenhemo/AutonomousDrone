@@ -397,6 +397,10 @@ std::vector<Point> Polygon::getExitPointsByPolygon(bool isDebug) {
 
 std::vector<Point> Polygon::filterCheckpoints(std::vector<Point> rawNavigationPoints, int minAngleDistance) {
     std::vector<std::pair<double, Point>> pointsWithAngles;
+    auto center = polygonCenter;
+    std::sort(rawNavigationPoints.begin(), rawNavigationPoints.end(), [&center](const Point &p1, const Point &p2) {
+        return Auxiliary::calculateDistanceXY(p1, center) > Auxiliary::calculateDistanceXY(p2, center);
+    });
     for (Point point : rawNavigationPoints) {
         double angle = Auxiliary::getAngleFromSlope((point.y - polygonCenter.y) / (point.x - polygonCenter.x));
         angle += angle < 0 ? 180 : 0;

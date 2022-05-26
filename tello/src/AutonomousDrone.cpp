@@ -17,6 +17,7 @@ AutonomousDrone::AutonomousDrone(std::shared_ptr<ctello::Tello> drone,
                                  int sizeOfFrameStack,
                                  bool withPlot,
                                  bool isManual,
+                                 bool switchBattery,
                                  std::string chargerBluetoothAddress) {
     currentFrame = Frame();
     home = Point();
@@ -38,6 +39,7 @@ AutonomousDrone::AutonomousDrone(std::shared_ptr<ctello::Tello> drone,
     this->arucoYamlPath = arucoYamlPath;
     this->droneWifiName = std::move(droneWifiName);
     this->isManual = isManual;
+    this->useCharger = !switchBattery;
     markers.emplace_back(std::pair<int, double>(1, 0.07));
     cameraParams = Charger::getCameraCalibration(arucoYamlPath);
     dictionary = cv::aruco::getPredefinedDictionary(
@@ -59,6 +61,7 @@ void AutonomousDrone::getCameraFeed() {
             continue;
         }
         capture->read(*currentImage);
+        //std::cout << "rows : " << currentImage -> rows << std::endl;
         video.write(*currentImage);
     }
     video.release();
@@ -248,6 +251,8 @@ bool AutonomousDrone::manageDroneCommand(const std::string &command, int amountO
     }
     if (!lowBattery) {
         while (commandingDrone || statusingDrone) {
+            std::cout << commandingDrone << std::endl;
+            std::cout << statusingDrone << std::endl;
             usleep(200);
         }
         commandingDrone = true;
@@ -375,7 +380,7 @@ void AutonomousDrone::alertLowBattery() {
                 usleep(300000);
             }
         }
-        if (battery < 30) {
+        if (battery < 20) {
             if (!(amountOfAttempts--)) {
                 if (current_drone_mode == navigation && navigationDestination == Point()) {
                     current_drone_mode = noBattery;
@@ -562,6 +567,8 @@ void AutonomousDrone::beginScan(bool findHome, int rotationAngle) {
         doTriangulation();
     }
     exhaustiveGlobalAdjustmentThread.join();
+    if (lowBattery)
+        switchBattery();
     auto prevLocation = currentLocation;
     manageDroneCommand("up 40", 3, 3);
     isMinusUp = prevLocation.z > currentLocation.z;
@@ -1024,32 +1031,35 @@ bool AutonomousDrone::manuallyNavigateDrone(const Point &destination, bool rotat
         return true;
     }
     //std::thread collisionDetectorThread(&AutonomousDrone::collisionDetector, this, destination);
-    std::thread maintainAngleToPointThread(&AutonomousDrone::maintainAngleToPoint, this, destination,
-                                           rotateToFrameAngle);
+    /* std::thread maintainAngleToPointThread(&AutonomousDrone::maintainAngleToPoint, this, destination,
+                                           rotateToFrameAngle); */
     std::thread monitorDroneProgressThread(&AutonomousDrone::monitorDroneProgress, this, destination);
     bool areWeNavigatingHome = destination == home;
-    while (!stop && !loopCloserHappened && !lowBattery) {
-        moveWithKeyboard();
-        if (!droneRotate && !isBlocked) {
-            if (!localized) {
-                if (colorDetection() < 10) {
-                    // manageDroneCommand("back 60", 3, 2);
-                    std::cout << "No localization : back 60" << std::endl;
-                }
-            } else {
-                /*drone->SendCommand("rc 0 " + std::to_string(speed)
-                                   + " 0 0");*/
-                if (areWeNavigatingHome) {
-                    std::cout << "going home" << std::endl;
-                    /*if (findAndGoHome(90, true)) {
-                        break;
-                    }*/
-                    usleep(1500000);
-                    continue;
+    while (!stop && !loopCloserHappened) {
+        if (lowBattery)
+            switchBattery();
+        else {
+            moveWithKeyboard();
+            if (!droneRotate && !isBlocked) {
+                if (!localized) {
+                    if (colorDetection() < 10) {
+                        // manageDroneCommand("back 60", 3, 2);
+                        std::cout << "No localization : back 60" << std::endl;
+                    }
+                } else {
+                    /*drone->SendCommand("rc 0 " + std::to_string(speed)
+                                       + " 0 0");*/
+                    if (areWeNavigatingHome) {
+                        std::cout << "going home" << std::endl;
+                        /*if (findAndGoHome(90, true)) {
+                            break;
+                        }*/
+                        usleep(1500000);
+                        continue;
+                    }
                 }
             }
         }
-        sleep(2);
     }
     stop = true;
     if (current_drone_mode == noBattery) {
@@ -1058,7 +1068,6 @@ bool AutonomousDrone::manuallyNavigateDrone(const Point &destination, bool rotat
     current_drone_mode = scanning;
     std::cout << "waiting for the threads to finish" << std::endl;
     monitorDroneProgressThread.join();
-    maintainAngleToPointThread.join();
     //collisionDetectorThread.join();
     std::cout << "threads finished" << std::endl;
     navigationDestination = Point(1000, 1000, 1000);
@@ -1101,9 +1110,9 @@ void AutonomousDrone::manuallyFlyToNavigationPoints() {
     Navigation navigation;
     orbSlamPointer->GetMapDrawer()->SetPolygonEdges(currentRoom.exitPoints);
     std::cout << currentRoom.exitPoints.size() << std::endl;
-    std::cout << "drone can not fly" << std::endl;
+    /*std::cout << "drone can not fly" << std::endl;
     manageDroneCommand("land", 5);
-    droneNotFly = true;
+    droneNotFly = true;*/
     for (const Point &point: currentRoom.exitPoints) {
         std::vector<Point> plottedPoint = std::vector<Point>{};
         plottedPoint.push_back(point);
@@ -1117,17 +1126,16 @@ void AutonomousDrone::manuallyFlyToNavigationPoints() {
             if (loopCloserHappened || lowBattery || weInAWrongScale) {
                 break;
             }
-            if (!navigateDrone(home, false) || loopCloserHappened || lowBattery) {
+            if (!manuallyNavigateDrone(home, false) || loopCloserHappened || lowBattery) {
                 break;
             }
         } else {
             break;
         }
-        /*
-         TODO : maybe the next step
-         switch battery
-         beginScan(false)
-         */
+
+        switchBattery();
+        beginScan(false);
+
     }
     droneNotFly = false;
     std::cout << "drone can fly" << std::endl;
@@ -1152,7 +1160,7 @@ void AutonomousDrone::stayInTheAir() {
     }
 }
 
-void AutonomousDrone::connectDrone() {
+void AutonomousDrone::connectDrone(bool isReconnect) {
     std::cout << "we trying to reconnect the drone" << std::endl;
     while (true) {
         try {
@@ -1160,9 +1168,12 @@ void AutonomousDrone::connectDrone() {
             const char *command = commandString.c_str();
             system(command);
             drone.reset(new ctello::Tello());
-            manageDroneCommand("streamon");
-            capture->release();
-            sleep(2);
+            statusingDrone = false;
+            manageDroneCommand("streamon", 3);
+            if (!isReconnect) {
+                capture->release();
+                sleep(2);
+            }
             capture.reset(new cv::VideoCapture(TELLO_STREAM_URL, cv::CAP_FFMPEG));
             sleep(10);
             *holdCamera = false;
@@ -1248,7 +1259,7 @@ void AutonomousDrone::runSimulator(int maxForwardDistance, int forwardAmount) {
                                         false);
                         std::cout << "start running the charger" << std::endl;
                         charger.navigateToBox();*/
-                        int timeToSwitchBattery = 60;
+                        int timeToSwitchBattery = 30;
                         std::cout << "time to switch battery, you have " + std::to_string(timeToSwitchBattery) +
                                      " seconds for it" << std::endl;
                         sleep(timeToSwitchBattery);
@@ -1265,6 +1276,21 @@ void AutonomousDrone::runSimulator(int maxForwardDistance, int forwardAmount) {
     }
 }
 
+
+void AutonomousDrone::switchBattery(int switchingTime){
+    disconnectDrone();
+    droneNotFly = true;
+    runCamera = false;
+    std::cout << switchingTime << " second for battery switching" << std::endl;
+    sleep(switchingTime);
+    droneNotFly = false;
+    connectDrone(false);
+    std::thread getCameraThread(&AutonomousDrone::getCameraFeed, this);
+    manageDroneCommand("takeoff", 3);
+    sleep(1);  // because error "not joystick"
+}
+
+
 void AutonomousDrone::run() {
 
     std::thread orbThread(&AutonomousDrone::runOrbSlam, this);
@@ -1278,7 +1304,7 @@ void AutonomousDrone::run() {
             home = Point();
             std::cout << "taking off" << std::endl;
             manageDroneCommand("takeoff", 3);
-            // sleep(1);  // because error "not joystick"
+            sleep(1);  // because error "not joystick"
             beginScan(false);
             while (true) {
                 if (!lowBattery) {
@@ -1299,33 +1325,38 @@ void AutonomousDrone::run() {
                         beginScan(false);
                     }
                 }
-                if (lowBattery) {
+                if (lowBattery) {  // TODO : delete ?
                     std::cout << "no battery" << std::endl;
                     //batteryThread.join();
                     lowBattery = false;
-                    if (Auxiliary::calculateDistanceXY(Point(), currentLocation) > closeThreshold * 1.2) {
-                        if (!checkIfPointInFront(home)) {
-                            howToRotate(180, true, true);
-                        }
-                        navigateDrone(home, false);
+                    if (useCharger) {
+                        if (Auxiliary::calculateDistanceXY(Point(), currentLocation) > closeThreshold * 1.2) {
+                            if (!checkIfPointInFront(home)) {
+                                howToRotate(180, true, true);
+                            }
+                            navigateDrone(home, false);
 
-                    } else {
-                        auto angle = getRotationToFrameAngle(home);
-                        howToRotate(angle.first, angle.second);
-                        auto distance = distanceToHome();
-                        while (distance == 0.0) {
-                            howToRotate(maxRotationAngle, angle.second);
-                            distance = distanceToHome();
+                        } else {
+                            auto angle = getRotationToFrameAngle(home);
+                            howToRotate(angle.first, angle.second);
+                            auto distance = distanceToHome();
+                            while (distance == 0.0) {
+                                howToRotate(maxRotationAngle, angle.second);
+                                distance = distanceToHome();
+                            }
                         }
+                        Charger charger(markers, holdCamera, droneWifiName,
+                                        arucoYamlPath, drone, currentImage, dronePort,
+                                        false);
+                        std::cout << "start running the charger" << std::endl;
+                        charger.navigateToBox();
+                        connectDrone();
+                        //batteryThread = std::thread(&AutonomousDrone::alertLowBattery, this);
+                        manageDroneCommand("takeoff", 3, 5);
                     }
-                    Charger charger(markers, holdCamera, droneWifiName,
-                                    arucoYamlPath, drone, currentImage, dronePort,
-                                    false);
-                    std::cout << "start running the charger" << std::endl;
-                    charger.navigateToBox();
-                    connectDrone();
-                    //batteryThread = std::thread(&AutonomousDrone::alertLowBattery, this);
-                    manageDroneCommand("takeoff", 3, 5);
+                    else {
+                        switchBattery();
+                    }
                     if (localized) {
                         howToRotate(180, true, true);
                     } else {

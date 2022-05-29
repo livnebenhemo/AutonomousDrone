@@ -1079,7 +1079,8 @@ bool AutonomousDrone::manuallyNavigateDrone(const Point &destination, bool rotat
 
 void AutonomousDrone::flyToNavigationPoints() {
     Navigation navigation;
-    orbSlamPointer->GetMapDrawer()->SetPolygonEdges(currentRoom.exitPoints);
+    // orbSlamPointer->GetMapDrawer()->SetPolygonEdges(currentRoom.exitPoints);
+    orbSlamPointer->GetMapDrawer()->DrawMapPoints();
     std::cout << currentRoom.exitPoints.size() << std::endl;
     for (const Point &point: currentRoom.exitPoints) {
         auto currentMap = getCurrentMap();
@@ -1099,6 +1100,31 @@ void AutonomousDrone::flyToNavigationPoints() {
             } else {
                 break;
             }
+        }
+    }
+    orbSlamPointer->GetMapDrawer()->ClearPolygonEdgesPoint();
+    std::cout << "we ended fly to polygon" << std::endl;
+}
+
+
+void AutonomousDrone::flyToNavigationPointsNoRRT() {
+    Navigation navigation;
+    orbSlamPointer->GetMapDrawer()->SetPolygonEdges(currentRoom.exitPoints);
+    std::cout << currentRoom.exitPoints.size() << std::endl;
+    for (const Point &point: currentRoom.exitPoints) {
+        auto currentMap = getCurrentMap();
+        if (navigateDrone(point) && !loopCloserHappened && !lowBattery) {
+            if (!checkIfPointInFront(home)) {
+                howToRotate(180, true, true);
+            }
+            if (loopCloserHappened || lowBattery || weInAWrongScale) {
+                break;
+            }
+            if (!navigateDrone(home, false) || loopCloserHappened || lowBattery) {
+                break;
+            }
+        } else {
+            break;
         }
     }
     orbSlamPointer->GetMapDrawer()->ClearPolygonEdgesPoint();

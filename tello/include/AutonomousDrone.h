@@ -188,6 +188,8 @@ private:
     void moveWithKeyboard();
 
     void switchBattery(int switchingTime = 25);
+
+    void flyToNavigationPointsNoRRT();
 };
 
 #endif //TELLO_AUTONOMOUSDRONE_H

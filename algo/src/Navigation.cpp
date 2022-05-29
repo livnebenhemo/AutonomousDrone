@@ -194,6 +194,7 @@ Navigation::getNavigationPathByRRT(std::vector<Point> &points, std::pair<Point, 
     if (graph.vertices.size() == 1) {
         std::cout << "straight line" << std::endl;
         if (debug) {
+            std::cout << "livne" << std::endl;
             Auxiliary::SetupPangolin("path");
             Auxiliary::drawPathPangolin(points, graph.vertices, "path", track);
         }
@@ -202,6 +203,7 @@ Navigation::getNavigationPathByRRT(std::vector<Point> &points, std::pair<Point, 
     auto path = dijkstra(graph);
     std::cout << "size of path: " << path.size() << std::endl;
     if (debug) {
+        std::cout << "livne" << std::endl;
         Auxiliary::SetupPangolin("path");
         Auxiliary::drawPathPangolin(points, path, "path", track);
     }

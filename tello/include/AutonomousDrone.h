@@ -130,6 +130,8 @@ private:
     bool stop = false;
     bool orbSlamRunning = false;
     bool runCamera = true;
+    bool printSomething = false;
+    bool rerunCamera = false;
     bool localized = false;
     bool canStart = false;
     bool isExit = true;

@@ -387,7 +387,7 @@ Auxiliary::GetMinDistance(const std::vector<Point> &points, const std::function<
 }
 
 std::pair<int, bool> Auxiliary::getRotationToTargetInFront(const Point &point1, const Point &point2) {
-    /*Eigen::Vector3d vector1(point1.x, point1.y, 0);
+    Eigen::Vector3d vector1(point1.x, point1.y, 0);
     Eigen::Vector3d vector2(point2.x, point2.y, 0);
     Eigen::Vector3d unitVector1 = vector1 / vector1.norm();
     Eigen::Vector3d unitVector2 = vector2 / vector2.norm();
@@ -396,8 +396,8 @@ std::pair<int, bool> Auxiliary::getRotationToTargetInFront(const Point &point1, 
     std::cout << "getRotationToTargetInFront angle: " << angle << " clockwise: " << clockwise << std::endl;
     if (angle > 90) {
         angle = 180 - angle;
-    }*/
-    auto dot = point1.x * point2.x + point1.y * point2.y;
+    }
+    /*auto dot = point1.x * point2.x + point1.y * point2.y;
     auto det = point1.x * point2.y - point1.y * point2.x;
     int angle = std::ceil(Auxiliary::radiansToAngle(std::atan2(det, dot)));
     bool clockwise = angle > 0;
@@ -408,7 +408,7 @@ std::pair<int, bool> Auxiliary::getRotationToTargetInFront(const Point &point1, 
     if (angle > 90) {
         angle = 180 - angle;
         clockwise = !clockwise;
-    }
+    }*/
     return std::pair<int, bool>{angle, clockwise};
 }
 

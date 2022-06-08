@@ -29,7 +29,8 @@ std::vector<Point> getPointsFromFile(const std::string& fileName) {
 int main() {
 
     // std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "buildings/Lab/pointData2022-02-06_07:59:48Z.csv";
-    std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "buildings/HUJI/komata/pointData2.csv";
+    std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "buildings/HUJI/komata/pointData7.csv";
+    // std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "buildings/HUJI/livne_room/pointData1.csv";
     auto points = getPointsFromFile(datasetFilePath);
     auto start = std::chrono::high_resolution_clock::now();
     Polygon polygon(points, Point());

@@ -578,7 +578,7 @@ void Polygon::smoothPolygon(int angleRange) {
 }
 
 std::vector<std::pair<Point, double>> Polygon::getRawPolygonCorners() {
-    angle = 30;
+    angle = 20;
     std::vector<Line> lines = Pizza::createPizzaLines(polygonCenter, angle);
     auto slices = Pizza::createPizzaSlices(polygonCenter, pointsWithDistance, angle);
     std::vector<std::pair<Point, double>> polygonVertices;

@@ -546,13 +546,11 @@ void AutonomousDrone::beginScan(bool findHome, int rotationAngle) {
             break;
         }
         manageAngleDroneCommand(maxRotationAngle, true, 5, 2);
-
     }
-    // rotationAngle = maxRotationAngle < rotationAngle ? maxRotationAngle : rotationAngle;  # TODO : always 25 ?
     std::cout << "starting scan" <<std::endl;
     for (int i = 0; i < std::ceil(360 / rotationAngle) + 1; i++) {
         if (lowBattery) {
-            return;
+            switchBattery();
         }
         if (findHome) {
             if (findAndGoHome(90, false)) {
@@ -1008,7 +1006,7 @@ void AutonomousDrone::moveWithKeyboard(){
     char c = getchar();
     switch (c) {
         case 'w':
-            manageDroneCommand("forward 20", 3);
+            manageDroneCommand("forward 30", 3);
             break;
         case 's':
             manageDroneCommand("back 30", 3);
@@ -1040,10 +1038,13 @@ bool AutonomousDrone::manuallyNavigateDrone(const Point &destination, bool rotat
                                            rotateToFrameAngle); */
     std::thread monitorDroneProgressThread(&AutonomousDrone::monitorDroneProgress, this, destination);
     bool areWeNavigatingHome = destination == home;
-    while (!stop && !loopCloserHappened) {
-        if (lowBattery)
+    while ((!stop && !loopCloserHappened) || (stop && lowBattery)) {
+        if (lowBattery) {
             switchBattery();
-        else {
+            std::thread batteryThread(&AutonomousDrone::alertLowBattery, this);
+            stop = false;
+            lowBattery = false;  // TODO : if work, write in not manually
+        } else {
             moveWithKeyboard();
         }
     }
@@ -1087,6 +1088,7 @@ void AutonomousDrone::flyToNavigationPoints() {
             if (lowBattery) {  // TODO : validate this mode - I miss one point but can continue?
                 std::cout << "I'm here" << std::endl;
                 switchBattery();
+                std::thread batteryThread(&AutonomousDrone::alertLowBattery, this);
                 navigateDrone(pathPoint);
             }
             /*} else {
@@ -1107,24 +1109,24 @@ void AutonomousDrone::manuallyFlyToNavigationPoints() {
     manageDroneCommand("land", 5);
     droneNotFly = true;*/
     for (const Point &point: currentRoom.exitPoints) {
+        int battery = drone->GetBatteryStatus();
+        if (battery < 50)
+            switchBattery();
         std::vector<Point> plottedPoint = std::vector<Point>{};
         plottedPoint.push_back(point);
         Auxiliary::showCloudPoint(plottedPoint, currentRoom.points);
         auto currentMap = getCurrentMap();
         std::pair<Point, Point> track{currentLocation, point};
-        if (manuallyNavigateDrone(point) && !loopCloserHappened && !lowBattery) {
-            if (!checkIfPointInFront(home)) {
+        if (manuallyNavigateDrone(point) && !loopCloserHappened) {  // TODO : && !lowBattery
+            if (!checkIfPointInFront(home)) {  // TODO : need it in manually state ?
                 howToRotate(180, true, true);
             }
             if (loopCloserHappened || lowBattery || weInAWrongScale) {
                 break;
             }
-            if (!manuallyNavigateDrone(home, false) || loopCloserHappened || lowBattery) {
+            /*if (!manuallyNavigateDrone(home, false) || loopCloserHappened || lowBattery) {
                 break;
-            }
-        } else if (lowBattery) {  // TODO : validate this mode
-            switchBattery();
-            navigateDrone(point);
+            }*/
         } else {
             break;
         }
@@ -1282,6 +1284,7 @@ void AutonomousDrone::switchBattery(int switchingTime){
     sleep(switchingTime);
     droneNotFly = false;
     connectDrone(false);
+    std::cout << "Drone connected !" << std::endl;
     runCamera = true;
     sleep(2);
     manageDroneCommand("takeoff", 3);
@@ -1324,9 +1327,8 @@ void AutonomousDrone::run() {
                         beginScan(false);
                     }
                 }
-                if (lowBattery) {  // TODO : delete ?
+                if (lowBattery) {
                     std::cout << "no battery" << std::endl;
-                    //batteryThread.join();
                     lowBattery = false;
                     if (useCharger) {
                         if (Auxiliary::calculateDistanceXY(Point(), currentLocation) > closeThreshold * 1.2) {

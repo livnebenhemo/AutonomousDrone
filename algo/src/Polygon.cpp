@@ -36,7 +36,7 @@ std::vector<Point> Polygon::getExitPointsByPolygon(bool isDebug) {
         Auxiliary::showCloudPoint(vertices, withOutVariances);
         Auxiliary::showCloudPoint(vertices, goodPoints);
     }
-    int minSamples = 25;
+    int minSamples = 5;  // TODO - very important!!! original : 25
     auto rawNavigationPoints =std::vector<Point>{};
     while (rawNavigationPoints.empty() && minSamples > 0){
         rawNavigationPoints = getNavigationPoints(goodPoints,minSamples);

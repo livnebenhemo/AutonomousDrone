@@ -497,7 +497,13 @@ void AutonomousDrone::exhaustiveGlobalAdjustment() {
             std::cout << "RunGlobalBundleAdjustment: " << keyFrame->mnId << std::endl;
             orbSlamPointer->GetLoopClosing()->RunGlobalBundleAdjustment(keyFrame->mnId);
         }
+        if (lowBattery  && !printSomething) {  // create a thread just if not exist already
+            std::cout << "need to check" << std::endl;
+            std::thread switchBatteryThread(&AutonomousDrone::switchBattery, this, 25);
+        }
     }
+    while (printSomething)  // do nothing - avoid problems
+        ;
     exhaustiveGlobalAdjustmentInProgress = false;
 }
 
@@ -540,6 +546,7 @@ void AutonomousDrone::beginScan(bool findHome, int rotationAngle) {
     //init the map' sometimes the takeoff is not good enough
     manageDroneCommand("forward 30", 5, 3);
     manageDroneCommand("back 30", 5, 3);
+    std::cout << "Find localization" << std::endl;
     while (!localized) {
         doTriangulation();
         if (localized) {
@@ -1074,11 +1081,11 @@ void AutonomousDrone::flyToNavigationPoints() {
         std::pair<Point, Point> track{currentLocation, point};
         auto path = navigation.getNavigationPathByRRT(currentMap, track);
         for (const auto &pathPoint: path) {
-            if (navigateDrone(pathPoint) && !loopCloserHappened && !lowBattery) {
+            if (navigateDrone(pathPoint) && !loopCloserHappened) {
                 if (!checkIfPointInFront(home)) {
                     howToRotate(180, true, true);
                 }
-                if (loopCloserHappened || lowBattery || weInAWrongScale) {
+                if (loopCloserHappened || weInAWrongScale) {
                     break;
                 }
                 if (!navigateDrone(home, false) || loopCloserHappened || lowBattery) {
@@ -1104,9 +1111,6 @@ void AutonomousDrone::manuallyFlyToNavigationPoints() {
     Navigation navigation;
     orbSlamPointer->GetMapDrawer()->SetPolygonEdges(currentRoom.exitPoints);
     std::cout << currentRoom.exitPoints.size() << std::endl;
-    /*std::cout << "drone can not fly" << std::endl;
-    manageDroneCommand("land", 5);
-    droneNotFly = true;*/
     for (const Point &point: currentRoom.exitPoints) {
         int battery = drone->GetBatteryStatus();
         if (battery < 50)
@@ -1116,16 +1120,13 @@ void AutonomousDrone::manuallyFlyToNavigationPoints() {
         Auxiliary::showCloudPoint(plottedPoint, currentRoom.points);
         auto currentMap = getCurrentMap();
         std::pair<Point, Point> track{currentLocation, point};
-        if (manuallyNavigateDrone(point) && !loopCloserHappened) {  // TODO : && !lowBattery
+        if (manuallyNavigateDrone(point) && !loopCloserHappened) {
             if (!checkIfPointInFront(home)) {  // TODO : need it in manually state ?
                 howToRotate(180, true, true);
             }
-            if (loopCloserHappened || lowBattery || weInAWrongScale) {
+            if (loopCloserHappened || weInAWrongScale) {
                 break;
             }
-            /*if (!manuallyNavigateDrone(home, false) || loopCloserHappened || lowBattery) {
-                break;
-            }*/
         } else {
             break;
         }
@@ -1134,11 +1135,6 @@ void AutonomousDrone::manuallyFlyToNavigationPoints() {
         beginScan(false);
 
     }
-    droneNotFly = false;
-    std::cout << "drone can fly" << std::endl;
-    sleep(5);
-    std::cout << "press enter to takeoff" << std::endl;
-    manageDroneCommand("takeoff", 3, 5);  // TODO : takeoff with localization function ?
 
     orbSlamPointer->GetMapDrawer()->ClearPolygonEdgesPoint();
     std::cout << "we ended fly to polygon" << std::endl;

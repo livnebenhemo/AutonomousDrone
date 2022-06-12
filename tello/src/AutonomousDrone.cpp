@@ -252,30 +252,28 @@ bool AutonomousDrone::manageDroneCommand(const std::string &command, int amountO
     while (orbSlamPointer->GetLocalMapping()->isStopped()) {
         usleep(100);
     }
-    if (!lowBattery) {
-        while (commandingDrone || statusingDrone) {
-            std::cout << commandingDrone << std::endl;
-            std::cout << statusingDrone << std::endl;
-            usleep(200);
-        }
-        commandingDrone = true;
-        while (amountOfAttempt--) {
-            if (!droneNotFly) {
-                if (drone->SendCommandWithResponse(command, 10000)) {
-                    commandingDrone = false;
-                    if (amountOfSleep) {
-                        sleep(amountOfSleep);
-                    } else {
-                        usleep(100000);
-                    }
-                    return true;
+    while (commandingDrone || statusingDrone) {
+        std::cout << commandingDrone << std::endl;
+        std::cout << statusingDrone << std::endl;
+        usleep(200);
+    }
+    commandingDrone = true;
+    while (amountOfAttempt--) {
+        if (!droneNotFly) {
+            if (drone->SendCommandWithResponse(command, 10000)) {
+                commandingDrone = false;
+                if (amountOfSleep) {
+                    sleep(amountOfSleep);
                 } else {
-                    sleep(1);
+                    usleep(100000);
                 }
+                return true;
+            } else {
+                sleep(1);
             }
         }
-        sleep(1);
     }
+    sleep(1);
     commandingDrone = false;
     return false;
 }
@@ -372,35 +370,37 @@ void AutonomousDrone::alertLowBattery() {
     int battery;
     int amountOfAttempts = 3;
     while (true) {
-        battery = 0;
-        while (true) {
-            if (!commandingDrone) {
-                statusingDrone = true;
-                battery = drone->GetBatteryStatus();
-                statusingDrone = false;
-                std::cout << "battery:" << battery << std::endl;
-                break;
-            } else {
-                usleep(300000);
-            }
-        }
-        if (battery < 20) {
-            if (!(amountOfAttempts--)) {
-                if (current_drone_mode == navigation && navigationDestination == Point()) {
-                    current_drone_mode = noBattery;
+        if (!printSomething) { // drone is connected
+            battery = 0;
+            while (true) {
+                if (!commandingDrone) {
+                    statusingDrone = true;
+                    battery = drone->GetBatteryStatus();
+                    statusingDrone = false;
+                    std::cout << "battery:" << battery << std::endl;
+                    break;
                 } else {
-                    lowBattery = true;
-                    stop = true;
+                    usleep(300000);
                 }
-                std::cout << "low battery" << std::endl;
-                break;
-            } else {
-                sleep(1);
             }
-        } else {
-            amountOfAttempts = 3;
+            if (battery < 20) {
+                if (!(amountOfAttempts--)) {
+                    if (current_drone_mode == navigation && navigationDestination == Point()) {
+                        current_drone_mode = noBattery;
+                    } else {
+                        lowBattery = true;
+                        stop = true;
+                    }
+                    std::cout << "low battery" << std::endl;
+                    //break;
+                } else {
+                    sleep(1);
+                }
+            } else {
+                amountOfAttempts = 3;
+            }
+            sleep(5);
         }
-        sleep(5);
     }
 }
 
@@ -551,6 +551,7 @@ void AutonomousDrone::beginScan(bool findHome, int rotationAngle) {
     for (int i = 0; i < std::ceil(360 / rotationAngle) + 1; i++) {
         if (lowBattery) {
             switchBattery();
+            lowBattery = false;
         }
         if (findHome) {
             if (findAndGoHome(90, false)) {
@@ -560,7 +561,7 @@ void AutonomousDrone::beginScan(bool findHome, int rotationAngle) {
             }
         }
         howToRotate(rotationAngle, true, true);
-        std::cout << "we did: " << i * rotationAngle << std::endl;
+        std::cout << "we did: " << (i + 1) * rotationAngle << std::endl;
     }
     std::cout << "starting global bundle Adjustments" << std::endl;
     std::thread exhaustiveGlobalAdjustmentThread(&AutonomousDrone::exhaustiveGlobalAdjustment, this);
@@ -1041,7 +1042,6 @@ bool AutonomousDrone::manuallyNavigateDrone(const Point &destination, bool rotat
     while ((!stop && !loopCloserHappened) || (stop && lowBattery)) {
         if (lowBattery) {
             switchBattery();
-            std::thread batteryThread(&AutonomousDrone::alertLowBattery, this);
             stop = false;
             lowBattery = false;  // TODO : if work, write in not manually
         } else {
@@ -1088,7 +1088,6 @@ void AutonomousDrone::flyToNavigationPoints() {
             if (lowBattery) {  // TODO : validate this mode - I miss one point but can continue?
                 std::cout << "I'm here" << std::endl;
                 switchBattery();
-                std::thread batteryThread(&AutonomousDrone::alertLowBattery, this);
                 navigateDrone(pathPoint);
             }
             /*} else {
@@ -1222,7 +1221,6 @@ void AutonomousDrone::runSimulator(int maxForwardDistance, int forwardAmount) {
     *holdCamera = true;
     while (true) {
         if (canStart) {
-            //std::thread batteryThread(&AutonomousDrone::alertLowBattery, this);
             takeOffWithLocalization();
             manageDroneCommand("forward 100", 10, 3);
             buildSimulatorMap(maxRotationAngle);
@@ -1352,7 +1350,6 @@ void AutonomousDrone::run() {
                         std::cout << "start running the charger" << std::endl;
                         charger.navigateToBox();
                         connectDrone();
-                        //batteryThread = std::thread(&AutonomousDrone::alertLowBattery, this);
                         manageDroneCommand("takeoff", 3, 5);
                     }
                     else {

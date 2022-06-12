@@ -15,6 +15,10 @@
 
 
 namespace ORB_SLAM2 {
+    struct id_map {
+        bool is_valid;
+        long unsigned int id;
+    };
 
     class Map;
 
@@ -26,6 +30,10 @@ namespace ORB_SLAM2 {
 
     class KeyFrame {
     public:
+        KeyFrame();
+
+        ~KeyFrame();
+
         KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB);
 
         // Pose functions
@@ -55,7 +63,7 @@ namespace ORB_SLAM2 {
 
         std::set<KeyFrame *> GetConnectedKeyFrames();
 
-        std::unordered_map<MapPoint *, int> GetMapPointsDic();
+        std::unordered_map<std::shared_ptr<MapPoint>, int> GetMapPointsDic();
 
         std::unordered_map<KeyFrame *, int> GetConnectedKeyFramesAsDic();
 
@@ -86,21 +94,21 @@ namespace ORB_SLAM2 {
         std::set<KeyFrame *> GetLoopEdges();
 
         // MapPoint observation functions
-        void AddMapPoint(MapPoint *pMP, const size_t &idx);
+        void AddMapPoint(std::shared_ptr<MapPoint> pMP, const size_t &idx);
 
         void EraseMapPointMatch(const size_t &idx);
 
-        void EraseMapPointMatch(MapPoint *pMP);
+        void EraseMapPointMatch(std::shared_ptr<MapPoint> &pMP);
 
-        void ReplaceMapPointMatch(const size_t &idx, MapPoint *pMP);
+        void ReplaceMapPointMatch(const size_t &idx, std::shared_ptr<MapPoint> pMP);
 
-        std::set<MapPoint *> GetMapPoints();
+        std::set<std::shared_ptr<MapPoint>> GetMapPoints();
 
-        std::unordered_map<size_t,MapPoint *>  GetMapPointMatches();
+        std::unordered_map<size_t, std::shared_ptr<MapPoint>> GetMapPointMatches();
 
         int TrackedMapPoints(const int &minObs);
 
-        MapPoint *GetMapPoint(const size_t &idx);
+        std::shared_ptr<MapPoint> GetMapPoint(const size_t &idx);
 
         // KeyPoint functions
         std::vector<size_t> GetFeaturesInArea(const double &x, const double &y, const double &r) const;
@@ -131,6 +139,17 @@ namespace ORB_SLAM2 {
             return pKF1->mnId < pKF2->mnId;
         }
 
+        void SetMap(Map *map);
+
+        void SetKeyFrameDatabase(const std::shared_ptr<KeyFrameDatabase> &pKeyFrameDB);
+
+        void SetORBvocabulary(std::shared_ptr<ORBVocabulary> pORBvocabulary);
+
+        void SetMapPoints(std::vector<std::shared_ptr<MapPoint>> spMapPoints);
+
+        void SetSpanningTree(std::vector<KeyFrame *> vpKeyFrames);
+
+        void SetGridParams(std::vector<KeyFrame *> vpKeyFrames);
 
         // The following variables are accesed from only 1 thread or never change (no mutex needed).
     public:
@@ -185,7 +204,11 @@ namespace ORB_SLAM2 {
         DBoW2::BowVector mBowVec;
         DBoW2::FeatureVector mFeatVec;
 
-
+        std::map<long unsigned int, int> mConnectedKeyFrameWeights_nId;
+        std::map<long unsigned int, id_map> mvpOrderedConnectedKeyFrames_nId;
+        id_map mparent_KfId_map;
+        std::map<long unsigned int, id_map> mmChildrens_nId;
+        std::map<long unsigned int, id_map> mmLoopEdges_nId;
         // Scale
         const int mnScaleLevels;
         const float mfScaleFactor;
@@ -209,14 +232,28 @@ namespace ORB_SLAM2 {
         cv::Mat Tcw;
         cv::Mat Twc;
         cv::Mat Ow;
+        std::map<long unsigned int, id_map> mmMapPoints_nId;
 
+        friend class boost::serialization::access;
+
+        template<class Archive>
+        void serialize(Archive &ar, const unsigned int version) {
+            boost::serialization::split_member(ar, *this, version);
+        }
+
+        template<class Archive>
+        void save(Archive &ar, const unsigned int version) const;
+
+
+        template<class Archive>
+        void load(Archive &ar, const unsigned int version);
 
         // MapPoints associated to keypoints
-        std::unordered_map<size_t,MapPoint *> mvpMapPoints;
+        std::unordered_map<size_t, std::shared_ptr<MapPoint>> mvpMapPoints;
 
         // BoW
-        KeyFrameDatabase *mpKeyFrameDB;
-        ORBVocabulary *mpORBvocabulary;
+        std::shared_ptr<KeyFrameDatabase> mpKeyFrameDB;
+        std::shared_ptr<ORBVocabulary> mpORBvocabulary;
 
         // Grid over the image to speed up feature matching
         std::vector<std::vector<std::vector<size_t> > > mGrid;

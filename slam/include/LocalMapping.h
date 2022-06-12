@@ -36,12 +36,12 @@ class LocalMapping
 {
 public:
     LocalMapping(Map* pMap, const float bMonocular);
-
+~LocalMapping();
 
     void HandleNewKeyFrame(KeyFrame *pKF);
-    void SetLoopCloser(LoopClosing* pLoopCloser);
+    void SetLoopCloser(std::shared_ptr<LoopClosing> pLoopCloser);
 
-    void SetTracker(Tracking* pTracker);
+    void SetTracker(std::shared_ptr<Tracking> pTracker);
 
     // Main function
     void Run();
@@ -98,14 +98,14 @@ protected:
 
     Map* mpMap;
 
-    LoopClosing* mpLoopCloser;
-    Tracking* mpTracker;
+    std::shared_ptr<LoopClosing> mpLoopCloser;
+    std::shared_ptr<Tracking> mpTracker;
 
     std::list<KeyFrame*> mlNewKeyFrames;
 
     KeyFrame* mpCurrentKeyFrame;
 
-    std::list<MapPoint*> mlpRecentAddedMapPoints;
+    std::list<std::shared_ptr<MapPoint>> mlpRecentAddedMapPoints;
 
     std::mutex mMutexNewKFs;
 

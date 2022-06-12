@@ -12,6 +12,9 @@ namespace ORB_SLAM2 {
 
     FrameDrawer::FrameDrawer(Map *pMap) : mpMap(pMap) {
         mState = Tracking::SYSTEM_NOT_READY;
+        if (!mpMap->GetAllMapPoints().empty()) {
+            mState = Tracking::LOST;
+        }
         mIm = cv::Mat(480, 640, CV_8UC3, cv::Scalar(0, 0, 0));
     }
 
@@ -45,19 +48,6 @@ namespace ORB_SLAM2 {
 
         if (im.channels() < 3) //this should be always true
             cvtColor(im, im, CV_GRAY2BGR);
-        /*cv::Mat thresh;
-        cv::Mat gray;
-        cvtColor(im, gray, CV_BGR2GRAY);
-        cv::threshold(gray, thresh, 0, 180,
-                      cv::THRESH_BINARY_INV | cv::THRESH_OTSU);
-        std::vector<std::vector<cv::Point>> contours;
-        std::vector<cv::Vec4i> hierarchy;
-        findContours(thresh, contours, hierarchy, cv::RETR_TREE, cv::CHAIN_APPROX_NONE);
-        cv::Scalar color = cv::Scalar(255, 0, 0);
-
-        for (int i = 0; i < contours.size(); i++) {
-            drawContours(im, contours, i, color, 2, cv::LINE_8, hierarchy, 0);
-        }*/
         //Draw
         if (state == Tracking::NOT_INITIALIZED) //INITIALIZING
         {
@@ -151,7 +141,7 @@ namespace ORB_SLAM2 {
             mvIniMatches = pTracker->mvIniMatches;
         } else if (pTracker->mLastProcessedState == Tracking::OK) {
             for (int i = 0; i < N; i++) {
-                MapPoint *pMP = pTracker->mCurrentFrame.mvpMapPoints[i];
+                auto pMP = pTracker->mCurrentFrame.mvpMapPoints[i];
                 if (pMP) {
                     if (!pTracker->mCurrentFrame.mvbOutlier[i]) {
                         if (pMP->Observations() > 0)

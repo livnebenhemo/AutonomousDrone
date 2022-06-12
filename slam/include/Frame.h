@@ -157,12 +157,12 @@ namespace ORB_SLAM2 {
         // ORB descriptor, each row associated to a keypoint.
         cv::Mat mDescriptors, mDescriptorsRight;
 
-        std::unordered_map<size_t,MapPoint *>  GetMvpMapPoints() {
+        std::unordered_map<size_t, std::shared_ptr<MapPoint>> GetMvpMapPoints() {
             return mvpMapPoints;
         }
 
         // MapPoints associated to keypoints, NULL pointer if no association.
-        std::unordered_map<size_t,MapPoint *> mvpMapPoints;
+        std::unordered_map<size_t, std::shared_ptr<MapPoint>> mvpMapPoints;
 
         // Flag to identify outlier associations.
         std::vector<bool> mvbOutlier;

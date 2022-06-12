@@ -33,12 +33,13 @@ namespace ORB_SLAM2 {
     ORBmatcher::ORBmatcher(float nnratio, bool checkOri) : mfNNratio(nnratio), mbCheckOrientation(checkOri) {
     }
 
-    int ORBmatcher::SearchByProjection(Frame &F, const std::vector<MapPoint *> &vpMapPoints, const float th) const {
+    int ORBmatcher::SearchByProjection(Frame &F, const std::vector<std::shared_ptr<MapPoint>> &vpMapPoints,
+                                       const float th) const {
         int nmatches = 0;
 
         const bool bFactor = th != 1.0;
 
-        for (auto pMP: vpMapPoints) {
+        for (const auto &pMP: vpMapPoints) {
             if (!pMP->mbTrackInView)
                 continue;
 
@@ -136,10 +137,11 @@ namespace ORB_SLAM2 {
         return dsqr < 3.84 * pKF2->mvLevelSigma2[kp2.octave];
     }
 
-    int ORBmatcher::SearchByBoW(KeyFrame *pKF, Frame &F, std::unordered_map<size_t,MapPoint *>&vpMapPointMatches) {
-        std::unordered_map<size_t, MapPoint *> vpMapPointsKF = pKF->GetMapPointMatches();
+    int ORBmatcher::SearchByBoW(KeyFrame *pKF, Frame &F,
+                                std::unordered_map<size_t, std::shared_ptr<MapPoint>> &vpMapPointMatches) {
+        auto vpMapPointsKF = pKF->GetMapPointMatches();
         for (int i = 0; i < F.N; ++i) {
-            vpMapPointMatches[i] = static_cast<MapPoint *>(nullptr);
+            vpMapPointMatches[i] = nullptr;
         }
         const DBoW2::FeatureVector &vFeatVecKF = pKF->mFeatVec;
 
@@ -162,7 +164,7 @@ namespace ORB_SLAM2 {
                 const std::vector<unsigned int> vIndicesF = Fit->second;
 
                 for (unsigned int realIdxKF: vIndicesKF) {
-                    MapPoint *pMP = vpMapPointsKF[realIdxKF];
+                    auto pMP = vpMapPointsKF[realIdxKF];
                     if (!pMP || pMP->isBad())
                         continue;
 
@@ -219,7 +221,6 @@ namespace ORB_SLAM2 {
             }
         }
 
-
         if (mbCheckOrientation) {
             int ind1 = -1;
             int ind2 = -1;
@@ -231,7 +232,7 @@ namespace ORB_SLAM2 {
                 if (i == ind1 || i == ind2 || i == ind3)
                     continue;
                 for (int j: rotHist[i]) {
-                    vpMapPointMatches[j] = static_cast<MapPoint *>(nullptr);
+                    vpMapPointMatches[j] = nullptr;
                     nmatches--;
                 }
             }
@@ -240,8 +241,9 @@ namespace ORB_SLAM2 {
         return nmatches;
     }
 
-    int ORBmatcher::SearchByProjection(KeyFrame *pKF, const cv::Mat &Scw, const std::vector<MapPoint *> &vpPoints,
-                                       std::vector<MapPoint *> &vpMatched, int th) {
+    int ORBmatcher::SearchByProjection(KeyFrame *pKF, const cv::Mat &Scw,
+                                       const std::vector<std::shared_ptr<MapPoint>> &vpPoints,
+                                       std::vector<std::shared_ptr<MapPoint>> &vpMatched, int th) {
         // Get Calibration Parameters for later projection
         const float &fx = pKF->fx;
         const float &fy = pKF->fy;
@@ -256,7 +258,7 @@ namespace ORB_SLAM2 {
         cv::Mat Ow = -Rcw.t() * tcw;
 
         // Set of MapPoints already found in the KeyFrame
-        std::unordered_map<MapPoint *, unsigned long> spAlreadyFound;
+        std::unordered_map<std::shared_ptr<MapPoint>, unsigned long> spAlreadyFound;
         for (const auto &point: vpMatched) {
             if (point && !point->isBad()) {
                 spAlreadyFound[point] = point->mnId;
@@ -264,7 +266,7 @@ namespace ORB_SLAM2 {
         }
         int nmatches = 0;
         // For each Candidate MapPoint Project and Match
-        for (auto pMP: vpPoints) {
+        for (const auto &pMP: vpPoints) {
             // Discard Bad MapPoints and already found
             if (pMP->isBad() || spAlreadyFound.count(pMP))
                 continue;
@@ -449,18 +451,18 @@ namespace ORB_SLAM2 {
         return nmatches;
     }
 
-    int ORBmatcher::SearchByBoW(KeyFrame *pKF1, KeyFrame *pKF2, std::vector<MapPoint *> &vpMatches12) {
+    int ORBmatcher::SearchByBoW(KeyFrame *pKF1, KeyFrame *pKF2, std::vector<std::shared_ptr<MapPoint>> &vpMatches12) {
         const std::vector<cv::KeyPoint> &vKeysUn1 = pKF1->mvKeysUn;
         const DBoW2::FeatureVector &vFeatVec1 = pKF1->mFeatVec;
-        std::unordered_map<size_t,MapPoint *> vpMapPoints1 = pKF1->GetMapPointMatches();
+        auto vpMapPoints1 = pKF1->GetMapPointMatches();
         const cv::Mat &Descriptors1 = pKF1->mDescriptors;
 
         const std::vector<cv::KeyPoint> &vKeysUn2 = pKF2->mvKeysUn;
         const DBoW2::FeatureVector &vFeatVec2 = pKF2->mFeatVec;
-        std::unordered_map<size_t,MapPoint *> vpMapPoints2 = pKF2->GetMapPointMatches();
+        auto vpMapPoints2 = pKF2->GetMapPointMatches();
         const cv::Mat &Descriptors2 = pKF2->mDescriptors;
 
-        vpMatches12 = std::vector<MapPoint *>(vpMapPoints1.size(), static_cast<MapPoint *>(nullptr));
+        vpMatches12 = std::vector<std::shared_ptr<MapPoint>>(vpMapPoints1.size(), nullptr);
         std::vector<bool> vbMatched2(vpMapPoints2.size(), false);
 
         std::vector<int> rotHist[HISTO_LENGTH];
@@ -481,7 +483,7 @@ namespace ORB_SLAM2 {
                 for (size_t i1 = 0, iend1 = f1it->second.size(); i1 < iend1; i1++) {
                     const size_t idx1 = f1it->second[i1];
 
-                    MapPoint *pMP1 = vpMapPoints1[idx1];
+                    auto pMP1 = vpMapPoints1[idx1];
                     if (!pMP1)
                         continue;
                     if (pMP1->isBad())
@@ -494,7 +496,7 @@ namespace ORB_SLAM2 {
                     int bestDist2 = 256;
 
                     for (unsigned long idx2: f2it->second) {
-                        MapPoint *pMP2 = vpMapPoints2[idx2];
+                        auto pMP2 = vpMapPoints2[idx2];
 
                         if (vbMatched2[idx2] || !pMP2)
                             continue;
@@ -555,7 +557,7 @@ namespace ORB_SLAM2 {
                 if (i == ind1 || i == ind2 || i == ind3)
                     continue;
                 for (int j: rotHist[i]) {
-                    vpMatches12[j] = static_cast<MapPoint *>(nullptr);
+                    vpMatches12[j] = nullptr;
                     nmatches--;
                 }
             }
@@ -599,7 +601,7 @@ namespace ORB_SLAM2 {
             if (f1it->first == f2it->first) {
                 for (size_t i1 = 0, iend1 = f1it->second.size(); i1 < iend1; i1++) {
                     const size_t idx1 = f1it->second[i1];
-                    MapPoint *pMP1 = pKF1->GetMapPoint(idx1);
+                    auto pMP1 = pKF1->GetMapPoint(idx1);
                     // If there is already a MapPoint skip
                     if (pMP1)
                         continue;
@@ -611,7 +613,7 @@ namespace ORB_SLAM2 {
                     int bestIdx2 = -1;
 
                     for (unsigned long idx2: f2it->second) {
-                        MapPoint *pMP2 = pKF2->GetMapPoint(idx2);
+                        auto pMP2 = pKF2->GetMapPoint(idx2);
 
                         // If we have already matched or there is a MapPoint skip
                         if (/*vbMatched2[idx2] ||*/ pMP2)
@@ -688,7 +690,8 @@ namespace ORB_SLAM2 {
         return nmatches;
     }
 
-    int ORBmatcher::Fuse(KeyFrame *pKF, std::unordered_map<size_t,MapPoint *> &vpMapPoints, const float th) {
+    int ORBmatcher::Fuse(KeyFrame *pKF, std::unordered_map<size_t, std::shared_ptr<MapPoint>> &vpMapPoints,
+                         const float th) {
         cv::Mat Rcw = pKF->GetRotation();
         cv::Mat tcw = pKF->GetTranslation();
 
@@ -705,7 +708,7 @@ namespace ORB_SLAM2 {
         const int nMPs = vpMapPoints.size();
 
         for (int i = 0; i < nMPs; i++) {
-            MapPoint *pMP = vpMapPoints[i];
+            auto pMP = vpMapPoints[i];
 
             if (!pMP || pMP->isBad() || pMP->IsInKeyFrame(pKF))
                 continue;
@@ -804,12 +807,13 @@ namespace ORB_SLAM2 {
 
             // If there is already a MapPoint replace otherwise add new measurement
             if (bestDist <= TH_LOW) {
-                MapPoint *pMPinKF = pKF->GetMapPoint(bestIdx);
+                std::shared_ptr<MapPoint> pMPinKF = pKF->GetMapPoint(bestIdx);
                 if (pMPinKF) {
                     if (!pMPinKF->isBad()) {
-                        if (pMPinKF->Observations() > pMP->Observations())
+                        if (pMPinKF->Observations() > pMP->Observations()) {
                             pMP->Replace(pMPinKF);
-                        else
+
+                        } else
                             pMPinKF->Replace(pMP);
                     }
                 } else {
@@ -823,8 +827,9 @@ namespace ORB_SLAM2 {
         return nFused;
     }
 
-    int ORBmatcher::Fuse(KeyFrame *pKF, const cv::Mat &Scw, const std::vector<MapPoint *> &vpPoints, float th,
-                         std::vector<MapPoint *> &vpReplacePoint) {
+    int ORBmatcher::Fuse(KeyFrame *pKF, const cv::Mat &Scw, const std::vector<std::shared_ptr<MapPoint>> &vpPoints,
+                         float th,
+                         std::vector<std::shared_ptr<MapPoint>> &vpReplacePoint) {
         // Get Calibration Parameters for later projection
         const float &fx = pKF->fx;
         const float &fy = pKF->fy;
@@ -839,7 +844,7 @@ namespace ORB_SLAM2 {
         cv::Mat Ow = -Rcw.t() * tcw;
 
         // Set of MapPoints already found in the KeyFrame
-        const std::set<MapPoint *> spAlreadyFound = pKF->GetMapPoints();
+        auto spAlreadyFound = pKF->GetMapPoints();
 
         int nFused = 0;
 
@@ -847,7 +852,7 @@ namespace ORB_SLAM2 {
 
         // For each candidate MapPoint project and match
         for (int iMP = 0; iMP < nPoints; iMP++) {
-            MapPoint *pMP = vpPoints[iMP];
+            auto pMP = vpPoints[iMP];
 
             // Discard Bad MapPoints and already found
             if (pMP->isBad() || spAlreadyFound.count(pMP))
@@ -925,7 +930,7 @@ namespace ORB_SLAM2 {
 
             // If there is already a MapPoint replace otherwise add new measurement
             if (bestDist <= TH_LOW) {
-                MapPoint *pMPinKF = pKF->GetMapPoint(bestIdx);
+                auto pMPinKF = pKF->GetMapPoint(bestIdx);
                 if (pMPinKF) {
                     if (!pMPinKF->isBad())
                         vpReplacePoint[iMP] = pMPinKF;
@@ -940,7 +945,7 @@ namespace ORB_SLAM2 {
         return nFused;
     }
 
-    int ORBmatcher::SearchBySim3(KeyFrame *pKF1, KeyFrame *pKF2, std::vector<MapPoint *> &vpMatches12,
+    int ORBmatcher::SearchBySim3(KeyFrame *pKF1, KeyFrame *pKF2, std::vector<std::shared_ptr<MapPoint>> &vpMatches12,
                                  const float &s12, const cv::Mat &R12, const cv::Mat &t12, const float th) {
         const float &fx = pKF1->fx;
         const float &fy = pKF1->fy;
@@ -960,17 +965,17 @@ namespace ORB_SLAM2 {
         cv::Mat sR21 = (1.0 / s12) * R12.t();
         cv::Mat t21 = -sR21 * t12;
 
-        std::unordered_map<size_t,MapPoint *> vpMapPoints1 = pKF1->GetMapPointMatches();
+        auto vpMapPoints1 = pKF1->GetMapPointMatches();
         const int N1 = vpMapPoints1.size();
 
-        std::unordered_map<size_t,MapPoint *> vpMapPoints2 = pKF2->GetMapPointMatches();
+        auto vpMapPoints2 = pKF2->GetMapPointMatches();
         const int N2 = vpMapPoints2.size();
 
         std::vector<bool> vbAlreadyMatched1(N1, false);
         std::vector<bool> vbAlreadyMatched2(N2, false);
 
         for (int i = 0; i < N1; i++) {
-            MapPoint *pMP = vpMatches12[i];
+            auto pMP = vpMatches12[i];
             if (pMP) {
                 vbAlreadyMatched1[i] = true;
                 int idx2 = pMP->GetIndexInKeyFrame(pKF2);
@@ -984,7 +989,7 @@ namespace ORB_SLAM2 {
 
         // Transform from KF1 to KF2 and search
         for (int i1 = 0; i1 < N1; i1++) {
-            MapPoint *pMP = vpMapPoints1[i1];
+            auto pMP = vpMapPoints1[i1];
 
             if (!pMP || vbAlreadyMatched1[i1])
                 continue;
@@ -1058,7 +1063,7 @@ namespace ORB_SLAM2 {
 
         // Transform from KF2 to KF2 and search
         for (int i2 = 0; i2 < N2; i2++) {
-            MapPoint *pMP = vpMapPoints2[i2];
+            auto pMP = vpMapPoints2[i2];
 
             if (!pMP || vbAlreadyMatched2[i2])
                 continue;
@@ -1168,7 +1173,7 @@ namespace ORB_SLAM2 {
         const cv::Mat tlc = Rlw * twc + tlw;
 
         for (int i = 0; i < LastFrame.N; i++) {
-            MapPoint *pMP = LastFrame.mvpMapPoints[i];
+            auto pMP = LastFrame.mvpMapPoints[i];
 
             if (pMP) {
                 if (!LastFrame.mvbOutlier[i]) {
@@ -1259,7 +1264,7 @@ namespace ORB_SLAM2 {
             for (int i = 0; i < HISTO_LENGTH; i++) {
                 if (i != ind1 && i != ind2 && i != ind3) {
                     for (int j: rotHist[i]) {
-                        CurrentFrame.mvpMapPoints[j] = static_cast<MapPoint *>(nullptr);
+                        CurrentFrame.mvpMapPoints[j] = nullptr;
                         nmatches--;
                     }
                 }
@@ -1269,7 +1274,8 @@ namespace ORB_SLAM2 {
         return nmatches;
     }
 
-    int ORBmatcher::SearchByProjection(Frame &CurrentFrame, KeyFrame *pKF, const std::set<MapPoint *> &sAlreadyFound,
+    int ORBmatcher::SearchByProjection(Frame &CurrentFrame, KeyFrame *pKF,
+                                       const std::set<std::shared_ptr<MapPoint>> &sAlreadyFound,
                                        const float th, const int ORBdist) const {
         int nmatches = 0;
 
@@ -1283,10 +1289,10 @@ namespace ORB_SLAM2 {
             i.reserve(500);
         const float factor = 1.0f / HISTO_LENGTH;
 
-        std::unordered_map<size_t,MapPoint *> vpMPs = pKF->GetMapPointMatches();
+        auto vpMPs = pKF->GetMapPointMatches();
 
         for (size_t i = 0, iend = vpMPs.size(); i < iend; i++) {
-            MapPoint *pMP = vpMPs[i];
+            auto pMP = vpMPs[i];
 
             if (pMP) {
                 if (!pMP->isBad() && !sAlreadyFound.count(pMP)) {

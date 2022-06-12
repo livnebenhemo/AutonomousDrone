@@ -37,10 +37,10 @@ namespace ORB_SLAM2 {
     }
 
     void MapDrawer::DrawMapPoints() {
-        const std::vector<MapPoint *> &vpMPs = mpMap->GetAllMapPoints();
-        const std::vector<MapPoint *> &vpRefMPs = mpMap->GetReferenceMapPoints();
+        auto vpMPs = mpMap->GetAllMapPoints();
+        auto vpRefMPs = mpMap->GetReferenceMapPoints();
 
-        std::set<MapPoint *> spRefMPs(vpRefMPs.begin(), vpRefMPs.end());
+        std::set<std::shared_ptr<MapPoint>> spRefMPs(vpRefMPs.begin(), vpRefMPs.end());
 
         if (vpMPs.empty())
             return;
@@ -49,7 +49,7 @@ namespace ORB_SLAM2 {
         glBegin(GL_POINTS);
         glColor3f(0.0, 0.0, 0.0);
 
-        for (auto vpMP : vpMPs) {
+        for (auto &vpMP: vpMPs) {
             if (vpMP->isBad() || spRefMPs.count(vpMP))
                 continue;
             cv::Mat pos = vpMP->GetWorldPos();
@@ -61,7 +61,7 @@ namespace ORB_SLAM2 {
         glBegin(GL_POINTS);
         glColor3f(1.0, 0.0, 0.0);
 
-        for (auto spRefMP : spRefMPs) {
+        for (auto &spRefMP: spRefMPs) {
             if (spRefMP->isBad())
                 continue;
             cv::Mat pos = spRefMP->GetWorldPos();
@@ -81,7 +81,7 @@ namespace ORB_SLAM2 {
                 glPointSize(mPointSize * 10);
                 glBegin(GL_POINTS);
                 glColor3f(0.0, 1.0, 0.0);
-                for (auto polygonEdge : polygonEdges) {
+                for (auto &polygonEdge: polygonEdges) {
                     if (!(polygonEdge == destination)) {
                         glVertex3d(polygonEdge.x, polygonEdge.z, polygonEdge.y);
                     }
@@ -104,7 +104,7 @@ namespace ORB_SLAM2 {
         const std::vector<KeyFrame *> vpKFs = mpMap->GetAllKeyFrames();
 
         if (bDrawKF) {
-            for (auto pKF : vpKFs) {
+            for (auto pKF: vpKFs) {
                 cv::Mat Twc = pKF->GetPoseInverse().t();
 
                 glPushMatrix();
@@ -145,12 +145,12 @@ namespace ORB_SLAM2 {
             glColor4f(0.0f, 1.0f, 0.0f, 0.6f);
             glBegin(GL_LINES);
 
-            for (auto vpKF : vpKFs) {
+            for (auto vpKF: vpKFs) {
                 // Covisibility Graph
                 const std::vector<KeyFrame *> vCovKFs = vpKF->GetCovisiblesByWeight(100);
                 cv::Mat Ow = vpKF->GetCameraCenter();
                 if (!vCovKFs.empty()) {
-                    for (auto vCovKF : vCovKFs) {
+                    for (auto vCovKF: vCovKFs) {
                         if (vCovKF->mnId < vpKF->mnId)
                             continue;
                         cv::Mat Ow2 = vCovKF->GetCameraCenter();
@@ -169,7 +169,7 @@ namespace ORB_SLAM2 {
 
                 // Loops
                 std::set<KeyFrame *> sLoopKFs = vpKF->GetLoopEdges();
-                for (auto sLoopKF : sLoopKFs) {
+                for (auto sLoopKF: sLoopKFs) {
                     if (sLoopKF->mnId < vpKF->mnId)
                         continue;
                     cv::Mat Owl = sLoopKF->GetCameraCenter();

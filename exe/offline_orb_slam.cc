@@ -6,13 +6,13 @@
 #define ROWS 720
 #define COLS 960
 #define COLORS 3
-std::vector<ORB_SLAM2::MapPoint *> allMapPoints;
+std::vector<std::shared_ptr<ORB_SLAM2::MapPoint>> allMapPoints;
 
 void saveMap(ORB_SLAM2::System SLAM) {
-    std::vector<ORB_SLAM2::MapPoint *> mapPoints = SLAM.GetMap()->GetAllMapPoints();
+    auto mapPoints = SLAM.GetMap()->GetAllMapPoints();
     std::ofstream pointData;
     pointData.open("/tmp/pointData.csv");
-    for (auto p: mapPoints) {
+    for (auto &p: mapPoints) {
         if (p != nullptr) {
             auto point = p->GetWorldPos();
             Eigen::Matrix<double, 3, 1> v = ORB_SLAM2::Converter::toVector3d(point);
@@ -78,53 +78,43 @@ int main() {
     std::string vocPath = data["VocabularyPath"];
     std::string droneYamlPathSlam = data["DroneYamlPathSlam"];
     std::string videoPath = data["offlineVideoTestPath"];
-    ORB_SLAM2::System SLAM(vocPath, droneYamlPathSlam, ORB_SLAM2::System::MONOCULAR, true);
+
+    std::string mapPath = data["mapPath"];
+    bool loadMap = data["loadMap"];
+    ORB_SLAM2::System SLAM(vocPath, droneYamlPathSlam, ORB_SLAM2::System::MONOCULAR, loadMap, mapPath, true);
     int amountOfAttepmpts = 0;
-    while (amountOfAttepmpts++ < 2) {
-        cv::VideoCapture capture(videoPath);
-        if (!capture.isOpened()) {
-            std::cout << "Error opening video stream or file" << std::endl;
-            return 0;
-        } else {
-            std::cout << "Success opening video stream or file" << std::endl;
-        }
-
-        cv::Mat frame;
-        std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-        for (int i = 0; i < 170; ++i) {
-            capture >> frame;
-
-        }
-        int amount_of_frames = 1;
-
-        for (;;) {
-            auto pose = SLAM.TrackMonocular(frame, capture.get(CV_CAP_PROP_POS_MSEC));
-            if (!pose.empty()) {
-                saveFrame(frame, pose, amount_of_frames++, SLAM, currentWorkingDir);
-            }
-            capture >> frame;
-
-            if (frame.empty()) {
-                break;
-            }
-        }
-        allMapPoints = SLAM.GetMap()->GetAllMapPoints();
-        if (!allMapPoints.empty()) {
-            saveMap(currentWorkingDir, amountOfAttepmpts);
-        }
-        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-
-        std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count()
-                  << std::endl;
-        std::cout << amount_of_frames << std::endl;
-        capture.release();
+    cv::VideoCapture capture(videoPath);
+    if (!capture.isOpened()) {
+        std::cout << "Error opening video stream or file" << std::endl;
+        return 0;
+    } else {
+        std::cout << "Success opening video stream or file" << std::endl;
     }
 
+    cv::Mat frame;
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+    for (int i = 0; i < 170; ++i) {
+        capture >> frame;
+
+    }
+
+    for (;;) {
+        auto pose = SLAM.TrackMonocular(frame, capture.get(CV_CAP_PROP_POS_MSEC));
+        capture >> frame;
+        if (frame.empty()) {
+            break;
+        }
+    }
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+    std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count()
+              << std::endl;
+    capture.release();
     allMapPoints = SLAM.GetMap()->GetAllMapPoints();
     if (!allMapPoints.empty()) {
         saveMap(currentWorkingDir, amountOfAttepmpts);
+        //SLAM.SaveMap("/home/tzuk/slamMap.bin");
     }
-    sleep(20);
+    //sleep(20);
     SLAM.Shutdown();
 
     cvDestroyAllWindows();

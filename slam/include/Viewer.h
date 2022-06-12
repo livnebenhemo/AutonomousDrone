@@ -41,6 +41,8 @@ namespace ORB_SLAM2 {
 
     class Viewer {
     public:
+        Viewer();
+        Viewer(Viewer &viewer);
         Viewer(System *pSystem, FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer, Tracking *pTracking,
                const std::string &strSettingPath);
 
@@ -76,14 +78,14 @@ namespace ORB_SLAM2 {
         bool CheckFinish();
 
         void SetFinish();
-
+        std::string fSettings;
         bool mbFinishRequested;
         bool mbFinished;
-        std::mutex mMutexFinish;
+        //std::mutex mMutexFinish;
 
         bool mbStopped;
         bool mbStopRequested;
-        std::mutex mMutexStop;
+        //std::mutex mMutexStop;
 
     };
 

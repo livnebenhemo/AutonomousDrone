@@ -19,6 +19,7 @@
 */
 
 #include <execution>
+#include <utility>
 #include "LoopClosing.h"
 #include "Sim3Solver.h"
 #include "Optimizer.h"
@@ -29,12 +30,12 @@ namespace ORB_SLAM2 {
     LoopClosing::LoopClosing(Map *pMap, KeyFrameDatabase *pDB, ORBVocabulary *pVoc, const bool bFixScale) :
             mbResetRequested(false), mbFinishRequested(false), mbFinished(true), mpMap(pMap),
             mpKeyFrameDB(pDB), mpORBVocabulary(pVoc), mpMatchedKF(nullptr), mLastLoopKFid(0), mbRunningGBA(false),
-            mbStopGBA(false), mpThreadGBA(nullptr), mbFixScale(bFixScale), mnFullBAIdx(0) {
+            mbStopGBA(false), mpThreadGBA(nullptr), mbFixScale(bFixScale), mnFullBAIdx(false) {
         mnCovisibilityConsistencyTh = 3;
     }
 
-    void LoopClosing::SetTracker(Tracking *pTracker) {
-        mpTracker = pTracker;
+    void LoopClosing::SetTracker(std::shared_ptr<Tracking> pTracker) {
+        mpTracker = std::move(pTracker);
     }
 
     void LoopClosing::SetLocalMapper(LocalMapping *pLocalMapper) {
@@ -209,7 +210,7 @@ namespace ORB_SLAM2 {
         std::vector<Sim3Solver *> vpSim3Solvers;
         vpSim3Solvers.resize(nInitialCandidates);
 
-        std::vector<std::vector<MapPoint *> > vvpMapPointMatches;
+        std::vector<std::vector<std::shared_ptr<MapPoint>>> vvpMapPointMatches;
         vvpMapPointMatches.resize(nInitialCandidates);
 
         std::vector<bool> vbDiscarded;
@@ -269,8 +270,8 @@ namespace ORB_SLAM2 {
 
                 // If RANSAC returns a Sim3, perform a guided matching and optimize with all correspondences
                 if (!Scm.empty()) {
-                    std::vector<MapPoint *> vpMapPointMatches(vvpMapPointMatches[i].size(),
-                                                              static_cast<MapPoint *>(nullptr));
+                    std::vector<std::shared_ptr<MapPoint>> vpMapPointMatches(vvpMapPointMatches[i].size(),
+                                                                             nullptr);
                     for (size_t j = 0, jend = vbInliers.size(); j < jend; j++) {
                         if (vbInliers[j])
                             vpMapPointMatches[j] = vvpMapPointMatches[i][j];
@@ -313,7 +314,7 @@ namespace ORB_SLAM2 {
         vpLoopConnectedKFs.push_back(mpMatchedKF);
         mvpLoopMapPoints.clear();
         for (auto pKF: vpLoopConnectedKFs) {
-            std::unordered_map<size_t, MapPoint *> vpMapPoints = pKF->GetMapPointMatches();
+            auto vpMapPoints = pKF->GetMapPointMatches();
             for (auto &[i, pMP]: vpMapPoints) {
                 if (pMP) {
                     if (!pMP->isBad() && pMP->mnLoopPointForKF != mpCurrentKF->mnId) {
@@ -440,8 +441,8 @@ namespace ORB_SLAM2 {
             // Update matched map points and replace if duplicated
             for (size_t i = 0; i < mvpCurrentMatchedPoints.size(); i++) {
                 if (mvpCurrentMatchedPoints[i]) {
-                    MapPoint *pLoopMP = mvpCurrentMatchedPoints[i];
-                    MapPoint *pCurMP = mpCurrentKF->GetMapPoint(i);
+                    auto pLoopMP = mvpCurrentMatchedPoints[i];
+                    auto pCurMP = mpCurrentKF->GetMapPoint(i);
                     if (pCurMP)
                         pCurMP->Replace(pLoopMP);
                     else {
@@ -503,12 +504,12 @@ namespace ORB_SLAM2 {
             g2o::Sim3 g2oScw = pKF.second;
             cv::Mat cvScw = Converter::toCvMat(g2oScw);
 
-            std::vector<MapPoint *> vpReplacePoints(mvpLoopMapPoints.size(), static_cast<MapPoint *>(nullptr));
+            std::vector<std::shared_ptr<MapPoint>> vpReplacePoints(mvpLoopMapPoints.size(), nullptr);
             ORB_SLAM2::ORBmatcher::Fuse(pKF.first, cvScw, mvpLoopMapPoints, 4, vpReplacePoints);
             //std::unique_lock<std::mutex>  lock(mpMap->mMutexMapUpdate);
             const int nLP = mvpLoopMapPoints.size();
             for (int i = 0; i < nLP; i++) {
-                MapPoint *pRep = vpReplacePoints[i];
+                auto pRep = vpReplacePoints[i];
                 if (pRep) {
                     pRep->Replace(mvpLoopMapPoints[i]);
                 }
@@ -588,7 +589,7 @@ namespace ORB_SLAM2 {
                 }
 
                 // Correct MapPoints
-                const std::vector<MapPoint *> vpMPs = mpMap->GetAllMapPoints();
+                const auto vpMPs = mpMap->GetAllMapPoints();
 
                 for (auto pMP: vpMPs) {
                     if (pMP->isBad())

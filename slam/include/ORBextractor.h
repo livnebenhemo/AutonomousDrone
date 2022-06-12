@@ -56,7 +56,7 @@ namespace ORB_SLAM2 {
         // Compute the ORB features and descriptors on an image.
         // ORB are dispersed on the image using an octree.
         // Mask is ignored in the current implementation.
-        void operator()(const cv::Mat &_image,const cv::Mat &_mask, std::vector<cv::KeyPoint> &_keypoints,
+        void operator()(const cv::Mat &_image, const cv::Mat &_mask, std::vector<cv::KeyPoint> &_keypoints,
                         cv::Mat &_descriptors);
 
         int inline GetLevels() {
@@ -91,9 +91,19 @@ namespace ORB_SLAM2 {
 
         void ComputeKeyPointsOctTree(std::vector<std::vector<cv::KeyPoint> > &allKeypoints);
 
-        std::vector<cv::KeyPoint> DistributeOctTree(const std::vector<cv::KeyPoint> &vToDistributeKeys, const int &minX,
+        void createVpIniNodesByThreads(int nIni, float hX, int maxX, int minY, int maxY,
+                                       std::vector<cv::KeyPoint> &vToDistributeKeys,
+                                       std::list<ExtractorNode> &lNodes,
+                                       std::vector<ExtractorNode *> &vpIniNodes, int threadIndex, int amountOfThreads);
+
+        void computeFastOnLevelByThreads(int nRows, int nCols, int minBorderY, int maxBorderY, int minBorderX,
+                                         int maxBorderX,
+                                         int wCell, int level, int hCell, std::vector<cv::KeyPoint> &vToDistributeKeys,
+                                         int threadIndex, int amountOfThreads);
+
+        std::vector<cv::KeyPoint> DistributeOctTree(std::vector<cv::KeyPoint> &vToDistributeKeys, const int &minX,
                                                     const int &maxX, const int &minY, const int &maxY,
-                                                    const int &nFeatures, const int &level) const;
+                                                    const int &nFeatures, const int &level);
 
         std::vector<cv::Point> pattern;
 
@@ -111,6 +121,8 @@ namespace ORB_SLAM2 {
         std::vector<float> mvInvScaleFactor;
         std::vector<float> mvLevelSigma2;
         std::vector<float> mvInvLevelSigma2;
+
+
     };
 
 } //namespace ORB_SLAM

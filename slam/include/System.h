@@ -64,10 +64,13 @@ namespace ORB_SLAM2 {
             RGBD = 2
         };
 
+        void SaveMap(const std::string &filename);
+
     public:
 
         // Initialize the SLAM system. It launches the Local Mapping, Loop Closing and Viewer threads.
-        System(const std::string &strVocFile, const std::string &strSettingsFile, const eSensor sensor,
+        System(const std::string &strVocFile, const std::string &strSettingsFile, const eSensor sensor, bool loadMap,
+               std::string &mapPath,
                const bool bUseViewer = true);
 
 
@@ -117,25 +120,25 @@ namespace ORB_SLAM2 {
         // You can call this right after TrackMonocular (or stereo or RGBD)
         Map *GetMap() { return mpMap; };
 
-        MapDrawer *GetMapDrawer() { return mpMapDrawer; };
+        MapDrawer *GetMapDrawer() { return mpMapDrawer.get(); };
 
-        FrameDrawer *GetFrameDrawer() { return mpFrameDrawer; };
+        FrameDrawer *GetFrameDrawer() { return mpFrameDrawer.get(); };
 
-        Tracking *GetTracker() { return mpTracker; };
+        Tracking *GetTracker() { return mpTracker.get(); };
 
-        LocalMapping *GetLocalMapping() { return mpLocalMapper; };
+        LocalMapping *GetLocalMapping() { return mpLocalMapper.get(); };
 
-        LoopClosing *GetLoopClosing() { return mpLoopCloser; };
+        LoopClosing *GetLoopClosing() { return mpLoopCloser.get(); };
     private:
 
         // Input sensor
         eSensor mSensor;
 
         // ORB vocabulary used for place recognition and feature matching.
-        ORBVocabulary *mpVocabulary;
+        std::shared_ptr<ORBVocabulary> mpVocabulary;
 
         // KeyFrame database for place recognition (relocalization and loop detection).
-        KeyFrameDatabase *mpKeyFrameDatabase;
+        std::shared_ptr<KeyFrameDatabase> mpKeyFrameDatabase;
 
         // Map structure that stores the pointers to all KeyFrames and MapPoints.
         Map *mpMap;
@@ -143,39 +146,40 @@ namespace ORB_SLAM2 {
         // Tracker. It receives a frame and computes the associated camera pose.
         // It also decides when to insert a new keyframe, create some new MapPoints and
         // performs relocalization if tracking fails.
-        Tracking *mpTracker;
+        std::shared_ptr<Tracking> mpTracker;
 
         // Local Mapper. It manages the local map and performs local bundle adjustment.
-        LocalMapping *mpLocalMapper;
+        std::shared_ptr<LocalMapping> mpLocalMapper;
 
         // Loop Closer. It searches loops with every new keyframe. If there is a loop it performs
         // a pose graph optimization and full bundle adjustment (in a new thread) afterwards.
-        LoopClosing *mpLoopCloser;
+        std::shared_ptr<LoopClosing> mpLoopCloser;
 
         // The viewer draws the map and the current camera pose. It uses Pangolin.
-        Viewer *mpViewer;
+        std::shared_ptr<Viewer> mpViewer;
 
-        FrameDrawer *mpFrameDrawer;
-        MapDrawer *mpMapDrawer;
+        std::shared_ptr<FrameDrawer> mpFrameDrawer;
+        std::shared_ptr<MapDrawer> mpMapDrawer;
 
         // System threads: Local Mapping, Loop Closing, Viewer.
         // The Tracking thread "lives" in the main execution thread that creates the System object.
-        std::thread *mptLocalMapping;
-        std::thread *mptLoopClosing;
-        std::thread *mptViewer;
+        std::thread mptViewer;
 
         // Reset flag
-        std::mutex mMutexReset;
+        //std::mutex mMutexReset;
         bool mbReset;
 
         // Change mode flags
-        std::mutex mMutexMode;
+        //std::mutex mMutexMode;
         bool mbActivateLocalizationMode;
         bool mbDeactivateLocalizationMode;
 
         // Tracking state
-        std::unordered_map<size_t,MapPoint *> mTrackedMapPoints;
-        std::mutex mMutexState;
+        std::unordered_map<size_t, std::shared_ptr<MapPoint>> mTrackedMapPoints;
+        //std::mutex mMutexState;
+
+        void LoadMap(const std::string &filename);
+
     };
 
 }// namespace ORB_SLAM

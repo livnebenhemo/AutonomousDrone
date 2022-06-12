@@ -1,4 +1,6 @@
 
+#include <iostream>
+#include <thread>
 #include "ORBextractor.h"
 
 namespace ORB_SLAM2 {
@@ -36,9 +38,12 @@ namespace ORB_SLAM2 {
 
 
     const float factorPI = (float) (CV_PI / 180.f);
-    uchar getValue(int idx, const uchar * center,const cv::Point *pattern,int step,float a, float b){
-        return center[cvRound(pattern[idx].x*b + pattern[idx].y*a)*step +cvRound(pattern[idx].x*a - pattern[idx].y*b)];
+
+    uchar getValue(int idx, const uchar *center, const cv::Point *pattern, int step, float a, float b) {
+        return center[cvRound(pattern[idx].x * b + pattern[idx].y * a) * step +
+                      cvRound(pattern[idx].x * a - pattern[idx].y * b)];
     }
+
     static void computeOrbDescriptor(const cv::KeyPoint &kpt,
                                      const cv::Mat &img, const cv::Point *pattern,
                                      uchar *desc) {
@@ -49,32 +54,31 @@ namespace ORB_SLAM2 {
         const int step = (int) img.step;
 
 
-
         for (int i = 0; i < 32; ++i, pattern += 16) {
             int t0, t1, val;
-            t0 = getValue(0,center,pattern,step,a,b);
-            t1 = getValue(1,center,pattern,step,a,b);
+            t0 = getValue(0, center, pattern, step, a, b);
+            t1 = getValue(1, center, pattern, step, a, b);
             val = t0 < t1;
-            t0 = getValue(2,center,pattern,step,a,b);
-            t1 = getValue(3,center,pattern,step,a,b);
+            t0 = getValue(2, center, pattern, step, a, b);
+            t1 = getValue(3, center, pattern, step, a, b);
             val |= (t0 < t1) << 1;
-            t0 = getValue(4,center,pattern,step,a,b);
-            t1 = getValue(5,center,pattern,step,a,b);
+            t0 = getValue(4, center, pattern, step, a, b);
+            t1 = getValue(5, center, pattern, step, a, b);
             val |= (t0 < t1) << 2;
-            t0 = getValue(6,center,pattern,step,a,b);
-            t1 = getValue(7,center,pattern,step,a,b);
+            t0 = getValue(6, center, pattern, step, a, b);
+            t1 = getValue(7, center, pattern, step, a, b);
             val |= (t0 < t1) << 3;
-            t0 = getValue(8,center,pattern,step,a,b);
-            t1 = getValue(9,center,pattern,step,a,b);
+            t0 = getValue(8, center, pattern, step, a, b);
+            t1 = getValue(9, center, pattern, step, a, b);
             val |= (t0 < t1) << 4;
-            t0 = getValue(10,center,pattern,step,a,b);
-            t1 = getValue(11,center,pattern,step,a,b);
+            t0 = getValue(10, center, pattern, step, a, b);
+            t1 = getValue(11, center, pattern, step, a, b);
             val |= (t0 < t1) << 5;
-            t0 = getValue(12,center,pattern,step,a,b);
-            t1 =getValue(13,center,pattern,step,a,b);
+            t0 = getValue(12, center, pattern, step, a, b);
+            t1 = getValue(13, center, pattern, step, a, b);
             val |= (t0 < t1) << 6;
-            t0 = getValue(14,center,pattern,step,a,b);
-            t1 = getValue(15,center,pattern,step,a,b);
+            t0 = getValue(14, center, pattern, step, a, b);
+            t1 = getValue(15, center, pattern, step, a, b);
             val |= (t0 < t1) << 7;
 
             desc[i] = (uchar) val;
@@ -459,21 +463,12 @@ namespace ORB_SLAM2 {
 
     }
 
-    std::vector<cv::KeyPoint>
-    ORBextractor::DistributeOctTree(const std::vector<cv::KeyPoint> &vToDistributeKeys, const int &minX,
-                                    const int &maxX, const int &minY, const int &maxY, const int &N,
-                                    const int &level) const {
-        // Compute how many initial nodes
-        const int nIni = std::round(static_cast<float>(maxX - minX) / (maxY - minY));
-
-        const float hX = static_cast<float>(maxX - minX) / nIni;
-
-        std::list<ExtractorNode> lNodes;
-
-        std::vector<ExtractorNode *> vpIniNodes;
-        vpIniNodes.resize(nIni);
-
-        for (int i = 0; i < nIni; i++) {
+    void ORBextractor::createVpIniNodesByThreads(int nIni, float hX, int maxX, int minY, int maxY,
+                                                 std::vector<cv::KeyPoint> &vToDistributeKeys,
+                                                 std::list<ExtractorNode> &lNodes,
+                                                 std::vector<ExtractorNode *> &vpIniNodes, int threadIndex,
+                                                 int amountOfThreads) {
+        for (int i = threadIndex; i < nIni; i += amountOfThreads) {
             ExtractorNode ni;
             ni.UL = cv::Point2i(hX * static_cast<float>(i), 0);
             ni.UR = cv::Point2i(hX * static_cast<float>(i + 1), 0);
@@ -483,6 +478,43 @@ namespace ORB_SLAM2 {
             lNodes.push_back(ni);
             vpIniNodes[i] = &lNodes.back();
         }
+    }
+
+    std::vector<cv::KeyPoint>
+    ORBextractor::DistributeOctTree(std::vector<cv::KeyPoint> &vToDistributeKeys, const int &minX,
+                                    const int &maxX, const int &minY, const int &maxY, const int &N,
+                                    const int &level) {
+        // Compute how many initial nodes
+        int nIni = std::round(static_cast<float>(maxX - minX) / (maxY - minY));
+
+        float hX = static_cast<float>(maxX - minX) / nIni;
+
+        std::list<ExtractorNode> lNodes;
+
+        std::vector<ExtractorNode *> vpIniNodes;
+        vpIniNodes.resize(nIni);
+        int amountOfThreads = std::thread::hardware_concurrency() - 1;
+        {
+            std::vector<std::thread> threads(amountOfThreads);
+            for (int i = 0; i < amountOfThreads; ++i) {
+                threads[i] = std::thread(&ORBextractor::createVpIniNodesByThreads, this, nIni, hX, maxX, minY, maxY,
+                                         std::ref(vToDistributeKeys),
+                                         std::ref(lNodes), std::ref(vpIniNodes), i, amountOfThreads);
+            }
+            for (auto &thread: threads) {
+                thread.join();
+            }
+        }
+        /*for (int i = 0; i < nIni; i++) {
+            ExtractorNode ni;
+            ni.UL = cv::Point2i(hX * static_cast<float>(i), 0);
+            ni.UR = cv::Point2i(hX * static_cast<float>(i + 1), 0);
+            ni.BL = cv::Point2i(ni.UL.x, maxY - minY);
+            ni.BR = cv::Point2i(ni.UR.x, maxY - minY);
+            ni.vKeys.reserve(vToDistributeKeys.size());
+            lNodes.push_back(ni);
+            vpIniNodes[i] = &lNodes.back();
+        }*/
 
         //Associate points to childs
         for (const auto &kp: vToDistributeKeys) {
@@ -649,6 +681,53 @@ namespace ORB_SLAM2 {
         return vResultKeys;
     }
 
+    static void computeOrientationByThreads(const std::vector<int> &umax, std::vector<cv::Mat> &mvImagePyramid,
+                                            std::vector<std::vector<cv::KeyPoint>> &allKeypoints,
+                                            int nlevels, int threadIndex, int amountOfThreads) {
+        for (int i = threadIndex; i < nlevels; i += amountOfThreads) {
+            computeOrientation(mvImagePyramid[i], allKeypoints[i], umax);
+        }
+    }
+
+    void ORBextractor::computeFastOnLevelByThreads(int nRows, int nCols, int minBorderY, int maxBorderY,
+                                                   int minBorderX, int maxBorderX, int wCell, int level, int hCell,
+                                                   std::vector<cv::KeyPoint> &vToDistributeKeys, int threadIndex,
+                                                   int amountOfThreads) {
+        int amountOfCells = nRows * nCols;
+        for (int cell = threadIndex; cell < amountOfCells; cell += amountOfThreads) {
+            int i = std::floor((double) cell / (double) nRows);
+            int j = cell % nCols;
+            const int iniY = minBorderY + i * hCell;
+            int maxY = iniY + hCell + 6;
+            if (iniY >= maxBorderY - 3)
+                continue;
+            if (maxY > maxBorderY)
+                maxY = maxBorderY;
+            const int iniX = minBorderX + j * wCell;
+            int maxX = iniX + wCell + 6;
+            if (iniX >= maxBorderX - 6)
+                continue;
+            if (maxX > maxBorderX)
+                maxX = maxBorderX;
+            cv::Mat imgToExtract = mvImagePyramid[level].rowRange(iniY, maxY).colRange(iniX, maxX);
+            std::vector<cv::KeyPoint> vKeysCell;
+            FAST(imgToExtract, vKeysCell, iniThFAST, true);
+            if (vKeysCell.empty()) {
+                FAST(imgToExtract, vKeysCell, minThFAST, true);
+            }
+            auto widthCellCalc = (float) (j * wCell);
+            auto heightCellCalc = (float) (i * hCell);
+            if (!vKeysCell.empty()) {
+                for (auto &vit: vKeysCell) {
+                    vit.pt.x += widthCellCalc;
+                    vit.pt.y += heightCellCalc;
+                    vToDistributeKeys.push_back(vit);
+                }
+            }
+        }
+    }
+
+
     void ORBextractor::ComputeKeyPointsOctTree(std::vector<std::vector<cv::KeyPoint> > &allKeypoints) {
         allKeypoints.resize(nlevels);
         const int W = 30;
@@ -668,8 +747,20 @@ namespace ORB_SLAM2 {
             const int nRows = height / W;
             const int wCell = std::ceil(width / nCols);
             const int hCell = std::ceil(height / nRows);
-
-            for (int i = 0; i < nRows; i++) {
+            auto amountOfThreads = std::thread::hardware_concurrency() - 1;
+            {
+                std::vector<std::thread> threads(amountOfThreads);
+                for (int i = 0; i < amountOfThreads; ++i) {
+                    threads[i] = std::thread(&ORBextractor::computeFastOnLevelByThreads, this, nRows, nCols, minBorderY,
+                                             maxBorderY, minBorderX,
+                                             maxBorderX, wCell, level, hCell, std::ref(vToDistributeKeys), i,
+                                             amountOfThreads);
+                }
+                for (auto &thread: threads) {
+                    thread.join();
+                }
+            }
+            /*for (int i = 0; i < nRows; i++) {
                 const int iniY = minBorderY + i * hCell;
                 int maxY = iniY + hCell + 6;
 
@@ -691,8 +782,8 @@ namespace ORB_SLAM2 {
                     if (vKeysCell.empty()) {
                         FAST(imgToExtract, vKeysCell, minThFAST, true);
                     }
-                    auto widthCellCalc = (float)(j * wCell);
-                    auto heightCellCalc = (float)(i * hCell);
+                    auto widthCellCalc = (float) (j * wCell);
+                    auto heightCellCalc = (float) (i * hCell);
                     if (!vKeysCell.empty()) {
                         for (auto &vit: vKeysCell) {
                             vit.pt.x += widthCellCalc;
@@ -702,7 +793,7 @@ namespace ORB_SLAM2 {
                     }
 
                 }
-            }
+            }*/
 
             std::vector<cv::KeyPoint> &keypoints = allKeypoints[level];
             keypoints.reserve(nfeatures);
@@ -723,9 +814,20 @@ namespace ORB_SLAM2 {
         }
 
         // compute orientations
-        for (int level = 0; level < nlevels; ++level)
-            computeOrientation(mvImagePyramid[level], allKeypoints[level], umax);
+        auto amountOfThreads = std::thread::hardware_concurrency() - 1;
+        std::vector<std::thread> threads(amountOfThreads);
+        for (int i = 0; i < amountOfThreads; ++i) {
+            threads[i] = std::thread(computeOrientationByThreads,
+                                     std::ref(umax), std::ref(mvImagePyramid),
+                                     std::ref(allKeypoints), nlevels, i, amountOfThreads);
+        }
+        for (auto &thread: threads) {
+            thread.join();
+        }
+        /*for (int level = 0; level < nlevels; ++level)
+            computeOrientation(mvImagePyramid[level], allKeypoints[level], umax);*/
     }
+
 
     static void computeDescriptors(const cv::Mat &image, std::vector<cv::KeyPoint> &keypoints, cv::Mat &descriptors,
                                    const std::vector<cv::Point> &pattern) {
@@ -734,7 +836,7 @@ namespace ORB_SLAM2 {
             computeOrbDescriptor(keypoints[i], image, &pattern[0], descriptors.ptr((int) i));
     }
 
-    void ORBextractor::operator()(const cv::Mat &_image,const cv::Mat &_mask, std::vector<cv::KeyPoint> &_keypoints,
+    void ORBextractor::operator()(const cv::Mat &_image, const cv::Mat &_mask, std::vector<cv::KeyPoint> &_keypoints,
                                   cv::Mat &_descriptors) {
         if (_image.empty())
             return;

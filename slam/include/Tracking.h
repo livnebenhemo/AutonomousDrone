@@ -58,11 +58,11 @@ namespace ORB_SLAM2 {
 
         cv::Mat GrabImageMonocular(const cv::Mat &im, const double &timestamp);
 
-        void SetLocalMapper(LocalMapping *pLocalMapper);
+        void SetLocalMapper(std::shared_ptr<LocalMapping> pLocalMapper);
 
-        void SetLoopClosing(LoopClosing *pLoopClosing);
+        void SetLoopClosing(std::shared_ptr<LoopClosing> pLoopClosing);
 
-        void SetViewer(Viewer *pViewer);
+        void SetViewer(std::shared_ptr<Viewer> pViewer);
 
         // Use this function if you have deactivated local mapping and you only want to localize the camera.
         void InformOnlyTracking(const bool &flag);
@@ -151,16 +151,16 @@ namespace ORB_SLAM2 {
         bool mbVO;
 
         //Other Thread Pointers
-        LocalMapping *mpLocalMapper;
-        LoopClosing *mpLoopClosing;
+        std::shared_ptr<LocalMapping> mpLocalMapper;
+        std::shared_ptr<LoopClosing> mpLoopClosing;
 
         //ORB
-        ORBextractor *mpORBextractorLeft;
-        ORBextractor *mpIniORBextractor;
+        std::shared_ptr<ORBextractor> mpORBextractorLeft;
+        std::shared_ptr<ORBextractor> mpIniORBextractor;
 
         //BoW
-        ORBVocabulary *mpORBVocabulary;
-        KeyFrameDatabase *mpKeyFrameDB;
+        std::shared_ptr<ORBVocabulary> mpORBVocabulary;
+        std::shared_ptr<KeyFrameDatabase> mpKeyFrameDB;
 
         // Initalization (only for monocular)
         Initializer *mpInitializer;
@@ -168,18 +168,18 @@ namespace ORB_SLAM2 {
         //Local Map
         KeyFrame *mpReferenceKF;
         std::vector<KeyFrame *> mvpLocalKeyFrames;
-        std::vector<MapPoint *> mvpLocalMapPoints;
+        std::vector<std::shared_ptr<MapPoint>> mvpLocalMapPoints;
 
         // System
         System *mpSystem;
 
         //Drawers
-        Viewer *mpViewer;
-        FrameDrawer *mpFrameDrawer;
-        MapDrawer *mpMapDrawer;
+        std::shared_ptr<Viewer> mpViewer;
+        std::shared_ptr<FrameDrawer> mpFrameDrawer;
+        std::shared_ptr<MapDrawer> mpMapDrawer;
 
         //Map
-        Map *mpMap;
+        std::shared_ptr<Map> mpMap;
 
         //Calibration matrix
         cv::Mat mK;
@@ -211,7 +211,7 @@ namespace ORB_SLAM2 {
         //Color order (true RGB, false BGR, ignored if grayscale)
         bool mbRGB;
 
-        std::list<MapPoint *> mlpTemporalPoints;
+        std::list<std::shared_ptr<MapPoint>> mlpTemporalPoints;
     };
 
 } //namespace ORB_SLAM

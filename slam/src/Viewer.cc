@@ -24,29 +24,53 @@
 #include <mutex>
 
 namespace ORB_SLAM2 {
-
-    Viewer::Viewer(System *pSystem, FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer, Tracking *pTracking,
-                   const std::string &strSettingPath) :
-            mpSystem(pSystem), mpFrameDrawer(pFrameDrawer), mpMapDrawer(pMapDrawer), mpTracker(pTracking),
+    Viewer::Viewer() {}
+    Viewer::Viewer(Viewer &viewer) :
+            mpSystem(viewer.mpSystem), mpFrameDrawer(viewer.mpFrameDrawer), mpMapDrawer(viewer.mpMapDrawer),
+            mpTracker(viewer.mpTracker),
             mbFinishRequested(false), mbFinished(true), mbStopped(true), mbStopRequested(false) {
-        cv::FileStorage fSettings(strSettingPath, cv::FileStorage::READ);
+        cv::FileStorage settings(viewer.fSettings, cv::FileStorage::READ);
 
-        float fps = fSettings["Camera.fps"];
+        float fps = settings["Camera.fps"];
         if (fps < 1)
             fps = 30;
         mT = 1e3 / fps;
 
-        mImageWidth = fSettings["Camera.width"];
-        mImageHeight = fSettings["Camera.height"];
+        mImageWidth = settings["Camera.width"];
+        mImageHeight = settings["Camera.height"];
         if (mImageWidth < 1 || mImageHeight < 1) {
             mImageWidth = 640;
             mImageHeight = 480;
         }
 
-        mViewpointX = fSettings["Viewer.ViewpointX"];
-        mViewpointY = fSettings["Viewer.ViewpointY"];
-        mViewpointZ = fSettings["Viewer.ViewpointZ"];
-        mViewpointF = fSettings["Viewer.ViewpointF"];
+        mViewpointX = settings["Viewer.ViewpointX"];
+        mViewpointY = settings["Viewer.ViewpointY"];
+        mViewpointZ = settings["Viewer.ViewpointZ"];
+        mViewpointF = settings["Viewer.ViewpointF"];
+    }
+    Viewer::Viewer(System *pSystem, FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer, Tracking *pTracking,
+                   const std::string &strSettingPath) :
+            mpSystem(pSystem), mpFrameDrawer(pFrameDrawer), mpMapDrawer(pMapDrawer), mpTracker(pTracking),
+            mbFinishRequested(false), mbFinished(true), mbStopped(true), mbStopRequested(false) {
+        fSettings = strSettingPath;
+        cv::FileStorage settings(fSettings, cv::FileStorage::READ);
+
+        float fps = settings["Camera.fps"];
+        if (fps < 1)
+            fps = 30;
+        mT = 1e3 / fps;
+
+        mImageWidth = settings["Camera.width"];
+        mImageHeight = settings["Camera.height"];
+        if (mImageWidth < 1 || mImageHeight < 1) {
+            mImageWidth = 640;
+            mImageHeight = 480;
+        }
+
+        mViewpointX = settings["Viewer.ViewpointX"];
+        mViewpointY = settings["Viewer.ViewpointY"];
+        mViewpointZ = settings["Viewer.ViewpointZ"];
+        mViewpointF = settings["Viewer.ViewpointF"];
     }
 
     void Viewer::Run() {
@@ -77,9 +101,10 @@ namespace ORB_SLAM2 {
         );
 
         // Add named OpenGL viewport to window and provide 3D Handler
+        pangolin::Handler3D handler3D(s_cam);
         pangolin::View &d_cam = pangolin::CreateDisplay()
                 .SetBounds(0.0, 1.0, pangolin::Attach::Pix(175), 1.0, -1024.0f / 768.0f)
-                .SetHandler(new pangolin::Handler3D(s_cam));
+                .SetHandler(&handler3D);
 
         pangolin::OpenGlMatrix Twc;
         Twc.SetIdentity();

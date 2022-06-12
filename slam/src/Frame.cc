@@ -39,11 +39,11 @@ namespace ORB_SLAM2 {
     Frame::Frame(const Frame &frame)
             : mpORBvocabulary(frame.mpORBvocabulary), mpORBextractorLeft(frame.mpORBextractorLeft),
               mpORBextractorRight(frame.mpORBextractorRight),
-              mTimeStamp(frame.mTimeStamp), mK(frame.mK.clone()), mDistCoef(frame.mDistCoef.clone()),
+              mTimeStamp(frame.mTimeStamp), mK(frame.mK), mDistCoef(frame.mDistCoef),
               mbf(frame.mbf), mb(frame.mb), mThDepth(frame.mThDepth), N(frame.N), mvKeys(frame.mvKeys),
               mvKeysRight(frame.mvKeysRight), mvKeysUn(frame.mvKeysUn), mvuRight(frame.mvuRight),
               mvDepth(frame.mvDepth), mBowVec(frame.mBowVec), mFeatVec(frame.mFeatVec),
-              mDescriptors(frame.mDescriptors.clone()), mDescriptorsRight(frame.mDescriptorsRight.clone()),
+              mDescriptors(frame.mDescriptors), mDescriptorsRight(frame.mDescriptorsRight),
               mvpMapPoints(frame.mvpMapPoints), mvbOutlier(frame.mvbOutlier), mnId(frame.mnId),
               mpReferenceKF(frame.mpReferenceKF), mnScaleLevels(frame.mnScaleLevels),
               mfScaleFactor(frame.mfScaleFactor), mfLogScaleFactor(frame.mfLogScaleFactor),
@@ -62,7 +62,7 @@ namespace ORB_SLAM2 {
                  cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth)
             : mpORBvocabulary(voc), mpORBextractorLeft(extractor),
               mpORBextractorRight(static_cast<ORBextractor *>(nullptr)),
-              mTimeStamp(timeStamp), mK(K.clone()), mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth) {
+              mTimeStamp(timeStamp), mK(K), mDistCoef(distCoef), mbf(bf), mThDepth(thDepth) {
         // Frame ID
         mnId = nNextId++;
         //mutex = std::make_shared<std::mutex>();
@@ -90,7 +90,7 @@ namespace ORB_SLAM2 {
         mvuRight = std::vector<float>(N, -1);
         mvDepth = std::vector<float>(N, -1);
         for (int i = 0; i < N; ++i) {
-            mvpMapPoints[i] = static_cast<MapPoint *>(nullptr);
+            mvpMapPoints[i] = nullptr;
         }
         mvbOutlier = std::vector<bool>(N, false);
 
@@ -136,7 +136,7 @@ namespace ORB_SLAM2 {
     }
 
     void Frame::SetPose(const cv::Mat &Tcw) {
-        mTcw = Tcw.clone();
+        mTcw = Tcw;
         UpdatePoseMatrices();
     }
 

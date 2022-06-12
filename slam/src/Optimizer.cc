@@ -25,13 +25,14 @@ namespace ORB_SLAM2 {
 
     void Optimizer::GlobalBundleAdjustemnt(Map *pMap, int nIterations, bool *pbStopFlag, const unsigned long nLoopKF,
                                            const bool bRobust) {
-        std::vector<KeyFrame *> vpKFs = pMap->GetAllKeyFrames();
-        std::vector<MapPoint *> vpMP = pMap->GetAllMapPoints();
+        auto vpKFs = pMap->GetAllKeyFrames();
+        auto vpMP = pMap->GetAllMapPoints();
         BundleAdjustment(vpKFs, vpMP, nIterations, pbStopFlag, nLoopKF, bRobust);
     }
 
 
-    void Optimizer::BundleAdjustment(const std::vector<KeyFrame *> &vpKFs, const std::vector<MapPoint *> &vpMP,
+    void Optimizer::BundleAdjustment(const std::vector<KeyFrame *> &vpKFs,
+                                     const std::vector<std::shared_ptr<MapPoint>> &vpMP,
                                      int nIterations, bool *pbStopFlag, const unsigned long nLoopKF,
                                      const bool bRobust) {
         std::vector<bool> vbNotIncludedMP(vpMP.size(), false);
@@ -67,7 +68,7 @@ namespace ORB_SLAM2 {
 
         // Set MapPoint vertices
         for (size_t i = 0; i < vpMP.size(); i++) {
-            MapPoint *pMP = vpMP[i];
+            auto pMP = vpMP[i];
             if (pMP->isBad())
                 continue;
             const std::unordered_map<KeyFrame *, size_t> observations = pMP->GetObservations();
@@ -140,7 +141,7 @@ namespace ORB_SLAM2 {
         for (size_t i = 0; i < vpMP.size(); i++) {
             if (vbNotIncludedMP[i])
                 continue;
-            MapPoint *pMP = vpMP[i];
+            auto pMP = vpMP[i];
 
             if (pMP->isBad())
                 continue;
@@ -192,7 +193,7 @@ namespace ORB_SLAM2 {
             //std::unique_lock<std::mutex> lock(MapPoint::mGlobalMutex);
 
             for (int i = 0; i < N; i++) {
-                MapPoint *pMP = pFrame->mvpMapPoints[i];
+                auto pMP = pFrame->mvpMapPoints[i];
                 if (pMP && !pMP->isBad()) {
                     nInitialCorrespondences++;
                     pFrame->mvbOutlier[i] = false;
@@ -270,8 +271,8 @@ namespace ORB_SLAM2 {
         return nInitialCorrespondences - nBad;
     }
 
-    void Optimizer::filterBySphericalCoordinates(KeyFrame *pKF) {
-        std::unordered_map<double, std::unordered_map<double, ORB_SLAM2::MapPoint *>> pointsAndAngles;
+    void Optimizer::filterBySphericalCoordinates(KeyFrame *pKF, Map *pMap) {
+        std::unordered_map<double, std::unordered_map<double, std::shared_ptr<MapPoint>>> pointsAndAngles;
         auto keyFramePose = ORB_SLAM2::Converter::toVector3d(pKF->GetPose());
         auto points = pKF->GetMapPointMatches();
         auto amountOfPoints = points.size();
@@ -292,11 +293,12 @@ namespace ORB_SLAM2 {
                     if (pointsAndAngles.at(polarAngle).count(azimuthalAngle)) {
                         mapPoint->SetBadFlag();
                         amountOfPoints--;
+                        pMap->EraseMapPoint(mapPoint);
                     } else {
                         pointsAndAngles.at(polarAngle).insert({azimuthalAngle, mapPoint});
                     }
                 } else {
-                    pointsAndAngles.insert({polarAngle, std::unordered_map<double, ORB_SLAM2::MapPoint *>{}});
+                    pointsAndAngles.insert({polarAngle, std::unordered_map<double, std::shared_ptr<MapPoint >>{}});
                     pointsAndAngles.at(polarAngle).insert({azimuthalAngle, mapPoint});
                 }
             }
@@ -306,7 +308,7 @@ namespace ORB_SLAM2 {
     void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool *pbStopFlag, Map *pMap) {
         // Local KeyFrames: First Breath Search from Current Keyframe
         std::vector<KeyFrame *> lLocalKeyFrames;
-        filterBySphericalCoordinates(pKF);
+        filterBySphericalCoordinates(pKF, pMap);
 
         lLocalKeyFrames.push_back(pKF);
         pKF->mnBALocalForKF = pKF->mnId;
@@ -321,7 +323,7 @@ namespace ORB_SLAM2 {
 
         }*/
         // Local MapPoints seen in Local KeyFrames
-        std::vector<MapPoint *> lLocalMapPoints;
+        std::vector<std::shared_ptr<MapPoint>> lLocalMapPoints;
         for (auto vpMPs: lLocalKeyFrames) {
             for (auto &[i, pMP]: vpMPs->GetMapPointMatches()) {
                 if (pMP && !pMP->isBad())
@@ -387,7 +389,7 @@ namespace ORB_SLAM2 {
         std::vector<KeyFrame *> vpEdgeKFMono;
         vpEdgeKFMono.reserve(nExpectedSize);
 
-        std::vector<MapPoint *> vpMapPointEdgeMono;
+        std::vector<std::shared_ptr<MapPoint>> vpMapPointEdgeMono;
         vpMapPointEdgeMono.reserve(nExpectedSize);
 
         const double thHuberMono = sqrt(5.991);
@@ -437,7 +439,7 @@ namespace ORB_SLAM2 {
             // Check inlier observations
             for (size_t i = 0, iend = vpEdgesMono.size(); i < iend; i++) {
                 g2o::EdgeSE3ProjectXYZ *e = vpEdgesMono[i];
-                MapPoint *pMP = vpMapPointEdgeMono[i];
+                auto pMP = vpMapPointEdgeMono[i];
                 if (pMP->isBad())
                     continue;
 
@@ -452,12 +454,12 @@ namespace ORB_SLAM2 {
             optimizer.optimize(10);
         }
 
-        std::vector<std::pair<KeyFrame *, MapPoint *> > vToErase;
+        std::vector<std::pair<KeyFrame *, std::shared_ptr<MapPoint>> > vToErase;
         vToErase.reserve(vpEdgesMono.size());
         // Check inlier observations
         for (size_t i = 0, iend = vpEdgesMono.size(); i < iend; i++) {
             g2o::EdgeSE3ProjectXYZ *e = vpEdgesMono[i];
-            MapPoint *pMP = vpMapPointEdgeMono[i];
+            auto pMP = vpMapPointEdgeMono[i];
 
             if (pMP->isBad())
                 continue;
@@ -470,9 +472,8 @@ namespace ORB_SLAM2 {
         // Get Map Mutex
         //std::unique_lock<std::mutex> lock(pMap->mMutexMapUpdate);
         if (!vToErase.empty()) {
-            for (auto erase: vToErase) {
+            for (auto &erase: vToErase) {
                 if (erase.first) {
-
                     erase.first->EraseMapPointMatch(erase.second);
                 }
                 if (erase.second) {
@@ -512,8 +513,8 @@ namespace ORB_SLAM2 {
         solver->setUserLambdaInit(1e-16);
         optimizer.setAlgorithm(solver);
 
-        const std::vector<KeyFrame *> vpKFs = pMap->GetAllKeyFrames();
-        const std::vector<MapPoint *> vpMPs = pMap->GetAllMapPoints();
+        auto vpKFs = pMap->GetAllKeyFrames();
+        auto vpMPs = pMap->GetAllMapPoints();
 
         const unsigned int nMaxKFid = pMap->GetMaxKFid();
 
@@ -710,7 +711,8 @@ namespace ORB_SLAM2 {
         }
     }
 
-    int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, std::vector<MapPoint *> &vpMatches1, g2o::Sim3 &g2oS12,
+    int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, std::vector<std::shared_ptr<MapPoint>> &vpMatches1,
+                                g2o::Sim3 &g2oS12,
                                 const float th2, const bool bFixScale) {
         g2o::SparseOptimizer optimizer;
         g2o::BlockSolverX::LinearSolverType *linearSolver;
@@ -750,7 +752,7 @@ namespace ORB_SLAM2 {
 
         // Set MapPoint vertices
         const int N = vpMatches1.size();
-        std::unordered_map<size_t, MapPoint *> vpMapPoints1 = pKF1->GetMapPointMatches();
+        std::unordered_map<size_t, std::shared_ptr<MapPoint>> vpMapPoints1 = pKF1->GetMapPointMatches();
         std::vector<g2o::EdgeSim3ProjectXYZ *> vpEdges12;
         std::vector<g2o::EdgeInverseSim3ProjectXYZ *> vpEdges21;
         std::vector<size_t> vnIndexEdge;
@@ -767,8 +769,8 @@ namespace ORB_SLAM2 {
             if (!vpMatches1[i])
                 continue;
 
-            MapPoint *pMP1 = vpMapPoints1[i];
-            MapPoint *pMP2 = vpMatches1[i];
+            auto pMP1 = vpMapPoints1[i];
+            auto pMP2 = vpMatches1[i];
 
             const int id1 = 2 * i + 1;
             const int id2 = 2 * (i + 1);
@@ -853,7 +855,7 @@ namespace ORB_SLAM2 {
 
             if (e12->chi2() > th2 || e21->chi2() > th2) {
                 size_t idx = vnIndexEdge[i];
-                vpMatches1[idx] = static_cast<MapPoint *>(nullptr);
+                vpMatches1[idx] = nullptr;
                 optimizer.removeEdge(e12);
                 optimizer.removeEdge(e21);
                 vpEdges12[i] = static_cast<g2o::EdgeSim3ProjectXYZ *>(nullptr);
@@ -885,7 +887,7 @@ namespace ORB_SLAM2 {
 
             if (e12->chi2() > th2 || e21->chi2() > th2) {
                 size_t idx = vnIndexEdge[i];
-                vpMatches1[idx] = static_cast<MapPoint *>(nullptr);
+                vpMatches1[idx] = nullptr;
             } else
                 nIn++;
         }

@@ -46,11 +46,12 @@ namespace ORB_SLAM2 {
 
     class Optimizer {
     public:
-        void static BundleAdjustment(const std::vector<KeyFrame *> &vpKF, const std::vector<MapPoint *> &vpMP,
-                                     int nIterations = 5, bool *pbStopFlag = NULL, const unsigned long nLoopKF = 0,
-                                     const bool bRobust = true);
+        void static
+        BundleAdjustment(const std::vector<KeyFrame *> &vpKF, const std::vector<std::shared_ptr<MapPoint>> &vpMP,
+                         int nIterations = 5, bool *pbStopFlag = nullptr, const unsigned long nLoopKF = 0,
+                         const bool bRobust = true);
 
-        void static GlobalBundleAdjustemnt(Map *pMap, int nIterations = 5, bool *pbStopFlag = NULL,
+        void static GlobalBundleAdjustemnt(Map *pMap, int nIterations = 5, bool *pbStopFlag = nullptr,
                                            const unsigned long nLoopKF = 0, const bool bRobust = true);
 
         void static LocalBundleAdjustment(KeyFrame *pKF, bool *pbStopFlag, Map *pMap);
@@ -68,10 +69,10 @@ namespace ORB_SLAM2 {
         );
 
         // if bFixScale is true, optimize SE3 (stereo,rgbd), Sim3 otherwise (mono)
-        static int OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, std::vector<MapPoint *> &vpMatches1,
+        static int OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, std::vector<std::shared_ptr<MapPoint>> &vpMatches1,
                                 g2o::Sim3 &g2oS12, const float th2, const bool bFixScale);
 
-        static void filterBySphericalCoordinates(KeyFrame *pKF);
+        static void filterBySphericalCoordinates(KeyFrame *pKF, Map *pMap);
     };
 
 } //namespace ORB_SLAM

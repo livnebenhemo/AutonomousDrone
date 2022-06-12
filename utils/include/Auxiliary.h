@@ -114,5 +114,6 @@ public:
     static cv::Mat points3d_to_mat(const std::vector<cv::Point3d> &points3d);
 };
 
+static cv::Mat points3d_to_mat(const std::vector<cv::Point3d> &points3d);
 
 #endif //ORB_SLAM2_AUXILIARY_H

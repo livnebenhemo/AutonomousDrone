@@ -155,7 +155,7 @@ private:
     bool loopCloserHappened = false;
     double desiredAngle = 0.0;
     bool lowBattery = false;
-    int maxRotationAngle = 25;
+    int maxRotationAngle = 15;
     bool reachedCheckpoint = false;
     bool gettingFurther = false;
     bool gettingCloser = false;

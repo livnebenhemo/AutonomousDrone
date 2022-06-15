@@ -156,7 +156,7 @@ private:
     bool droneNotFly = false;
     bool isManual = false;
     bool useCharger = true;
-    int maxRotationAngle = 15;
+    int maxRotationAngle = 25;
     bool reachedCheckpoint = false;
     bool gettingFurther = false;
     bool gettingCloser = false;

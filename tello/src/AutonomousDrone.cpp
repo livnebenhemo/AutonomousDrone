@@ -306,9 +306,6 @@ void AutonomousDrone::rotateDrone(int angle, bool clockwise, bool buildMap) {
         int amountOfLostLocalizations = 0;
         if (!localized) {
             int regainLocalizationAngle = angle;
-            /*if (colorDetection() < 15) {
-                manageDroneCommand("back 30", 1, 1);
-            }*/
             manageDroneCommand("back 20", 1, 1);
             while (!localized && !lowBattery) {
                 sleep(3);
@@ -352,7 +349,8 @@ void AutonomousDrone::howToRotate(int angle, bool clockwise, bool buildMap) {
                 if (!lowBattery) {
                     rotateDrone(maxRotationAngle, clockwise, buildMap);
                 } else {
-                    return;
+                    switchBattery();
+                    // return;
                 }
             }
             rotateDrone(int(angle % maxRotationAngle), clockwise, buildMap);
@@ -497,13 +495,8 @@ void AutonomousDrone::exhaustiveGlobalAdjustment() {
             std::cout << "RunGlobalBundleAdjustment: " << keyFrame->mnId << std::endl;
             orbSlamPointer->GetLoopClosing()->RunGlobalBundleAdjustment(keyFrame->mnId);
         }
-        if (lowBattery  && !printSomething) {  // create a thread just if not exist already
-            std::cout << "need to check" << std::endl;
-            std::thread switchBatteryThread(&AutonomousDrone::switchBattery, this, 25);
-        }
+        // switchBattery ?
     }
-    while (printSomething)  // do nothing - avoid problems
-        ;
     exhaustiveGlobalAdjustmentInProgress = false;
 }
 

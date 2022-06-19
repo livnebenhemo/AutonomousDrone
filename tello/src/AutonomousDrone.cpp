@@ -779,7 +779,7 @@ void AutonomousDrone::collisionDetector(const Point &destination) {
             int currentSpeed = speed;
             //areWeInWrongScale(frames);
             if (weInAWrongScale) {
-                std::cout << "we are in worng scale" << std::endl;
+                std::cout << "we are in wrong scale" << std::endl;
                 if (!(amountOfOutOfScale--)) {
                     stop = true;
                 }
@@ -903,7 +903,7 @@ void AutonomousDrone::monitorDroneProgress(const Point &destination) {
                     if (!(i % 5)) {
                         std::cout << "mean of distances: " << mean << std::endl;
                     }
-                    safetyThreshold = mean * 5;//gettingCloser ? mean * 3 : mean * 2;
+                    safetyThreshold = mean * 5;//gettingCloser ? mean * 3 : mean * 2
                     weInAWrongScale = mean < (gettingCloser ? expectedScale / 2 : expectedScale);
                     distances.erase(distances.begin());
                 }
@@ -1104,29 +1104,35 @@ void AutonomousDrone::manuallyFlyToNavigationPoints() {
     Navigation navigation;
     orbSlamPointer->GetMapDrawer()->SetPolygonEdges(currentRoom.exitPoints);
     std::cout << currentRoom.exitPoints.size() << std::endl;
+    int count = 0;
     for (const Point &point: currentRoom.exitPoints) {
         int battery = drone->GetBatteryStatus();
-        if (battery < 50)
+        if (battery < 40)
             switchBattery();
         std::vector<Point> plottedPoint = std::vector<Point>{};
         plottedPoint.push_back(point);
         Auxiliary::showCloudPoint(plottedPoint, currentRoom.points);
         auto currentMap = getCurrentMap();
         std::pair<Point, Point> track{currentLocation, point};
-        if (manuallyNavigateDrone(point) && !loopCloserHappened) {
-            if (!checkIfPointInFront(home)) {  // TODO : need it in manually state ?
-                howToRotate(180, true, true);
-            }
-            if (loopCloserHappened || weInAWrongScale) {
+        if (manuallyNavigateDrone(point)) {  // TODO : I deleted && !loopCloserHappened
+            if (loopCloserHappened) {  // TODO : I deleted we are in a wrong scale becuase I thing its not relevant to manually mode
+                std::cout << "loop closer happened" << std::endl;
                 break;
             }
         } else {
             break;
         }
-
-        switchBattery();
-        beginScan(false);
-
+        count++;
+        if (count == 2){ // for "debug"
+            std::cout << "reached" << std::endl;
+            break;
+        }
+        /*while (drone->GetBatteryStatus() <= 40) // comment for debug
+        {
+            std::cout << "Battery less than 40 " << std::endl;
+            switchBattery();
+        }
+        beginScan(false);*/
     }
 
     orbSlamPointer->GetMapDrawer()->ClearPolygonEdgesPoint();
@@ -1311,7 +1317,7 @@ void AutonomousDrone::run() {
                         }
                         navigateDrone(home, false);
                         //orbSlamPointer->Reset();
-                        beginScan(false);
+                        //beginScan(false);
                     }
                 }
                 if (lowBattery) {

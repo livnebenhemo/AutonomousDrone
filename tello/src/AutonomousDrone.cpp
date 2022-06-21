@@ -257,9 +257,10 @@ bool AutonomousDrone::manageDroneCommand(const std::string &command, int amountO
         std::cout << statusingDrone << std::endl;
         usleep(200);
     }
-    commandingDrone = true;
+
     while (amountOfAttempt--) {
         if (!droneNotFly) {
+            commandingDrone = true;
             if (drone->SendCommandWithResponse(command, 10000)) {
                 commandingDrone = false;
                 if (amountOfSleep) {
@@ -269,6 +270,7 @@ bool AutonomousDrone::manageDroneCommand(const std::string &command, int amountO
                 }
                 return true;
             } else {
+                commandingDrone = false;
                 sleep(1);
             }
         }
@@ -368,8 +370,9 @@ void AutonomousDrone::alertLowBattery() {
     int battery;
     int amountOfAttempts = 3;
     while (true) {
+        std::cout << std::flush;
         if (!printSomething) { // drone is connected
-            battery = 0;
+            battery = drone->GetBatteryStatus();
             while (true) {
                 if (!commandingDrone) {
                     statusingDrone = true;
@@ -390,7 +393,8 @@ void AutonomousDrone::alertLowBattery() {
                         stop = true;
                     }
                     std::cout << "low battery" << std::endl;
-                    //break;
+                    continue;
+                    // break;
                 } else {
                     sleep(1);
                 }
@@ -544,6 +548,10 @@ void AutonomousDrone::beginScan(bool findHome, int rotationAngle) {
         doTriangulation();
         if (localized) {
             break;
+        }
+        if (lowBattery){
+            switchBattery();
+            lowBattery = true;
         }
         manageAngleDroneCommand(maxRotationAngle, true, 5, 2);
     }
@@ -1300,6 +1308,7 @@ void AutonomousDrone::run() {
             std::cout << "taking off" << std::endl;
             manageDroneCommand("takeoff", 3);
             sleep(1);  // because error "not joystick"
+            switchBattery();
             beginScan(false);
             while (true) {
                 if (!lowBattery) {

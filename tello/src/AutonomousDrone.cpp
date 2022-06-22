@@ -253,8 +253,6 @@ bool AutonomousDrone::manageDroneCommand(const std::string &command, int amountO
         usleep(100);
     }
     while (commandingDrone || statusingDrone) {
-        std::cout << commandingDrone << std::endl;
-        std::cout << statusingDrone << std::endl;
         usleep(200);
     }
 
@@ -578,8 +576,10 @@ void AutonomousDrone::beginScan(bool findHome, int rotationAngle) {
         doTriangulation();
     }
     exhaustiveGlobalAdjustmentThread.join();
-    if (lowBattery)
+    if (lowBattery) {
         switchBattery();
+        lowBattery = false;
+    }
     auto prevLocation = currentLocation;
     manageDroneCommand("up 40", 3, 3);
     isMinusUp = prevLocation.z > currentLocation.z;
@@ -892,58 +892,60 @@ void AutonomousDrone::monitorDroneProgress(const Point &destination) {
     double expectedScale = closeThreshold * 0.005;
     std::cout << "scale threshold:" << expectedScale << std::endl;
     std::vector<double> distances{};
-    while (!stop && !lowBattery) {
-        try {
+    while (!stop) {
+        if (!lowBattery) {
+            try {
 
-            double distance = Auxiliary::calculateDistanceXY(currentLocation, destination);
-            if (!(i % 2)) {
-                std::cout << "distance to destination: " << distance << std::endl;
-            }
-            if (distance <= closeThreshold) {
-                stop = true;
-                currentRoom.visitedExitPoints.emplace_back(destination);
-                std::cout << "reached to destination" << std::endl;
-                break;
-            }
-            if (!droneRotate && !isBlocked) {
-                if (distances.size() > 20) {
-                    auto mean = Auxiliary::calculateMeanOfDistanceDifferences(distances);
-                    if (!(i % 5)) {
-                        std::cout << "mean of distances: " << mean << std::endl;
+                double distance = Auxiliary::calculateDistanceXY(currentLocation, destination);
+                if (!(i % 2)) {
+                    std::cout << "distance to destination: " << distance << std::endl;
+                }
+                if (distance <= closeThreshold) {
+                    stop = true;
+                    currentRoom.visitedExitPoints.emplace_back(destination);
+                    std::cout << "reached to destination" << std::endl;
+                    break;
+                }
+                if (!droneRotate && !isBlocked) {
+                    if (distances.size() > 20) {
+                        auto mean = Auxiliary::calculateMeanOfDistanceDifferences(distances);
+                        if (!(i % 5)) {
+                            std::cout << "mean of distances: " << mean << std::endl;
+                        }
+                        safetyThreshold = mean * 5;//gettingCloser ? mean * 3 : mean * 2
+                        weInAWrongScale = mean < (gettingCloser ? expectedScale / 2 : expectedScale);
+                        distances.erase(distances.begin());
                     }
-                    safetyThreshold = mean * 5;//gettingCloser ? mean * 3 : mean * 2
-                    weInAWrongScale = mean < (gettingCloser ? expectedScale / 2 : expectedScale);
-                    distances.erase(distances.begin());
-                }
-                distances.emplace_back(distance);
-                if (distance <= closeThreshold * 1.2) {
-                    gettingCloser = true;
-                    std::cout << "getting closer" << std::endl;
-                    goUpOrDown(destination);
-                    speed = 15;
-                }
-                if (!isTurning && (distance - previousDistance) > 0.01 && !isBlocked && !droneRotate) {
-                    speed = 20;
-                    std::cout << "getting further" << std::endl;
-                    distances = std::vector<double>{};
-                    gettingFurther = --amountOfGettingFurther < 0;
-                    //orbSlamPointer->GetFrameDrawer()->ClearDestinationPoint();
+                    distances.emplace_back(distance);
+                    if (distance <= closeThreshold * 1.2) {
+                        gettingCloser = true;
+                        std::cout << "getting closer" << std::endl;
+                        goUpOrDown(destination);
+                        speed = 15;
+                    }
+                    if (!isTurning && (distance - previousDistance) > 0.01 && !isBlocked && !droneRotate) {
+                        speed = 20;
+                        std::cout << "getting further" << std::endl;
+                        distances = std::vector<double>{};
+                        gettingFurther = --amountOfGettingFurther < 0;
+                        //orbSlamPointer->GetFrameDrawer()->ClearDestinationPoint();
+                    } else {
+                        amountOfGettingFurther = 4;
+                        //orbSlamPointer->GetFrameDrawer()->SetDestination(navigationDestination);
+                        //speed = distance > 1 ? 30 : 20;
+                        gettingFurther = false;
+                        speed = distance > closeThreshold * 1.8 ? 20 : 15;
+                    }
                 } else {
-                    amountOfGettingFurther = 4;
-                    //orbSlamPointer->GetFrameDrawer()->SetDestination(navigationDestination);
-                    //speed = distance > 1 ? 30 : 20;
-                    gettingFurther = false;
-                    speed = distance > closeThreshold * 1.8 ? 20 : 15;
+                    distances.clear();
                 }
-            } else {
-                distances.clear();
+                previousDistance = distance;
+                usleep(450000);
+                i++;
+            } catch (std::exception &e) {
+                std::cout << e.what() << " in monitorDroneProgress" << std::endl;
+            } catch (...) {
             }
-            previousDistance = distance;
-            usleep(450000);
-            i++;
-        } catch (std::exception &e) {
-            std::cout << e.what() << " in monitorDroneProgress" << std::endl;
-        } catch (...) {
         }
     }
 }
@@ -1115,8 +1117,10 @@ void AutonomousDrone::manuallyFlyToNavigationPoints() {
     int count = 0;
     for (const Point &point: currentRoom.exitPoints) {
         int battery = drone->GetBatteryStatus();
-        if (battery < 40)
+        if (battery < 40) {
             switchBattery();
+            lowBattery = false;
+        }
         std::vector<Point> plottedPoint = std::vector<Point>{};
         plottedPoint.push_back(point);
         Auxiliary::showCloudPoint(plottedPoint, currentRoom.points);
@@ -1141,6 +1145,15 @@ void AutonomousDrone::manuallyFlyToNavigationPoints() {
             switchBattery();
         }
         beginScan(false);*/
+
+        // if begin scan in comment ("debug" mode) - need to make B.A :  TODO : need to check if work
+        std::cout << "starting global bundle Adjustments" << std::endl;
+        std::thread exhaustiveGlobalAdjustmentThread(&AutonomousDrone::exhaustiveGlobalAdjustment, this);
+        exhaustiveGlobalAdjustmentInProgress = true;
+        while (exhaustiveGlobalAdjustmentInProgress) {
+            doTriangulation();
+        }
+        exhaustiveGlobalAdjustmentThread.join();
     }
 
     orbSlamPointer->GetMapDrawer()->ClearPolygonEdgesPoint();
@@ -1308,7 +1321,6 @@ void AutonomousDrone::run() {
             std::cout << "taking off" << std::endl;
             manageDroneCommand("takeoff", 3);
             sleep(1);  // because error "not joystick"
-            switchBattery();
             beginScan(false);
             while (true) {
                 if (!lowBattery) {

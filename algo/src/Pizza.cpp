@@ -15,7 +15,7 @@ std::vector<Line> Pizza::createPizzaLines(const Point& center, int angle) {
     return lines;
 }
 
-std::unordered_map<int, std::vector<std::pair<Point, double>>>
+std::map<int, std::vector<std::pair<Point, double>>>
 Pizza::createPizzaSlices(const Point& pizzaCenter, const std::vector<std::pair<Point, double>>& pointsWithDistance, int angle) {
     std::unordered_map<int, std::vector<std::pair<Point, double>>> slices;
     for (const auto& pointWithDistance : pointsWithDistance) {
@@ -29,5 +29,6 @@ Pizza::createPizzaSlices(const Point& pizzaCenter, const std::vector<std::pair<P
         }
         slices.at(sliceKey).push_back(pointWithDistance);
     }
-    return slices;
+    std::map<int, std::vector<std::pair<Point, double>>> ordered_slices(slices.begin(), slices.end());
+    return ordered_slices;
 }

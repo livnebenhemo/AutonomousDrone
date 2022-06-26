@@ -194,6 +194,7 @@ Navigation::getNavigationPathByRRT(std::vector<Point> &cloud, std::pair<Point, P
     if (graph.vertices.size() == 1) {
         std::cout << "straight line" << std::endl;
         if (debug) {
+            std::cout << "livne" << std::endl;
             Auxiliary::SetupPangolin("path");
             Auxiliary::drawPathPangolin(cloud, graph.vertices, "path", track);
         }
@@ -202,6 +203,7 @@ Navigation::getNavigationPathByRRT(std::vector<Point> &cloud, std::pair<Point, P
     auto path = dijkstra(graph);
     std::cout << "size of path: " << path.size() << std::endl;
     if (debug) {
+        std::cout << "livne" << std::endl;
         Auxiliary::SetupPangolin("path");
         Auxiliary::drawPathPangolin(cloud, path, "path", track);
     }

@@ -24,10 +24,9 @@ class AutonomousDrone {
 public:
     AutonomousDrone(std::shared_ptr<ctello::Tello> drone,/*std::shared_ptr<cv::VideoCapture> capture,*/
                     std::string vocabularyFilePath, std::string cameraYamlPath, const std::string &arucoYamlPath,
-                    std::string droneWifiName,
-                    bool loadMap,
-                    std::string &mapPath,bool saveMap, int sizeOfFrameStack = 20,
-                    bool withPlot = false, std::string chargerBluetoothAddress = "3C:61:05:03:81:E2");
+                    std::string droneWifiName, int sizeOfFrameStack = 20,
+                    bool withPlot = false, bool isManual=false, bool switchBattery=false,
+                    std::string chargerBluetoothAddress = "3C:61:05:03:81:E2");
 
     void run();
 
@@ -88,7 +87,7 @@ private:
     checkMotion(const Point &oldestPosition, const Point &currentPosition, const Point &closePoint,
                 int angleRange = 90) const;
 
-    void connectDrone();
+    void connectDrone(bool isReconnect = false);
 
     void saveMap(int fileNumber = 0);
 
@@ -131,14 +130,13 @@ private:
     bool stop = false;
     bool orbSlamRunning = false;
     bool runCamera = true;
+    bool printSomething = false;
+    bool rerunCamera = false;
     bool localized = false;
     bool canStart = false;
     bool isExit = true;
     bool commandingDrone = false;
     bool statusingDrone = false;
-    bool loadMap;
-    bool saveBinMap;
-    std::string mapPath;
     int forwardAdvance = 40;
     int speed = 20;
     const char *const TELLO_STREAM_URL{"udp://0.0.0.0:11111?overrun_nonfatal=1&fifo_size=5000"};
@@ -155,7 +153,10 @@ private:
     bool loopCloserHappened = false;
     double desiredAngle = 0.0;
     bool lowBattery = false;
-    int maxRotationAngle = 15;
+    bool droneNotFly = false;
+    bool isManual = false;
+    bool useCharger = true;
+    int maxRotationAngle = 25;
     bool reachedCheckpoint = false;
     bool gettingFurther = false;
     bool gettingCloser = false;
@@ -181,6 +182,16 @@ private:
     bool exhaustiveGlobalAdjustmentInProgress = false;
 
     void takeOffWithLocalization();
+
+    void manuallyFlyToNavigationPoints();
+
+    bool manuallyNavigateDrone(const Point &destination, bool rotateToFrameAngle = true);
+
+    void moveWithKeyboard();
+
+    void switchBattery(int switchingTime = 25);
+
+    void flyToNavigationPointsNoRRT();
 };
 
 #endif //TELLO_AUTONOMOUSDRONE_H

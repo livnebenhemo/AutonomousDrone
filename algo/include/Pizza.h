@@ -15,7 +15,7 @@ class Pizza {
 public:
     static std::vector<Line> createPizzaLines(const Point &center, int angle);
 
-    static std::unordered_map<int, std::vector<std::pair<Point, double>>>
+    static std::map<int, std::vector<std::pair<Point, double>>>
     createPizzaSlices(const Point &pizzaCenter, const std::vector<std::pair<Point, double>> &pointsWithDistance,
                       int angle);
 };

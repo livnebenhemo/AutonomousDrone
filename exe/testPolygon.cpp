@@ -27,10 +27,13 @@ std::vector<Point> getPointsFromFile(const std::string& fileName) {
 }
 
 int main() {
-    std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "buildings/RoomsDatabase/dani_office/pointData0.csv";
+
+    // std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "buildings/Lab/pointData3.csv";
+    std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "buildings/HUJI/komata/pointData12.csv";
+    // std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "buildings/HUJI/livne_room/pointData1.csv";
     auto points = getPointsFromFile(datasetFilePath);
     auto start = std::chrono::high_resolution_clock::now();
-    Polygon polygon(points, Point(),true);
+    Polygon polygon(points, Point());
     auto vertex = polygon.getExitPointsByPolygon(true);
     auto stop = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);

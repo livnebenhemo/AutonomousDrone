@@ -3,52 +3,46 @@
 //
 
 #include "include/Polygon.h"
-#include "include/Navigation.h"
 
-#include <utility>
-
-Polygon::Polygon(std::vector<Point> points, const Point &polygonCenter, bool isExit) {
-    this->points = std::move(points);
+Polygon::Polygon(std::vector<Point> points,Point polygonCenter, bool isExit) {
+    this->points = points;
     this->isExit = isExit;
     this->polygonCenter = polygonCenter;
 }
 
 std::vector<Point> Polygon::getExitPointsByPolygon(bool isDebug) {
     //polygonCenter = Auxiliary::GetCenterOfMass(points);
-    createPointsWithDistance(points);
+    createPointsWithDistance();
     std::vector<std::pair<Point, double>> rawExitPoints = getRawPolygonCorners();
+    double epsilon = 0.0;
     vertices = std::vector<Point>{};
-    for (const auto &exitPoint: rawExitPoints) {
+    for (auto exitPoint : rawExitPoints) {
+        epsilon += exitPoint.second;
         vertices.push_back(exitPoint.first);
     }
+    epsilon /= rawExitPoints.size() * 2;  // TODO : can improve it
     if (isDebug) {
         Auxiliary::showCloudPoint(vertices, points);
     }
-    //smoothPolygon();
-    // filterPointsInsidePolygon();
-    std::vector<Point> goodPoints{};
-    for (const auto &outSidePoint: pointsOutsidePolygon) {
-        goodPoints.push_back(outSidePoint.first);
-    }
-    /*if (isDebug) {
+    smoothPolygon();
+    filterPointsInsidePolygon();
+    std::vector<Point> goodPoints = filterPointsByVariances(getSlicesWithVariances(angle), epsilon);
+    if (isDebug) {
         Auxiliary::showCloudPoint(vertices, points);
         std::vector<Point> withOutVariances;
-        for (const auto &point: pointsOutsidePolygon) {
+        for (auto point : pointsOutsidePolygon) {
             withOutVariances.emplace_back(point.first);
         }
-        //Auxiliary::showCloudPoint(vertices, withOutVariances);
-        //Auxiliary::showCloudPoint(vertices, goodPoints);
-    }*/
-    auto rawNavigationPoints = getNavigationPointsByVertexSharpAngle(goodPoints, 90);
-
-    /*int minSamples = 10;
-    auto rawNavigationPoints = std::vector<Point>{};
-    while (rawNavigationPoints.empty() && minSamples > 0) {
-        rawNavigationPoints = getNavigationPointsByVertexSharpAngle(goodPoints, 90);
-        minSamples -= 5;
-    }*/
+        Auxiliary::showCloudPoint(vertices, withOutVariances);
+        Auxiliary::showCloudPoint(vertices, goodPoints);
+    }
+    int minSamples = 5;  // TODO - very important!!! original : 25
+    auto rawNavigationPoints =std::vector<Point>{};
+    while (rawNavigationPoints.empty() && minSamples > 0){
+        rawNavigationPoints = getNavigationPoints(goodPoints,minSamples);
+        minSamples-=5;
+    }
     if (isDebug) {
-        std::cout << "nav" << std::endl;
         Auxiliary::showCloudPoint(rawNavigationPoints, points);
     }
     auto navigationPoints = filterCheckpoints(rawNavigationPoints);
@@ -58,27 +52,29 @@ std::vector<Point> Polygon::getExitPointsByPolygon(bool isDebug) {
     }
     if (isExit) {
         auto center = polygonCenter;
-        std::sort(navigationPoints.begin(), navigationPoints.end(), [&center](const Point &p1, const Point &p2) {
+        std::sort(navigationPoints.begin(), navigationPoints.end(), [&center](Point p1, Point p2) {
             return Auxiliary::calculateDistanceXY(p1, center) > Auxiliary::calculateDistanceXY(p2, center);
         });
         navigationPoints = std::vector<Point>{navigationPoints.front()};
     }
-
     return navigationPoints;
 }
 
-std::vector<Point>
-Polygon::filterCheckpoints(const std::vector<Point> &rawNavigationPoints, int minAngleDistance) const {
+std::vector<Point> Polygon::filterCheckpoints(std::vector<Point> rawNavigationPoints, int minAngleDistance) {
     std::vector<std::pair<double, Point>> pointsWithAngles;
-    for (const Point &point: rawNavigationPoints) {
-        double currentAngle = Auxiliary::getAngleFromSlope((point.y - polygonCenter.y) / (point.x - polygonCenter.x));
-        currentAngle += currentAngle < 0 ? 180 : 0;
+    auto center = polygonCenter;
+    std::sort(rawNavigationPoints.begin(), rawNavigationPoints.end(), [&center](const Point &p1, const Point &p2) {
+        return Auxiliary::calculateDistanceXY(p1, center) > Auxiliary::calculateDistanceXY(p2, center);
+    });
+    for (Point point : rawNavigationPoints) {
+        double angle = Auxiliary::getAngleFromSlope((point.y - polygonCenter.y) / (point.x - polygonCenter.x));
+        angle += angle < 0 ? 180 : 0;
         if (point.y < polygonCenter.y) {
-            while (currentAngle < 180) {
-                currentAngle += 180;
+            while (angle < 180) {
+                angle += 180;
             }
         }
-        pointsWithAngles.emplace_back(currentAngle, point);
+        pointsWithAngles.push_back({angle, point});
     }
     std::vector<Point> goodCheckpoints;
     pointsWithAngles.push_back(pointsWithAngles.front());
@@ -98,70 +94,24 @@ Polygon::filterCheckpoints(const std::vector<Point> &rawNavigationPoints, int mi
     return goodCheckpoints;
 }
 
-std::vector<Point> Polygon::getNavigationPointsByVertexSharpAngle(const std::vector<Point> &goodPoints, int maxAngle) {
-    std::unordered_map<Point, double> goodVertex;
-    for (int i = 0; i < vertices.size() - 2; ++i) {
-        Line line1(vertices[i], vertices[i + 1]);
-        Line line2(vertices[i + 1], vertices[i + 2]);
-        double angle = Auxiliary::getAngleBySlopes(line1, line2);
-        if (0 < angle && angle < maxAngle) {
-            std::cout << "angle: " << angle << std::endl;
-            goodVertex.insert({vertices[i + 1], angle});
-        }
-    }
-    auto verticesSize = vertices.size();
-    Line line1(vertices[verticesSize - 3], vertices[verticesSize - 2]);
-    Line line2(vertices[verticesSize - 2], vertices[verticesSize - 1]);
-    double angle = Auxiliary::getAngleBySlopes(line1, line2);
-    if (0 < angle && angle < maxAngle) {
-        std::cout << "angle1: " << angle << std::endl;
-
-        goodVertex.insert({vertices[verticesSize - 2], angle});
-    }
-
-    Line line3(vertices[verticesSize - 2], vertices[verticesSize - 1]);
-    Line line4(vertices[verticesSize - 1], vertices[0]);
-    angle = Auxiliary::getAngleBySlopes(line3, line4);
-    if (0 < angle && angle < maxAngle) {
-        std::cout << "angle2: " << angle << std::endl;
-
-        goodVertex.insert({vertices[verticesSize - 1], angle});
-    }
-
-    Line line5(vertices[verticesSize - 1], vertices[0]);
-    Line line6(vertices[0], vertices[1]);
-    angle = Auxiliary::getAngleBySlopes(line5, line6);
-    if (0 < angle && angle < maxAngle){
-        std::cout << "angle3: " << angle << std::endl;
-
-        goodVertex.insert({vertices[0], angle});
-    }
-    std::cout << goodVertex.size() << std::endl;
-    std::vector<Point> goodVertexVector;
-    for (auto[point, angle]: goodVertex) {
-        goodVertexVector.emplace_back(point);
-    }
-    return goodVertexVector;
-}
-
-std::vector<Point> Polygon::getNavigationPoints(const std::vector<Point> &goodPoints, int minSamples) {
-    auto dbscan = DBSCAN(minSamples, 0.1, goodPoints);
+std::vector<Point> Polygon::getNavigationPoints(std::vector<Point> goodPoints, int minSamples) {
+    auto dbscan = DBSCAN(minSamples, 0.15, goodPoints);
     int numberOfClusters = dbscan.run();
-    if (!numberOfClusters) {
+    if (!numberOfClusters){
         return std::vector<Point>{};
     }
     std::vector<Point> clusteredPoints = dbscan.getPoints();
     std::vector<Point> navigationPoints;
-    std::sort(clusteredPoints.begin(), clusteredPoints.end(), [](const Point &point1, const Point &point2) {
+    std::sort(clusteredPoints.begin(), clusteredPoints.end(), [](Point point1, Point point2) {
         return point1.label < point2.label;
     });
     int currentLabel = 1;
-    auto it = std::find_if(clusteredPoints.begin(), clusteredPoints.end(), [](const Point &point) {
+    auto it = std::find_if(clusteredPoints.begin(), clusteredPoints.end(), [](Point point) {
         return point.label == 1;
     });
     std::vector<Point> filteredClusteredPoints(it, clusteredPoints.end());
     std::vector<Point> cluster;
-    for (const auto &point: filteredClusteredPoints) {
+    for (auto point : filteredClusteredPoints) {
         if (point.label == currentLabel) {
             cluster.push_back(point);
         } else {
@@ -175,11 +125,10 @@ std::vector<Point> Polygon::getNavigationPoints(const std::vector<Point> &goodPo
     navigationPoints.push_back(getNavigationPointFromCluster(cluster));
     return navigationPoints;
 }
-
-Point Polygon::getNavigationPointFromCluster(const std::vector<Point> &cluster) {
+Point Polygon::getNavigationPointFromCluster(std::vector<Point> cluster){
     double maxDistanceToPolygon = -1;
     Point bestPoint;
-    for (const Point &clusterPoint: cluster) {
+    for (Point clusterPoint : cluster) {
         double distanceToPolygon = Auxiliary::getDistanceToClosestSegment(clusterPoint, edges);
         if (maxDistanceToPolygon < distanceToPolygon) {
             maxDistanceToPolygon = distanceToPolygon;
@@ -188,22 +137,21 @@ Point Polygon::getNavigationPointFromCluster(const std::vector<Point> &cluster) 
     }
     return bestPoint;
 }
-
 std::vector<Point>
-Polygon::filterPointsByVariances(const std::vector<std::pair<double, std::vector<Point>>> &slices, double epsilon) {
+Polygon::filterPointsByVariances(std::vector<std::pair<double, std::vector<Point>>> slices, double epsilon) {
     std::vector<Point> goodPoints;
     std::vector<double> variances;
-    for (const auto &slice: slices) {
+    for (auto slice : slices) {
         variances.push_back(slice.first);
     }
     auto minVariance = std::min_element(variances.begin(), variances.end());
     auto maxVariance = std::max_element(variances.begin(), variances.end());
     auto varianceDifference = *maxVariance - *minVariance;
-    for (const auto &slice: slices) {
+    for (auto slice: slices) {
         double ratio = (slice.first - *minVariance) / varianceDifference;
-        for (const Point &point: slice.second) {
+        for (Point point : slice.second) {
             double minDistance = 10000;
-            for (const auto &edge: edges) {
+            for (auto edge : edges) {
                 double distance = Auxiliary::distanceBetweenPointAndSegment(point, edge);
                 minDistance = distance < minDistance ? distance : minDistance;
             }
@@ -215,40 +163,40 @@ Polygon::filterPointsByVariances(const std::vector<std::pair<double, std::vector
     return goodPoints;
 }
 
-std::vector<std::pair<double, std::vector<Point>>> Polygon::getSlicesWithVariances(int currentAngle) {
-    auto pizzaSlices = Pizza::createPizzaSlices(polygonCenter, pointsOutsidePolygon, currentAngle);
+std::vector<std::pair<double, std::vector<Point>>> Polygon::getSlicesWithVariances(int angle) {
+    auto pizzaSlices = Pizza::createPizzaSlices(polygonCenter, pointsOutsidePolygon, angle);
     std::vector<std::pair<double, std::vector<Point>>> slices;
-    for (const auto &pizzaSlice: pizzaSlices) {
-        auto pizzaSliceSize = (double) pizzaSlice.second.size();
+    for (auto pizzaSlice : pizzaSlices) {
+        int pizzaSliceSize = pizzaSlice.second.size();
         std::vector<Point> pizzaPoints;
         if (pizzaSliceSize > 2) {
             double sum = 0.0;
-            for (const auto &point: pizzaSlice.second) {
+            for (auto point : pizzaSlice.second) {
                 sum += point.second;
                 pizzaPoints.push_back(point.first);
             }
             double mean = sum / pizzaSliceSize;
             double variance = 0.0;
-            for (const auto &point: pizzaSlice.second) {
+            for (auto point : pizzaSlice.second) {
                 variance += pow((point.second - mean), 2);
             }
-            slices.emplace_back(variance / pizzaSliceSize, pizzaPoints);
+            slices.push_back({variance / pizzaSliceSize, pizzaPoints});
         }
     }
     return slices;
 }
 
-void Polygon::createPointsWithDistance(const std::vector<Point> &CurrentPoints) {
+void Polygon::createPointsWithDistance() {
     pointsWithDistance = std::vector<std::pair<Point, double>>{};
-    for (const Point &point: CurrentPoints) {
-        pointsWithDistance.emplace_back(point, Auxiliary::calculateDistanceXY(polygonCenter, point));
+    for (Point point : points) {
+        pointsWithDistance.push_back({point, Auxiliary::calculateDistanceXY(polygonCenter, point)});
     }
 }
 
 void Polygon::filterPointsInsidePolygon() {
     pointsOutsidePolygon = std::vector<std::pair<Point, double>>{};
-    size_t verticesAmount = vertices.size();
-    for (const auto &point: pointsWithDistance) {
+    int verticesAmount = vertices.size();
+    for (auto point : pointsWithDistance) {
         int amountOfCrossing = 0;
         for (int i = 0; i < verticesAmount; i++) {
             Point currentVertex = vertices[i];
@@ -295,35 +243,17 @@ void Polygon::smoothPolygon(int angleRange) {
 }
 
 std::vector<std::pair<Point, double>> Polygon::getRawPolygonCorners() {
-    //std::vector<Line> lines = Pizza::createPizzaLines(polygonCenter, angle);
-    auto slices = Pizza::createPizzaSlices(polygonCenter, pointsWithDistance, pizzaAngle);
-    std::vector<std::pair<int, std::vector<std::pair<Point, double>>>> vectorSlices;
-    for (const auto &slice: slices) {
-        vectorSlices.emplace_back(slice);
-    }
-    std::sort(vectorSlices.begin(), vectorSlices.end(),
-              [](std::pair<int, std::vector<std::pair<Point, double>>> &slice1,
-                 std::pair<int, std::vector<std::pair<Point, double>>> &slice2) -> bool {
-                  return slice1.first < slice2.first;
-              });
+    angle = 10;  // TODO : smart choice - due to points amount, room / open space?
+    std::vector<Line> lines = Pizza::createPizzaLines(polygonCenter, angle);
+    auto slices = Pizza::createPizzaSlices(polygonCenter, pointsWithDistance, angle);
     std::vector<std::pair<Point, double>> polygonVertices;
-    auto sortRule = [](const std::pair<Point, double> &point1, const std::pair<Point, double> &point2) -> bool {
-        return point2.second > point1.second;
+    auto sortRule = [](std::pair<Point, double> point1, std::pair<Point, double> point2) -> bool {
+        return point2.second < point1.second;
     };
-    for (auto &slice: vectorSlices) {
+    for (auto slice : slices) {
         std::sort(slice.second.begin(), slice.second.end(), sortRule);
-        Point point((polygonCenter.x + slice.second.back().first.x) / 2,
-                    (polygonCenter.y + slice.second.back().first.y) / 2, polygonCenter.z);
-        std::pair<Point, double> medianPoint = {point,
-                                                slice.second.back().second / 2};//slice.second[slice.second.size() / 2];
-        polygonVertices.emplace_back(medianPoint);
-
-        /*std::vector<Point> slicePoints{};
-        for (const auto &slicePoint: slice.second) {
-            slicePoints.emplace_back(slicePoint.first);
-        }
-        Point meanPoint = Auxiliary::GetCenterOfMass(slicePoints);
-        polygonVertices.emplace_back(meanPoint, Auxiliary::calculateDistanceXY(polygonCenter, meanPoint));*/
+        std::pair<Point, double> medianPoint = slice.second[slice.second.size() * 0.5];
+        polygonVertices.push_back(medianPoint);
     }
     return polygonVertices;
 }

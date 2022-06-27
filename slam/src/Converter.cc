@@ -43,11 +43,6 @@ namespace ORB_SLAM2 {
         return g2o::SE3Quat(R, t);
     }
 
-    double Converter::round_up(double value, int decimal_places) {
-        const double multiplier = std::pow(10.0, decimal_places);
-        return std::round(value * multiplier) / multiplier;
-    }
-
     cv::Mat Converter::toCvMat(const g2o::SE3Quat &SE3) {
         Eigen::Matrix<double, 4, 4> eigMat = SE3.to_homogeneous_matrix();
         return toCvMat(eigMat);
@@ -58,6 +53,11 @@ namespace ORB_SLAM2 {
         Eigen::Vector3d eigt = Sim3.translation();
         double s = Sim3.scale();
         return toCvSE3(s * eigR, eigt);
+    }
+
+    double Converter::round_up(double value, int decimal_places) {
+        const double multiplier = std::pow(10.0, decimal_places);
+        return std::round(value * multiplier) / multiplier;
     }
 
     cv::Mat Converter::toCvMat(const Eigen::Matrix<double, 4, 4> &m) {
@@ -124,10 +124,11 @@ namespace ORB_SLAM2 {
         return M;
     }
 
-    std::vector<double> Converter::toQuaternion(const cv::Mat &M) {
+    std::vector<float> Converter::toQuaternion(const cv::Mat &M) {
         Eigen::Matrix<double, 3, 3> eigMat = toMatrix3d(M);
         Eigen::Quaterniond q(eigMat);
-        std::vector<double> v(4);
+
+        std::vector<float> v(4);
         v[0] = q.x();
         v[1] = q.y();
         v[2] = q.z();

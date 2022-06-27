@@ -22,7 +22,12 @@
 #define LOCALMAPPING_H
 
 #include "KeyFrame.h"
+#include "Map.h"
+#include "LoopClosing.h"
 #include "Tracking.h"
+#include "KeyFrameDatabase.h"
+
+#include <mutex>
 
 
 namespace ORB_SLAM2
@@ -35,10 +40,9 @@ class Map;
 class LocalMapping
 {
 public:
+    bool is_ba = false;
     LocalMapping(Map* pMap, const float bMonocular);
 
-
-    void HandleNewKeyFrame(KeyFrame *pKF);
     void SetLoopCloser(LoopClosing* pLoopCloser);
 
     void SetTracker(Tracking* pTracker);
@@ -82,7 +86,7 @@ protected:
 
     cv::Mat ComputeF12(KeyFrame* &pKF1, KeyFrame* &pKF2);
 
-    static cv::Mat SkewSymmetricMatrix(const cv::Mat &v);
+    cv::Mat SkewSymmetricMatrix(const cv::Mat &v);
 
     bool mbMonocular;
 
@@ -105,7 +109,7 @@ protected:
 
     KeyFrame* mpCurrentKeyFrame;
 
-    std::list<MapPoint*> mlpRecentAddedMapPoints;
+    std::list<std::shared_ptr<MapPoint>> mlpRecentAddedMapPoints;
 
     std::mutex mMutexNewKFs;
 
@@ -118,6 +122,8 @@ protected:
 
     bool mbAcceptKeyFrames;
     std::mutex mMutexAccept;
+
+    void HandleNewKeyFrame(KeyFrame *pKF);
 };
 
 } //namespace ORB_SLAM

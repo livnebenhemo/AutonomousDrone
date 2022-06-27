@@ -31,6 +31,12 @@
 
 #include<mutex>
 
+#include <boost/serialization/serialization.hpp>
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/serialization/list.hpp>
+#include <boost/serialization/vector.hpp>
+#include <boost/serialization/split_member.hpp>
 
 namespace ORB_SLAM2 {
 
@@ -42,16 +48,20 @@ namespace ORB_SLAM2 {
     class KeyFrameDatabase {
     public:
 
-        KeyFrameDatabase(const ORBVocabulary &voc);
+        KeyFrameDatabase(std::shared_ptr<ORBVocabulary> &voc);
+
+        KeyFrameDatabase() { ; }
 
         void add(KeyFrame *pKF);
+
+        void set_vocab(std::shared_ptr<ORBVocabulary> pvoc);
 
         void erase(KeyFrame *pKF);
 
         void clear();
 
         // Loop Detection
-        std::vector<KeyFrame *> DetectLoopCandidates(KeyFrame *pKF, double minScore);
+        std::vector<KeyFrame *> DetectLoopCandidates(KeyFrame *pKF, float minScore);
 
         // Relocalization
         std::vector<KeyFrame *> DetectRelocalizationCandidates(Frame *F);
@@ -59,13 +69,18 @@ namespace ORB_SLAM2 {
     protected:
 
         // Associated vocabulary
-        const ORBVocabulary *mpVoc;
+        std::shared_ptr<ORBVocabulary> mpVoc;
 
         // Inverted file
-        std::unordered_map<unsigned int,std::unordered_map<KeyFrame *,int> > mvInvertedFile;
+        std::vector<std::list<KeyFrame *> > mvInvertedFile;
 
         // Mutex
         std::mutex mMutex;
+
+        friend class boost::serialization::access;
+
+        template<class Archive>
+        void serialize(Archive &ar, const unsigned int version);
     };
 
 } //namespace ORB_SLAM

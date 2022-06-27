@@ -24,54 +24,54 @@
 #include "Tracking.h"
 #include "MapPoint.h"
 #include "Map.h"
-#include "../utils/include/Point.h"
 
 #include<opencv2/core/core.hpp>
 #include<opencv2/features2d/features2d.hpp>
 
 #include<mutex>
+#include "../utils/include/Point.h"
 
 
-namespace ORB_SLAM2 {
+namespace ORB_SLAM2
+{
 
-    class Tracking;
+class Tracking;
+class Viewer;
 
-    class Viewer;
+class FrameDrawer
+{
+public:
+    FrameDrawer(Map* pMap, bool bReuse);
 
-    class FrameDrawer {
-    public:
-        FrameDrawer(Map *pMap);
+    // Update info from the last processed frame.
+    void Update(Tracking *pTracker);
 
-        // Update info from the last processed frame.
-        void Update(Tracking *pTracker);
+    // Draw last processed frame.
+    cv::Mat DrawFrame();
 
-        // Draw last processed frame.
-        cv::Mat DrawFrame();
+    void SetDestination(const Point &point) { destination = point; }
 
-        Point SetDestination(const Point &point) { destination = point; }
+    void ClearDestinationPoint() { destination = Point(1000, 1000, 1000); }
+protected:
 
-        void ClearDestinationPoint() { destination = Point(1000, 1000, 1000); }
+    void DrawTextInfo(cv::Mat &im, int nState, cv::Mat &imText);
+    Point destination;
 
-    protected:
-        Point destination;
+    // Info of the frame to be drawn
+    cv::Mat mIm;
+    int N;
+    std::vector<cv::KeyPoint> mvCurrentKeys;
+    std::vector<bool> mvbMap, mvbVO;
+    bool mbOnlyTracking;
+    int mnTracked, mnTrackedVO;
+    std::vector<cv::KeyPoint> mvIniKeys;
+    std::vector<int> mvIniMatches;
+    int mState;
 
-        void DrawTextInfo(cv::Mat &im, int nState, cv::Mat &imText);
+    Map* mpMap;
 
-        // Info of the frame to be drawn
-        cv::Mat mIm;
-        int N;
-        std::vector<cv::KeyPoint> mvCurrentKeys;
-        std::vector<bool> mvbMap, mvbVO;
-        bool mbOnlyTracking;
-        int mnTracked, mnTrackedVO;
-        std::vector<cv::KeyPoint> mvIniKeys;
-        std::vector<int> mvIniMatches;
-        int mState;
-
-        Map *mpMap;
-
-        std::mutex mMutex;
-    };
+    std::mutex mMutex;
+};
 
 } //namespace ORB_SLAM
 

@@ -25,21 +25,23 @@
 #include<string>
 #include<thread>
 #include<opencv2/core/core.hpp>
-#include <thread>
-#include <pangolin/pangolin.h>
-#include <unistd.h>
-#include "MapDrawer.h"
+#include<unistd.h>
+
+#include <boost/serialization/serialization.hpp>
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/serialization/list.hpp>
+#include <boost/serialization/vector.hpp>
+
 #include "Tracking.h"
+#include "FrameDrawer.h"
+#include "MapDrawer.h"
+#include "Map.h"
 #include "LocalMapping.h"
+#include "LoopClosing.h"
 #include "KeyFrameDatabase.h"
 #include "ORBVocabulary.h"
 #include "Viewer.h"
-#include "Converter.h"
-#include "LoopClosing.h"
-#include "Converter.h"
-#include <thread>
-#include <pangolin/pangolin.h>
-#include <iomanip>
 
 namespace ORB_SLAM2 {
 
@@ -66,10 +68,34 @@ namespace ORB_SLAM2 {
 
     public:
 
+        bool shutdown_requested = false;
+
+        // Enable serialization
+        friend class boost::serialization::access;
+
         // Initialize the SLAM system. It launches the Local Mapping, Loop Closing and Viewer threads.
         System(const std::string &strVocFile, const std::string &strSettingsFile, const eSensor sensor,
-               const bool bUseViewer = true);
+               const bool bUseViewer = true, bool reuse = false, std::string mapName = "Slam_latest_Map.bin",
+               bool continue_mapping = false, bool isPangolinExists = false);
 
+        LocalMapping *GetLocalMapping() { return mpLocalMapper; };
+
+        LoopClosing *GetLoopClosing() { return mpLoopCloser; };
+
+        MapDrawer *GetMapDrawer() { return mpMapDrawer; };
+
+        FrameDrawer *GetFrameDrawer() { return mpFrameDrawer; };
+
+        // Proccess the given stereo frame. Images must be synchronized and rectified.
+        // Input images: RGB (CV_8UC3) or grayscale (CV_8U). RGB is converted to grayscale.
+        // Returns the camera pose (empty if tracking fails).
+        cv::Mat TrackStereo(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timestamp);
+
+        // Process the given rgbd frame. Depthmap must be registered to the RGB frame.
+        // Input image: RGB (CV_8UC3) or grayscale (CV_8U). RGB is converted to grayscale.
+        // Input depthmap: Float (CV_32F).
+        // Returns the camera pose (empty if tracking fails).
+        cv::Mat TrackRGBD(const cv::Mat &im, const cv::Mat &depthmap, const double &timestamp);
 
         // Proccess the given monocular frame
         // Input images: RGB (CV_8UC3) or grayscale (CV_8U). RGB is converted to grayscale.
@@ -82,60 +108,57 @@ namespace ORB_SLAM2 {
         // This resumes local mapping thread and performs SLAM again.
         void DeactivateLocalizationMode();
 
-        // Returns true if there have been a big map change (loop closure, global BA)
-        // since last call to this function
-
         // Reset the system (clear map)
         void Reset();
+
+        Map *GetMap();
 
         // All threads will be requested to finish.
         // It waits until all threads have finished.
         // This function must be called before saving the trajectory.
         void Shutdown();
 
+        // Save / Load the current map for Mono Execution
+        void SaveMap(const std::string &filename);
+
+        void LoadMap(const std::string &filename);
+
+        // Get map with tracked frames and points.
+        // Call first Shutdown()
+        //Map *GetMap();
+
         // Save camera trajectory in the TUM RGB-D dataset format.
-        // Only for stereo and RGB-D. This method does not work for monocular.
         // Call first Shutdown()
         // See format details at: http://vision.in.tum.de/data/datasets/rgbd-dataset
+        void SaveTrajectoryTUM(const std::string &filename);
 
         // Save keyframe poses in the TUM RGB-D dataset format.
-        // This method works for all sensor input.
+        // Use this function in the monocular case.
         // Call first Shutdown()
         // See format details at: http://vision.in.tum.de/data/datasets/rgbd-dataset
         void SaveKeyFrameTrajectoryTUM(const std::string &filename);
 
         // Save camera trajectory in the KITTI dataset format.
-        // Only for stereo and RGB-D. This method does not work for monocular.
         // Call first Shutdown()
         // See format details at: http://www.cvlibs.net/datasets/kitti/eval_odometry.php
+        void SaveTrajectoryKITTI(const std::string &filename);
+
+        Tracking *GetTracker() { return mpTracker; };
 
         // TODO: Save/Load functions
         // SaveMap(const string &filename);
         // LoadMap(const string &filename);
 
-        // Information from most recent processed frame
-        // You can call this right after TrackMonocular (or stereo or RGBD)
-        Map *GetMap() { return mpMap; };
-
-        MapDrawer *GetMapDrawer() { return mpMapDrawer; };
-
-        FrameDrawer *GetFrameDrawer() { return mpFrameDrawer; };
-
-        Tracking *GetTracker() { return mpTracker; };
-
-        LocalMapping *GetLocalMapping() { return mpLocalMapper; };
-
-        LoopClosing *GetLoopClosing() { return mpLoopCloser; };
     private:
 
         // Input sensor
         eSensor mSensor;
 
         // ORB vocabulary used for place recognition and feature matching.
-        ORBVocabulary *mpVocabulary;
+        std::shared_ptr<ORBVocabulary> mpVocabulary;
 
         // KeyFrame database for place recognition (relocalization and loop detection).
-        KeyFrameDatabase *mpKeyFrameDatabase;
+        std::shared_ptr<KeyFrameDatabase> mpKeyFrameDatabase;
 
         // Map structure that stores the pointers to all KeyFrames and MapPoints.
         Map *mpMap;
@@ -160,9 +183,9 @@ namespace ORB_SLAM2 {
 
         // System threads: Local Mapping, Loop Closing, Viewer.
         // The Tracking thread "lives" in the main execution thread that creates the System object.
-        std::thread *mptLocalMapping;
-        std::thread *mptLoopClosing;
-        std::thread *mptViewer;
+        std::thread mptLocalMapping;
+        std::thread mptLoopClosing;
+        std::thread mptViewer;
 
         // Reset flag
         std::mutex mMutexReset;
@@ -172,10 +195,6 @@ namespace ORB_SLAM2 {
         std::mutex mMutexMode;
         bool mbActivateLocalizationMode;
         bool mbDeactivateLocalizationMode;
-
-        // Tracking state
-        std::unordered_map<size_t,MapPoint *> mTrackedMapPoints;
-        std::mutex mMutexState;
     };
 
 }// namespace ORB_SLAM

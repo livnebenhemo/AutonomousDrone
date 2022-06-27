@@ -25,126 +25,181 @@
 #include"Frame.h"
 #include"Map.h"
 
+#include <boost/serialization/serialization.hpp>
+#include <boost/archive/binary_oarchive.hpp>
+#include <boost/archive/binary_iarchive.hpp>
+#include <boost/serialization/list.hpp>
+#include <boost/serialization/vector.hpp>
+#include <boost/serialization/set.hpp>
+#include <boost/serialization/split_member.hpp>
+#include <boost/serialization/split_free.hpp>
+#include <boost/serialization/binary_object.hpp>
+
+
 #include<opencv2/core/core.hpp>
 #include<mutex>
 
-#include "ORBmatcher.h"
+namespace ORB_SLAM2 {
 
-namespace ORB_SLAM2
-{
+    class KeyFrame;
 
-class KeyFrame;
-class Map;
-class Frame;
+    class Map;
 
-
-class MapPoint
-{
-public:
-    MapPoint(const cv::Mat &Pos, KeyFrame* pRefKF, Map* pMap);
-    MapPoint(const cv::Mat &Pos,  Map* pMap, Frame* pFrame, const int &idxF);
-
-    void SetWorldPos(const cv::Mat &Pos);
-    cv::Mat GetWorldPos();
-
-    cv::Mat GetNormal();
-    KeyFrame* GetReferenceKeyFrame();
-
-    std::unordered_map<KeyFrame*,size_t> GetObservations();
-    int Observations();
-
-    void AddObservation(KeyFrame* pKF,size_t idx);
-    void EraseObservation(KeyFrame* pKF);
-
-    int GetIndexInKeyFrame(KeyFrame* pKF);
-    bool IsInKeyFrame(KeyFrame* pKF);
-
-    void SetBadFlag();
-    bool isBad();
-
-    void Replace(MapPoint* pMP);    
-    MapPoint* GetReplaced();
-
-    void IncreaseVisible(int n=1);
-    void IncreaseFound(int n=1);
-    float GetFoundRatio();
-
-    void ComputeDistinctiveDescriptors();
-
-    cv::Mat GetDescriptor();
-
-    void UpdateNormalAndDepth();
-
-    float GetMinDistanceInvariance();
-    float GetMaxDistanceInvariance();
-    int PredictScale(const double &currentDist, KeyFrame*pKF);
-    int PredictScale(const double &currentDist, Frame* pF);
-
-public:
-    long unsigned int mnId;
-    static long unsigned int nNextId;
-    long int mnFirstKFid;
-    int nObs;
-
-    // Variables used by the tracking
-    float mTrackProjX;
-    float mTrackProjY;
-    float mTrackProjXR;
-    bool mbTrackInView;
-    int mnTrackScaleLevel;
-    float mTrackViewCos;
-    long unsigned int mnTrackReferenceForFrame;
-    long unsigned int mnLastFrameSeen;
-
-    // Variables used by local mapping
-    long unsigned int mnBALocalForKF;
-    long unsigned int mnFuseCandidateForKF;
-
-    // Variables used by loop closing
-    long unsigned int mnLoopPointForKF;
-    long unsigned int mnCorrectedByKF;
-    long unsigned int mnCorrectedReference;    
-    cv::Mat mPosGBA;
-    long unsigned int mnBAGlobalForKF;
+    class Frame;
 
 
-    static std::mutex mGlobalMutex;
+    class MapPoint : public std::enable_shared_from_this<MapPoint> {
+    public:
+        MapPoint();            /* Default constructor for serialization */
+        MapPoint(MapPoint &mapPoint);            /* Default constructor for serialization */
+        MapPoint(const cv::Mat &Pos, KeyFrame *pRefKF, Map *pMap);
 
-protected:    
+        MapPoint(const cv::Mat &Pos, Map *pMap, Frame *pFrame, const int &idxF);
 
-     // Position in absolute coordinates
-     cv::Mat mWorldPos;
+        void SetWorldPos(const cv::Mat &Pos);
 
-     // Keyframes observing the point and associated index in keyframe
-     std::unordered_map<KeyFrame*,size_t> mObservations;
+        cv::Mat GetWorldPos();
 
-     // Mean viewing direction
-     cv::Mat mNormalVector;
+        cv::Mat GetNormal();
 
-     // Best descriptor to fast matching
-     cv::Mat mDescriptor;
+        KeyFrame *GetReferenceKeyFrame();
 
-     // Reference KeyFrame
-     KeyFrame* mpRefKF;
+        std::map<KeyFrame *, size_t> GetObservations();
 
-     // Tracking counters
-     int mnVisible;
-     int mnFound;
+        int Observations();
 
-     // Bad flag (we do not currently erase MapPoint from memory)
-     bool mbBad;
-     MapPoint* mpReplaced;
+        void AddObservation(KeyFrame *pKF, size_t idx);
 
-     // Scale invariance distances
-     double mfMinDistance;
-     double mfMaxDistance;
+        void EraseObservation(KeyFrame *pKF);
 
-     Map* mpMap;
+        int GetIndexInKeyFrame(KeyFrame *pKF);
 
-     std::mutex mMutexPos;
-     std::mutex mMutexFeatures;
-};
+        bool IsInKeyFrame(KeyFrame *pKF);
+
+        void SetBadFlag();
+
+        bool isBad();
+
+        void Replace(const std::shared_ptr<MapPoint> &pMP);
+
+        std::shared_ptr<MapPoint> GetReplaced();
+
+        void IncreaseVisible(int n = 1);
+
+        void IncreaseFound(int n = 1);
+
+        float GetFoundRatio();
+
+        inline int GetFound() {
+            return mnFound;
+        }
+
+        void ComputeDistinctiveDescriptors();
+
+        cv::Mat GetDescriptor();
+
+        void UpdateNormalAndDepth();
+
+        float GetMinDistanceInvariance();
+
+        float GetMaxDistanceInvariance();
+
+        int PredictScale(const float &currentDist, const float &logScaleFactor);
+
+        void SetMap(Map *map);
+
+        void SetObservations(std::vector<KeyFrame *>);
+
+
+    public:
+        long unsigned int mnId;
+        static long unsigned int nNextId;
+        long int mnFirstKFid;
+        long int mnFirstFrame;
+        int nObs;
+
+        // Variables used by the tracking
+        float mTrackProjX;
+        float mTrackProjY;
+        float mTrackProjXR;
+        bool mbTrackInView;
+        int mnTrackScaleLevel;
+        float mTrackViewCos;
+        long unsigned int mnTrackReferenceForFrame;
+        long unsigned int mnLastFrameSeen;
+
+        // Variables used by local mapping
+        long unsigned int mnBALocalForKF;
+        long unsigned int mnFuseCandidateForKF;
+
+        // Variables used by loop closing
+        long unsigned int mnLoopPointForKF;
+        long unsigned int mnCorrectedByKF;
+        long unsigned int mnCorrectedReference;
+        cv::Mat mPosGBA;
+        long unsigned int mnBAGlobalForKF;
+
+
+        static std::mutex mGlobalMutex;
+    protected:
+
+        // Position in absolute coordinates
+        cv::Mat mWorldPos;
+
+        // Keyframes observing the point and associated index in keyframe
+        std::map<KeyFrame *, size_t> mObservations;
+        std::map<long unsigned int, size_t> mObservations_nId;
+
+        // Mean viewing direction
+        cv::Mat mNormalVector;
+
+        // Best descriptor to fast matching
+        cv::Mat mDescriptor;
+
+        // Reference KeyFrame
+        KeyFrame *mpRefKF;
+        // Tracking counters
+        int mnVisible;
+        int mnFound;
+
+        // Bad flag (we do not currently erase MapPoint from memory)
+        bool mbBad;
+        std::shared_ptr<MapPoint> mpReplaced;
+
+        // Scale invariance distances
+        float mfMinDistance;
+        float mfMaxDistance;
+
+        Map *mpMap;
+
+        std::pair<long unsigned int, bool> mref_KfId_pair;
+
+        //id_map mref_KfId_map;
+        std::mutex mMutexPos;
+        std::mutex mMutexFeatures;
+
+
+        friend class boost::serialization::access;
+
+        /*template<class Archive>
+        void serialize(Archive &ar, const unsigned int version) {
+            boost::serialization::split_member(ar, *this, version);
+        }
+
+
+        template<class Archive>
+        void save(Archive &ar, const unsigned int version) const;
+
+
+        template<class Archive>
+        void load(Archive &ar, const unsigned int version);*/
+        template<class Archive>
+        void serialize(Archive &ar, const unsigned int version);
+    };
 
 } //namespace ORB_SLAM
+
+
+
 
 #endif // MAPPOINT_H

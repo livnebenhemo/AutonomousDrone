@@ -29,63 +29,59 @@
 
 #include <mutex>
 
-namespace ORB_SLAM2 {
+namespace ORB_SLAM2
+{
 
-    class Tracking;
+class Tracking;
+class FrameDrawer;
+class MapDrawer;
+class System;
 
-    class FrameDrawer;
+class Viewer
+{
+public:
+    Viewer(System* pSystem, FrameDrawer* pFrameDrawer, MapDrawer* pMapDrawer, Tracking *pTracking, const std::string &strSettingPath, bool bReuse,bool isPangolinExists);
 
-    class MapDrawer;
+    // Main thread function. Draw points, keyframes, the current camera pose and the last processed
+    // frame. Drawing is refreshed according to the camera fps. We use Pangolin.
+    void Run();
 
-    class System;
+    void RequestFinish();
 
-    class Viewer {
-    public:
-        Viewer(System *pSystem, FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer, Tracking *pTracking,
-               const std::string &strSettingPath);
+    void RequestStop();
 
-        // Main thread function. Draw points, keyframes, the current camera pose and the last processed
-        // frame. Drawing is refreshed according to the camera fps. We use Pangolin.
-        void Run();
+    bool isFinished();
 
-        void RequestFinish();
+    bool isStopped();
 
-        void RequestStop();
+    void Release();
 
-        bool isFinished();
+private:
 
-        bool isStopped();
+    bool Stop();
+	bool mbReuse;
+    System* mpSystem;
+    FrameDrawer* mpFrameDrawer;
+    MapDrawer* mpMapDrawer;
+    Tracking* mpTracker;
 
-        void Release();
+    // 1/fps in ms
+    double mT;
+    float mImageWidth, mImageHeight;
 
-    private:
+    float mViewpointX, mViewpointY, mViewpointZ, mViewpointF;
 
-        bool Stop();
+    bool CheckFinish();
+    void SetFinish();
+    bool mbFinishRequested;
+    bool mbFinished;
+    std::mutex mMutexFinish;
 
-        System *mpSystem;
-        FrameDrawer *mpFrameDrawer;
-        MapDrawer *mpMapDrawer;
-        Tracking *mpTracker;
-
-        // 1/fps in ms
-        double mT;
-        float mImageWidth, mImageHeight;
-
-        float mViewpointX, mViewpointY, mViewpointZ, mViewpointF;
-
-        bool CheckFinish();
-
-        void SetFinish();
-
-        bool mbFinishRequested;
-        bool mbFinished;
-        std::mutex mMutexFinish;
-
-        bool mbStopped;
-        bool mbStopRequested;
-        std::mutex mMutexStop;
-
-    };
+    bool mbStopped;
+    bool mbStopRequested;
+    std::mutex mMutexStop;
+    bool isPangolinExists;
+};
 
 }
 

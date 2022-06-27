@@ -23,16 +23,10 @@
 #define SIM3SOLVER_H
 
 #include <opencv2/opencv.hpp>
-
-
 #include <vector>
-#include <cmath>
-#include <opencv2/core/core.hpp>
 
 #include "KeyFrame.h"
-#include "ORBmatcher.h"
 
-#include "../Thirdparty/DBoW2/DUtils/Random.h"
 
 
 namespace ORB_SLAM2
@@ -42,7 +36,7 @@ class Sim3Solver
 {
 public:
 
-    Sim3Solver(KeyFrame* pKF1, KeyFrame* pKF2, const std::vector<MapPoint*> &vpMatched12, bool bFixScale = true);
+    Sim3Solver(KeyFrame* pKF1, KeyFrame* pKF2, const std::vector<std::shared_ptr<MapPoint>> &vpMatched12, const bool bFixScale = true);
 
     void SetRansacParameters(double probability = 0.99, int minInliers = 6 , int maxIterations = 300);
 
@@ -52,31 +46,35 @@ public:
 
     cv::Mat GetEstimatedRotation();
     cv::Mat GetEstimatedTranslation();
-    [[nodiscard]] float GetEstimatedScale() const;
+    float GetEstimatedScale();
 
 
 protected:
 
-    static void ComputeCentroid(cv::Mat &P, cv::Mat &Pr, cv::Mat &C);
+    void ComputeCentroid(cv::Mat &P, cv::Mat &Pr, cv::Mat &C);
 
     void ComputeSim3(cv::Mat &P1, cv::Mat &P2);
 
     void CheckInliers();
 
-    static void Project(const std::vector<cv::Mat> &vP3Dw, std::vector<cv::Mat> &vP2D, const cv::Mat& Tcw, cv::Mat K);
-    static void FromCameraToImage(const std::vector<cv::Mat> &vP3Dc, std::vector<cv::Mat> &vP2D, cv::Mat K);
+    void Project(const std::vector<cv::Mat> &vP3Dw, std::vector<cv::Mat> &vP2D, cv::Mat Tcw, cv::Mat K);
+    void FromCameraToImage(const std::vector<cv::Mat> &vP3Dc, std::vector<cv::Mat> &vP2D, cv::Mat K);
 
 
 protected:
 
     // KeyFrames and matches
-
+    KeyFrame* mpKF1;
+    KeyFrame* mpKF2;
 
     std::vector<cv::Mat> mvX3Dc1;
     std::vector<cv::Mat> mvX3Dc2;
-    std::vector<MapPoint*> mvpMapPoints1;
-    std::vector<MapPoint*> mvpMapPoints2;
+    std::vector<std::shared_ptr<MapPoint>> mvpMapPoints1;
+    std::vector<std::shared_ptr<MapPoint>> mvpMapPoints2;
+    std::vector<std::shared_ptr<MapPoint>> mvpMatches12;
     std::vector<size_t> mvnIndices1;
+    std::vector<size_t> mvSigmaSquare1;
+    std::vector<size_t> mvSigmaSquare2;
     std::vector<size_t> mvnMaxError1;
     std::vector<size_t> mvnMaxError2;
 
@@ -120,6 +118,9 @@ protected:
     // RANSAC max iterations
     int mRansacMaxIts;
 
+    // Threshold inlier/outlier. e = dist(Pi,T_ij*Pj)^2 < 5.991*mSigma2
+    float mTh;
+    float mSigma2;
 
     // Calibration
     cv::Mat mK1;

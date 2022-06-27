@@ -40,45 +40,21 @@ namespace ORB_SLAM2 {
         mpTracker = pTracker;
     }
 
-    void LocalMapping::HandleNewKeyFrame(KeyFrame *pKF) {
-        ResetIfRequested();
-        SetAcceptKeyFrames(false);
-        if (Stop()) {
-            while (isStopped() && !CheckFinish()) {
-                usleep(300);
-            }
-            return;
-        }
-        // BoW conversion and insertion in Map
-        if (mlNewKeyFrames.empty()) {
-            return;
-        }
-        ProcessNewKeyFrame();
-        // Check recent MapPoints
-        MapPointCulling();
-        // Triangulate new MapPoints
-        CreateNewMapPoints();
-        // Find more matches in neighbor keyframes and fuse point duplications
-        SearchInNeighbors();
-        mbAbortBA = false;
-        if (mpMap->KeyFramesInMap() > 2) {
-            Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame, &mbAbortBA, mpMap);
-        }
-        KeyFrameCulling();
-        if (mpCurrentKeyFrame) {
-            //mpLoopCloser->InsertKeyFrame(mpCurrentKeyFrame);
-
-        }
-        SetAcceptKeyFrames(true);
-
-        // Tracking will see that Local Mapping is busy
+    std::chrono::steady_clock::time_point get_time2() {
+        return std::chrono::steady_clock::now();
     }
+
+    unsigned int
+    get_time_diff2(std::chrono::steady_clock::time_point start, std::chrono::steady_clock::time_point end) {
+        return std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+    }
+
 
     void LocalMapping::Run() {
 
         mbFinished = false;
 
-        while (true) {
+        while (1) {
             // Tracking will see that Local Mapping is busy
             SetAcceptKeyFrames(false);
 
@@ -88,6 +64,7 @@ namespace ORB_SLAM2 {
                 ProcessNewKeyFrame();
 
                 // Check recent MapPoints
+                //BAR
                 MapPointCulling();
 
                 // Triangulate new MapPoints
@@ -95,6 +72,7 @@ namespace ORB_SLAM2 {
 
                 if (!CheckNewKeyFrames()) {
                     // Find more matches in neighbor keyframes and fuse point duplications
+                    //BAR
                     SearchInNeighbors();
                 }
 
@@ -102,17 +80,30 @@ namespace ORB_SLAM2 {
 
                 if (!CheckNewKeyFrames() && !stopRequested()) {
                     // Local BA
-                    if (mpMap->KeyFramesInMap() > 2) {
+
+                    //BAR
+                    //auto start = get_time2();
+                    if (mpMap->KeyFramesInMap() > 2){
+                        //std::unique_lock<std::mutex> lock(mMutexNewKFs);
+                        //SetAcceptKeyFrames(false);
+                        //std::unique_lock<std::mutex> lock2(mMutexAccept);
                         Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame, &mbAbortBA, mpMap);
-                        KeyFrameCulling();
+                        //SetAcceptKeyFrames(true);
                     }
+                    //auto end = get_time2();
+                    //std::cout << "Bundle Adjustment time: " << get_time_diff2(start, end) << std::endl;
+
+
+                    // Check redundant local Keyframes
+                    //BAR
+                    KeyFrameCulling();
                 }
 
-                // mpLoopCloser->InsertKeyFrame(mpCurrentKeyFrame);
+                mpLoopCloser->InsertKeyFrame(mpCurrentKeyFrame);
             } else if (Stop()) {
                 // Safe area to stop
                 while (isStopped() && !CheckFinish()) {
-                    usleep(3000);
+                    usleep(5000);
                 }
                 if (CheckFinish())
                     break;
@@ -133,23 +124,20 @@ namespace ORB_SLAM2 {
     }
 
     void LocalMapping::InsertKeyFrame(KeyFrame *pKF) {
-        //std::unique_lock<std::mutex> lock(mMutexNewKFs);
-        if (pKF) {
-            mlNewKeyFrames.push_back(pKF);
-            mbAbortBA = true;
-        }
+        std::unique_lock<std::mutex> lock(mMutexNewKFs);
+        mlNewKeyFrames.push_back(pKF);
+        mbAbortBA = true;
     }
 
 
     bool LocalMapping::CheckNewKeyFrames() {
-        //std::unique_lock<std::mutex> lock(mMutexNewKFs);
+        std::unique_lock<std::mutex> lock(mMutexNewKFs);
         return (!mlNewKeyFrames.empty());
     }
 
     void LocalMapping::ProcessNewKeyFrame() {
         {
-            //std::unique_lock<std::mutex> lock(mMutexNewKFs);
-
+            std::unique_lock<std::mutex> lock(mMutexNewKFs);
             mpCurrentKeyFrame = mlNewKeyFrames.front();
             mlNewKeyFrames.pop_front();
         }
@@ -158,20 +146,24 @@ namespace ORB_SLAM2 {
         mpCurrentKeyFrame->ComputeBoW();
 
         // Associate MapPoints to the new keyframe and update normal and descriptor
-        std::unordered_map<size_t, MapPoint *> vpMapPointMatches = mpCurrentKeyFrame->GetMapPointMatches();
-        for (auto &[i, pMP]: vpMapPointMatches) {
-            if (pMP && !pMP->isBad()) {
-                if (!pMP->IsInKeyFrame(mpCurrentKeyFrame)) {
-                    pMP->AddObservation(mpCurrentKeyFrame, i);
-                    pMP->UpdateNormalAndDepth();
-                    pMP->ComputeDistinctiveDescriptors();
-                } else // this can only happen for new stereo points inserted by the Tracking
-                {
-                    mlpRecentAddedMapPoints.push_back(pMP);
-                }
+        auto vpMapPointMatches = mpCurrentKeyFrame->GetMapPointMatches();
 
+        for (size_t i = 0; i < vpMapPointMatches.size(); i++) {
+            auto pMP = vpMapPointMatches[i];
+            if (pMP) {
+                if (!pMP->isBad()) {
+                    if (!pMP->IsInKeyFrame(mpCurrentKeyFrame)) {
+                        pMP->AddObservation(mpCurrentKeyFrame, i);
+                        pMP->UpdateNormalAndDepth();
+                        pMP->ComputeDistinctiveDescriptors();
+                    } else // this can only happen for new stereo points inserted by the Tracking
+                    {
+                        mlpRecentAddedMapPoints.push_back(pMP);
+                    }
+                }
             }
         }
+
         // Update links in the Covisibility Graph
         mpCurrentKeyFrame->UpdateConnections();
 
@@ -182,28 +174,40 @@ namespace ORB_SLAM2 {
     void LocalMapping::MapPointCulling() {
         // Check Recent Added MapPoints
         auto lit = mlpRecentAddedMapPoints.begin();
-        const int cnThObs = 2;
+        const unsigned long int nCurrentKFid = mpCurrentKeyFrame->mnId;
+
+        int nThObs;
+        if (mbMonocular)
+            nThObs = 2;
+        else
+            nThObs = 3;
+        const int cnThObs = nThObs;
 
         while (lit != mlpRecentAddedMapPoints.end()) {
-            MapPoint *pMP = *lit;
+            auto pMP = *lit;
             if (pMP->isBad()) {
                 lit = mlpRecentAddedMapPoints.erase(lit);
             } else if (pMP->GetFoundRatio() < 0.25f) {
                 pMP->SetBadFlag();
+                mpMap->EraseMapPoint(pMP);
                 lit = mlpRecentAddedMapPoints.erase(lit);
-            } else if (pMP->Observations() <= cnThObs) {
+            } else if (((int) nCurrentKFid - (int) pMP->mnFirstKFid) >= 2 && pMP->Observations() <= cnThObs) {
                 pMP->SetBadFlag();
+                mpMap->EraseMapPoint(pMP);
                 lit = mlpRecentAddedMapPoints.erase(lit);
-            } else
+            } else if (((int) nCurrentKFid - (int) pMP->mnFirstKFid) >= 3)
+                lit = mlpRecentAddedMapPoints.erase(lit);
+            else
                 lit++;
         }
-
     }
 
     void LocalMapping::CreateNewMapPoints() {
         // Retrieve neighbor keyframes in covisibility graph
-        int nn = 20;
-        const std::vector<KeyFrame *> vpNeighKFs = mpCurrentKeyFrame->GetBestCovisibilityKeyFrames(nn);
+        int nn = 10;
+        if (mbMonocular)
+            nn = 20;
+        auto vpNeighKFs = mpCurrentKeyFrame->GetBestCovisibilityKeyFrames(nn);
 
         ORBmatcher matcher(0.6, false);
 
@@ -253,7 +257,7 @@ namespace ORB_SLAM2 {
             cv::Mat F12 = ComputeF12(mpCurrentKeyFrame, pKF2);
 
             // Search matches that fullfil epipolar constraint
-            std::vector<std::pair<size_t, size_t> > vMatchedIndices;
+            std::vector<std::pair<size_t, size_t>> vMatchedIndices;
             matcher.SearchForTriangulation(mpCurrentKeyFrame, pKF2, F12, vMatchedIndices, false);
 
             cv::Mat Rcw2 = pKF2->GetRotation();
@@ -277,8 +281,13 @@ namespace ORB_SLAM2 {
                 const int &idx2 = vMatchedIndices[ikp].second;
 
                 const cv::KeyPoint &kp1 = mpCurrentKeyFrame->mvKeysUn[idx1];
+                const float kp1_ur = mpCurrentKeyFrame->mvuRight[idx1];
+                bool bStereo1 = kp1_ur >= 0;
 
                 const cv::KeyPoint &kp2 = pKF2->mvKeysUn[idx2];
+                const float kp2_ur = pKF2->mvuRight[idx2];
+                bool bStereo2 = kp2_ur >= 0;
+
                 // Check parallax between rays
                 cv::Mat xn1 = (cv::Mat_<float>(3, 1) << (kp1.pt.x - cx1) * invfx1, (kp1.pt.y - cy1) * invfy1, 1.0);
                 cv::Mat xn2 = (cv::Mat_<float>(3, 1) << (kp2.pt.x - cx2) * invfx2, (kp2.pt.y - cy2) * invfy2, 1.0);
@@ -288,13 +297,19 @@ namespace ORB_SLAM2 {
                 const float cosParallaxRays = ray1.dot(ray2) / (cv::norm(ray1) * cv::norm(ray2));
 
                 float cosParallaxStereo = cosParallaxRays + 1;
+                float cosParallaxStereo1 = cosParallaxStereo;
+                float cosParallaxStereo2 = cosParallaxStereo;
 
+                if (bStereo1)
+                    cosParallaxStereo1 = cos(2 * atan2(mpCurrentKeyFrame->mb / 2, mpCurrentKeyFrame->mvDepth[idx1]));
+                else if (bStereo2)
+                    cosParallaxStereo2 = cos(2 * atan2(pKF2->mb / 2, pKF2->mvDepth[idx2]));
 
-                // cosParallaxStereo = std::min(cosParallaxStereo1, cosParallaxStereo2);
+                cosParallaxStereo = std::min(cosParallaxStereo1, cosParallaxStereo2);
 
                 cv::Mat x3D;
                 if (cosParallaxRays < cosParallaxStereo && cosParallaxRays > 0 &&
-                    (cosParallaxRays < 0.9998)) {
+                    (bStereo1 || bStereo2 || cosParallaxRays < 0.9998)) {
                     // Linear Triangulation Method
                     cv::Mat A(4, 4, CV_32F);
                     A.row(0) = xn1.at<float>(0) * Tcw1.row(2) - Tcw1.row(0);
@@ -313,6 +328,10 @@ namespace ORB_SLAM2 {
                     // Euclidean coordinates
                     x3D = x3D.rowRange(0, 3) / x3D.at<float>(3);
 
+                } else if (bStereo1 && cosParallaxStereo1 < cosParallaxStereo2) {
+                    x3D = mpCurrentKeyFrame->UnprojectStereo(idx1);
+                } else if (bStereo2 && cosParallaxStereo2 < cosParallaxStereo1) {
+                    x3D = pKF2->UnprojectStereo(idx2);
                 } else
                     continue; //No stereo and very low parallax
 
@@ -333,24 +352,46 @@ namespace ORB_SLAM2 {
                 const float y1 = Rcw1.row(1).dot(x3Dt) + tcw1.at<float>(1);
                 const float invz1 = 1.0 / z1;
 
-                float u1 = fx1 * x1 * invz1 + cx1;
-                float v1 = fy1 * y1 * invz1 + cy1;
-                float errX1 = u1 - kp1.pt.x;
-                float errY1 = v1 - kp1.pt.y;
-                if ((errX1 * errX1 + errY1 * errY1) > 5.991 * sigmaSquare1)
-                    continue;
+                if (!bStereo1) {
+                    float u1 = fx1 * x1 * invz1 + cx1;
+                    float v1 = fy1 * y1 * invz1 + cy1;
+                    float errX1 = u1 - kp1.pt.x;
+                    float errY1 = v1 - kp1.pt.y;
+                    if ((errX1 * errX1 + errY1 * errY1) > 5.991 * sigmaSquare1)
+                        continue;
+                } else {
+                    float u1 = fx1 * x1 * invz1 + cx1;
+                    float u1_r = u1 - mpCurrentKeyFrame->mbf * invz1;
+                    float v1 = fy1 * y1 * invz1 + cy1;
+                    float errX1 = u1 - kp1.pt.x;
+                    float errY1 = v1 - kp1.pt.y;
+                    float errX1_r = u1_r - kp1_ur;
+                    if ((errX1 * errX1 + errY1 * errY1 + errX1_r * errX1_r) > 7.8 * sigmaSquare1)
+                        continue;
+                }
 
                 //Check reprojection error in second keyframe
                 const float sigmaSquare2 = pKF2->mvLevelSigma2[kp2.octave];
                 const float x2 = Rcw2.row(0).dot(x3Dt) + tcw2.at<float>(0);
                 const float y2 = Rcw2.row(1).dot(x3Dt) + tcw2.at<float>(1);
                 const float invz2 = 1.0 / z2;
-                float u2 = fx2 * x2 * invz2 + cx2;
-                float v2 = fy2 * y2 * invz2 + cy2;
-                float errX2 = u2 - kp2.pt.x;
-                float errY2 = v2 - kp2.pt.y;
-                if ((errX2 * errX2 + errY2 * errY2) > 5.991 * sigmaSquare2)
-                    continue;
+                if (!bStereo2) {
+                    float u2 = fx2 * x2 * invz2 + cx2;
+                    float v2 = fy2 * y2 * invz2 + cy2;
+                    float errX2 = u2 - kp2.pt.x;
+                    float errY2 = v2 - kp2.pt.y;
+                    if ((errX2 * errX2 + errY2 * errY2) > 5.991 * sigmaSquare2)
+                        continue;
+                } else {
+                    float u2 = fx2 * x2 * invz2 + cx2;
+                    float u2_r = u2 - mpCurrentKeyFrame->mbf * invz2;
+                    float v2 = fy2 * y2 * invz2 + cy2;
+                    float errX2 = u2 - kp2.pt.x;
+                    float errY2 = v2 - kp2.pt.y;
+                    float errX2_r = u2_r - kp2_ur;
+                    if ((errX2 * errX2 + errY2 * errY2 + errX2_r * errX2_r) > 7.8 * sigmaSquare2)
+                        continue;
+                }
 
                 //Check scale consistency
                 cv::Mat normal1 = x3D - Ow1;
@@ -372,7 +413,8 @@ namespace ORB_SLAM2 {
                     continue;
 
                 // Triangulation is succesfull
-                auto *pMP = new MapPoint(x3D, mpCurrentKeyFrame, mpMap);
+                std::shared_ptr<MapPoint> pMP = std::make_shared<MapPoint>(x3D, mpCurrentKeyFrame,
+                                                                           mpMap);//new MapPoint(x3D, mpCurrentKeyFrame, mpMap);
 
                 pMP->AddObservation(mpCurrentKeyFrame, idx1);
                 pMP->AddObservation(pKF2, idx2);
@@ -397,50 +439,66 @@ namespace ORB_SLAM2 {
         int nn = 10;
         if (mbMonocular)
             nn = 20;
-        const std::vector<KeyFrame *> vpNeighKFs = mpCurrentKeyFrame->GetBestCovisibilityKeyFrames(nn);
+        auto vpNeighKFs = mpCurrentKeyFrame->GetBestCovisibilityKeyFrames(nn);
         std::vector<KeyFrame *> vpTargetKFs;
-        for (auto pKFi: vpNeighKFs) {
+        for (auto vit = vpNeighKFs.begin(), vend = vpNeighKFs.end(); vit != vend; vit++) {
+            KeyFrame *pKFi = *vit;
             if (pKFi->isBad() || pKFi->mnFuseTargetForKF == mpCurrentKeyFrame->mnId)
                 continue;
             vpTargetKFs.push_back(pKFi);
             pKFi->mnFuseTargetForKF = mpCurrentKeyFrame->mnId;
 
             // Extend to some second neighbors
-            const std::vector<KeyFrame *> vpSecondNeighKFs = pKFi->GetBestCovisibilityKeyFrames(5);
-            for (auto pKFi2: vpSecondNeighKFs) {
+            auto vpSecondNeighKFs = pKFi->GetBestCovisibilityKeyFrames(5);
+            for (auto vit2 = vpSecondNeighKFs.begin(), vend2 = vpSecondNeighKFs.end();
+                 vit2 != vend2; vit2++) {
+                KeyFrame *pKFi2 = *vit2;
                 if (pKFi2->isBad() || pKFi2->mnFuseTargetForKF == mpCurrentKeyFrame->mnId ||
                     pKFi2->mnId == mpCurrentKeyFrame->mnId)
                     continue;
                 vpTargetKFs.push_back(pKFi2);
             }
         }
-        std::unordered_map<size_t, MapPoint *> vpMapPointMatches = mpCurrentKeyFrame->GetMapPointMatches();
-        for (auto pKFi: vpTargetKFs) {
-            ORB_SLAM2::ORBmatcher::Fuse(pKFi, vpMapPointMatches);
+
+
+        // Search matches by projection from current KF in target KFs
+        ORBmatcher matcher;
+        auto vpMapPointMatches = mpCurrentKeyFrame->GetMapPointMatches();
+        for (auto vit = vpTargetKFs.begin(), vend = vpTargetKFs.end(); vit != vend; vit++) {
+            KeyFrame *pKFi = *vit;
+
+            matcher.Fuse(pKFi, vpMapPointMatches, mpMap);
         }
 
         // Search matches by projection from target KFs in current KF
-        std::unordered_map<size_t, MapPoint *> vpFuseCandidates;
+        std::vector<std::shared_ptr<MapPoint> > vpFuseCandidates;
+        vpFuseCandidates.reserve(vpTargetKFs.size() * vpMapPointMatches.size());
 
-        for (auto pKFi: vpTargetKFs) {
-            std::unordered_map<size_t, MapPoint *> vpMapPointsKFi = pKFi->GetMapPointMatches();
+        for (auto vitKF = vpTargetKFs.begin(), vendKF = vpTargetKFs.end();
+             vitKF != vendKF; vitKF++) {
+            KeyFrame *pKFi = *vitKF;
 
-            for (auto &[i, pMP]: vpMapPointsKFi) {
+            auto vpMapPointsKFi = pKFi->GetMapPointMatches();
+
+            for (auto vitMP = vpMapPointsKFi.begin(), vendMP = vpMapPointsKFi.end();
+                 vitMP != vendMP; vitMP++) {
+                auto pMP = *vitMP;
                 if (!pMP)
                     continue;
                 if (pMP->isBad() || pMP->mnFuseCandidateForKF == mpCurrentKeyFrame->mnId)
                     continue;
                 pMP->mnFuseCandidateForKF = mpCurrentKeyFrame->mnId;
-                vpFuseCandidates[i] = pMP;
+                vpFuseCandidates.push_back(pMP);
             }
         }
 
-        ORB_SLAM2::ORBmatcher::Fuse(mpCurrentKeyFrame, vpFuseCandidates);
+        matcher.Fuse(mpCurrentKeyFrame, vpFuseCandidates, mpMap);
 
 
         // Update points
         vpMapPointMatches = mpCurrentKeyFrame->GetMapPointMatches();
-        for (auto &[i, pMP]: vpMapPointMatches) {
+        for (size_t i = 0, iend = vpMapPointMatches.size(); i < iend; i++) {
+            auto pMP = vpMapPointMatches[i];
             if (pMP) {
                 if (!pMP->isBad()) {
                     pMP->ComputeDistinctiveDescriptors();
@@ -472,12 +530,14 @@ namespace ORB_SLAM2 {
     }
 
     void LocalMapping::RequestStop() {
+        std::unique_lock<std::mutex> lock(mMutexStop);
         mbStopRequested = true;
-        //std::unique_lock<std::mutex> lock2(mMutexNewKFs);
+        std::unique_lock<std::mutex> lock2(mMutexNewKFs);
         mbAbortBA = true;
     }
 
     bool LocalMapping::Stop() {
+        std::unique_lock<std::mutex> lock(mMutexStop);
         if (mbStopRequested && !mbNotStop) {
             mbStopped = true;
             std::cout << "Local Mapping STOP" << std::endl;
@@ -488,37 +548,41 @@ namespace ORB_SLAM2 {
     }
 
     bool LocalMapping::isStopped() {
+        std::unique_lock<std::mutex> lock(mMutexStop);
         return mbStopped;
     }
 
     bool LocalMapping::stopRequested() {
+        std::unique_lock<std::mutex> lock(mMutexStop);
         return mbStopRequested;
     }
 
     void LocalMapping::Release() {
-        //std::unique_lock<std::mutex> lock2(mMutexFinish);
+        std::unique_lock<std::mutex> lock(mMutexStop);
+        std::unique_lock<std::mutex> lock2(mMutexFinish);
         if (mbFinished)
             return;
         mbStopped = false;
         mbStopRequested = false;
-        for (auto &mlNewKeyFrame: mlNewKeyFrames)
-            delete mlNewKeyFrame;
+        for (auto lit = mlNewKeyFrames.begin(), lend = mlNewKeyFrames.end(); lit != lend; lit++)
+            delete *lit;
         mlNewKeyFrames.clear();
 
         std::cout << "Local Mapping RELEASE" << std::endl;
     }
 
     bool LocalMapping::AcceptKeyFrames() {
-        //std::unique_lock<std::mutex> lock(mMutexAccept);
+        std::unique_lock<std::mutex> lock(mMutexAccept);
         return mbAcceptKeyFrames;
     }
 
     void LocalMapping::SetAcceptKeyFrames(bool flag) {
-        //std::unique_lock<std::mutex> lock(mMutexAccept);
+        std::unique_lock<std::mutex> lock(mMutexAccept);
         mbAcceptKeyFrames = flag;
     }
 
     bool LocalMapping::SetNotStop(bool flag) {
+        std::unique_lock<std::mutex> lock(mMutexStop);
 
         if (flag && mbStopped)
             return false;
@@ -537,37 +601,65 @@ namespace ORB_SLAM2 {
         // A keyframe is considered redundant if the 90% of the MapPoints it sees, are seen
         // in at least other 3 keyframes (in the same or finer scale)
         // We only consider close stereo points
-        std::vector<KeyFrame *> vpLocalKeyFrames = mpCurrentKeyFrame->GetVectorCovisibleKeyFrames();
+        auto vpLocalKeyFrames = mpCurrentKeyFrame->GetVectorCovisibleKeyFrames();
+        cv::Point3f current_pos(mpCurrentKeyFrame->GetCameraCenter());
 
-        for (auto pKF: vpLocalKeyFrames) {
+        for (auto vit = vpLocalKeyFrames.begin(), vend = vpLocalKeyFrames.end();
+             vit != vend; vit++) {
+            KeyFrame *pKF = *vit;
+            // cv::Point3f pkf_pos(pKF->GetCameraCenter());
+
+            // double dist_x = (current_pos.x - pkf_pos.x);
+            // double dist_y = (current_pos.y - pkf_pos.y);
+            // double dist_z = (current_pos.z - pkf_pos.z);
+
+            // double dist = dist_x*dist_x + dist_y*dist_y + dist_z*dist_z;
+            // std::cout << "dist: "<< dist << std::endl;
+            // if(dist < 0.001){
+            //     mpCurrentKeyFrame->SetBadFlag();
+            //     break;
+            // }
+            // continue;
             if (pKF->mnId == 0)
                 continue;
-            std::unordered_map<size_t,MapPoint *> vpMapPoints = pKF->GetMapPointMatches();
-            const int thObs = 3;
+            auto vpMapPoints = pKF->GetMapPointMatches();
+
+            int /*nObs = 2;
+        if(mbMonocular)*/
+            nObs = 3;
+            const int thObs = nObs;
             int nRedundantObservations = 0;
             int nMPs = 0;
             for (size_t i = 0, iend = vpMapPoints.size(); i < iend; i++) {
-                MapPoint *pMP = vpMapPoints[i];
-                if (pMP && !pMP->isBad()) {
-                    nMPs++;
-                    if (pMP->Observations() > thObs) {
-                        const int scaleLevel = pKF->mvKeysUn[i].octave + 1;
-                        const auto observations = pMP->GetObservations();
-                        int nObs = 0;
-                        for (auto observation: observations) {
-                            KeyFrame *pKFi = observation.first;
-                            if (pKFi == pKF)
+                auto pMP = vpMapPoints[i];
+                if (pMP) {
+                    if (!pMP->isBad()) {
+                        if (!mbMonocular) {
+                            if (pKF->mvDepth[i] > pKF->mThDepth || pKF->mvDepth[i] < 0)
                                 continue;
-                            const int &scaleLeveli = pKFi->mvKeysUn[observation.second].octave;
-
-                            if (scaleLeveli <= scaleLevel) {
-                                nObs++;
-                                if (nObs >= thObs)
-                                    break;
-                            }
                         }
-                        if (nObs >= thObs) {
-                            nRedundantObservations++;
+
+                        nMPs++;
+                        if (pMP->Observations() > thObs) {
+                            const int &scaleLevel = pKF->mvKeysUn[i].octave;
+                            auto observations = pMP->GetObservations();
+                            int nObs = 0;
+                            for (auto mit = observations.begin(), mend = observations.end();
+                                 mit != mend; mit++) {
+                                KeyFrame *pKFi = mit->first;
+                                if (pKFi == pKF)
+                                    continue;
+                                const int &scaleLeveli = pKFi->mvKeysUn[mit->second].octave;
+
+                                if (scaleLeveli <= scaleLevel + 1) {
+                                    nObs++;
+                                    if (nObs >= thObs)
+                                        break;
+                                }
+                            }
+                            if (nObs >= thObs) {
+                                nRedundantObservations++;
+                            }
                         }
                     }
                 }
@@ -586,21 +678,22 @@ namespace ORB_SLAM2 {
 
     void LocalMapping::RequestReset() {
         {
+            std::unique_lock<std::mutex> lock(mMutexReset);
             mbResetRequested = true;
         }
 
-        while (true) {
+        while (1) {
             {
+                std::unique_lock<std::mutex> lock2(mMutexReset);
                 if (!mbResetRequested)
                     break;
-                ResetIfRequested();
             }
             usleep(3000);
         }
     }
 
     void LocalMapping::ResetIfRequested() {
-        //std::unique_lock<std::mutex> lock(mMutexReset);
+        std::unique_lock<std::mutex> lock(mMutexReset);
         if (mbResetRequested) {
             mlNewKeyFrames.clear();
             mlpRecentAddedMapPoints.clear();
@@ -609,23 +702,24 @@ namespace ORB_SLAM2 {
     }
 
     void LocalMapping::RequestFinish() {
-        //std::unique_lock<std::mutex> lock(mMutexFinish);
+        std::unique_lock<std::mutex> lock(mMutexFinish);
         mbFinishRequested = true;
     }
 
     bool LocalMapping::CheckFinish() {
-        //std::unique_lock<std::mutex> lock(mMutexFinish);
+        std::unique_lock<std::mutex> lock(mMutexFinish);
         return mbFinishRequested;
     }
 
     void LocalMapping::SetFinish() {
-        //std::unique_lock<std::mutex> lock(mMutexFinish);
+        std::unique_lock<std::mutex> lock(mMutexFinish);
         mbFinished = true;
+        std::unique_lock<std::mutex> lock2(mMutexStop);
         mbStopped = true;
     }
 
     bool LocalMapping::isFinished() {
-        //std::unique_lock<std::mutex> lock(mMutexFinish);
+        std::unique_lock<std::mutex> lock(mMutexFinish);
         return mbFinished;
     }
 

@@ -182,10 +182,10 @@ std::vector<Point> Navigation::dijkstra(Graph graph) {
 }
 
 std::vector<Point>
-Navigation::getNavigationPathByRRT(std::vector<Point> &points, std::pair<Point, Point> &track, bool debug) {
+Navigation::getNavigationPathByRRT(std::vector<Point> &cloud, std::pair<Point, Point> &track, bool debug) {
     double pathLength = Auxiliary::calculateDistanceXY(track.first, track.second);
     std::cout << "path length: " << pathLength << std::endl;
-    RRT rrt(track, points, debug, 20000, 0.3, pathLength / 8);
+    RRT rrt(track, cloud, debug, 20000, 0.3, pathLength / 8);
     auto graph = rrt.BuildTrack();
     if (graph.start == Point() && graph.end == Point(1, 1, 1)) {
         std::cout << "cant find path" << std::endl;
@@ -196,7 +196,7 @@ Navigation::getNavigationPathByRRT(std::vector<Point> &points, std::pair<Point, 
         if (debug) {
             std::cout << "livne" << std::endl;
             Auxiliary::SetupPangolin("path");
-            Auxiliary::drawPathPangolin(points, graph.vertices, "path", track);
+            Auxiliary::drawPathPangolin(cloud, graph.vertices, "path", track);
         }
         return std::vector<Point>{track.first, track.second};
     }
@@ -205,7 +205,7 @@ Navigation::getNavigationPathByRRT(std::vector<Point> &points, std::pair<Point, 
     if (debug) {
         std::cout << "livne" << std::endl;
         Auxiliary::SetupPangolin("path");
-        Auxiliary::drawPathPangolin(points, path, "path", track);
+        Auxiliary::drawPathPangolin(cloud, path, "path", track);
     }
     return path;
 }

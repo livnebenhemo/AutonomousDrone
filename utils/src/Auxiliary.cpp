@@ -176,19 +176,19 @@ Auxiliary::drawPathPangolin(const std::vector<Point> &cloud, std::vector<Point> 
         glLineWidth(3);
         for (int i = 0; i < path.size() - 1; ++i) {
 
-            glVertex3f(path[i].x, -1 * path[i].z, path[i].y);;
+            glVertex3f(path[i].x, -1 * path[i].z, path[i].y);
             glVertex3f(path[i + 1].x, -1 * path[i + 1].z, path[i + 1].y);
         }
         glEnd();
         glBegin(GL_LINES);
         glColor3f(1.0, 1.0, 1.0);
         glLineWidth(3);
-        glVertex3f(path[path.size() - 2].x, -1 * path[path.size() - 2].z, path[path.size() - 2].y);;
+        glVertex3f(path[path.size() - 2].x, -1 * path[path.size() - 2].z, path[path.size() - 2].y);
         glVertex3f(path.back().x, -1 * path.back().z, path.back().y);
         glEnd();
         glColor3f(1.0f, 0.0f, 1.0f);
         glBegin(GL_LINES);
-        glVertex3f(lineFromCenter.first.x, -1 * lineFromCenter.first.z, lineFromCenter.first.y);;
+        glVertex3f(lineFromCenter.first.x, -1 * lineFromCenter.first.z, lineFromCenter.first.y);
         glVertex3f(lineFromCenter.second.x, -1 * lineFromCenter.second.z, lineFromCenter.second.y);
         glEnd();
         // Swap frames and Process Events
@@ -245,7 +245,7 @@ void Auxiliary::DrawMapPointsPangolin(const std::vector<Point> &cloud, const std
         glLineWidth(3);
         glColor3f(1.0f, 0.0f, 1.0f);
         glBegin(GL_LINES);
-        glVertex3f(lineFromCenter.first.x, -1 * lineFromCenter.first.z, lineFromCenter.first.y);;
+        glVertex3f(lineFromCenter.first.x, -1 * lineFromCenter.first.z, lineFromCenter.first.y);
         glVertex3f(lineFromCenter.second.x, -1 * lineFromCenter.second.z, lineFromCenter.second.y);
         glEnd();
 
@@ -469,7 +469,7 @@ double Auxiliary::calculateVariance(const std::vector<double> &distances) {
     return variance;
 }
 
-cv::Mat points3d_to_mat(const std::vector<cv::Point3d> &points3d) {
+cv::Mat Auxiliary::points3d_to_mat(const std::vector<cv::Point3d> &points3d) {
     std::size_t nPoints = points3d.size();
     cv::Mat mat((int) nPoints, 3, CV_64FC1);
     for (std::size_t i = 0; i < nPoints; i++) {
@@ -494,7 +494,7 @@ std::pair<cv::Mat, cv::Mat> Auxiliary::calculateAlignMatrices(std::vector<cv::Po
         p = p - mu_align_pnt;
     }
 
-    cv::Mat A = points3d_to_mat(points);
+    cv::Mat A = Auxiliary::points3d_to_mat(points);
     cv::Mat w, u, vt;
     // cv::SVD::compute(A,w,u,vt,cv::SVD::MODIFY_A| cv::SVD::FULL_UV);
     cv::SVDecomp(A, w, u, vt);
@@ -534,8 +534,7 @@ std::pair<cv::Mat, cv::Mat> Auxiliary::alignMap(std::vector<Point> &points) {
     }
     return {R_align, mu_align};
 }
-
-double Auxiliary::getAngleBySlopes(Line line1, Line line2) {
+double Auxiliary::getAngleBySlopes(Line &line1, Line &line2) {
     Eigen::Vector3d vector1(1, line1.getSlope(), 0);
     Eigen::Vector3d vector2(1, line2.getSlope(), 0);
     Eigen::Vector3d unitVector1 = vector1 / vector1.norm();

@@ -55,6 +55,7 @@ std::vector<Point> Polygon::getExitPointsByPolygon(bool isDebug) {
         std::sort(navigationPoints.begin(), navigationPoints.end(), [&center](Point p1, Point p2) {
             return Auxiliary::calculateDistanceXY(p1, center) > Auxiliary::calculateDistanceXY(p2, center);
         });
+        navigationPoints = std::vector<Point>{navigationPoints.front()};
     }
     return navigationPoints;
 }

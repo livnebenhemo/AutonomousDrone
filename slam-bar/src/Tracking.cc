@@ -1432,7 +1432,7 @@ bool Tracking::Relocalization() {
         mCurrentFrame.ComputeBoW();
 
         // Relocalization is performed when tracking is lost
-        // Track Lost: Query KeyFrame Database for keyframe candidates for relocalisation
+        // Track Lost: fmlRelativeFramePosesQuery KeyFrame Database for keyframe candidates for relocalisation
         // vector<KeyFrame *> vpCandidateKFs = mpKeyFrameDB->DetectRelocalizationCandidates(&mCurrentFrame);
         auto vpCandidateKFs = mpMap->GetAllKeyFrames();
 

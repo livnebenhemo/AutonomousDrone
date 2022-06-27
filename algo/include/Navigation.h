@@ -13,7 +13,7 @@
 
 class Navigation {
 public:
-    std::vector<Point> getNavigationPathByRRT(std::vector<Point> &points, std::pair<Point,Point> &track,bool debug = false);
+    std::vector<Point> getNavigationPathByRRT(std::vector<Point> &cloud, std::pair<Point,Point> &track, bool debug = false);
 
     static std::vector<Point> getFloor(std::vector<Point> &points, unsigned long sizeOfJump);
 

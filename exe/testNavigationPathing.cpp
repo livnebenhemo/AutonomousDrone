@@ -12,18 +12,6 @@
 #include "include/RRT.h"
 
 
-cv::Mat points3d_to_mat(const std::vector<cv::Point3d> &points3d) {
-    std::size_t nPoints = points3d.size();
-    cv::Mat mat((int) nPoints, 3, CV_64FC1);
-    for (std::size_t i = 0; i < nPoints; i++) {
-        mat.at<double>(i, 0) = points3d[i].x;
-        mat.at<double>(i, 1) = points3d[i].y;
-        mat.at<double>(i, 2) = points3d[i].z;
-    }
-
-    return mat.t();
-}
-
 std::pair<cv::Mat, cv::Mat> calculate_align_matrices(std::vector<cv::Point3d> points) {
     cv::Mat mu_align1;
     cv::Mat R_align;
@@ -37,7 +25,7 @@ std::pair<cv::Mat, cv::Mat> calculate_align_matrices(std::vector<cv::Point3d> po
         p = p - mu_align_pnt;
     }
 
-    cv::Mat A = points3d_to_mat(points);
+    cv::Mat A = Auxiliary::points3d_to_mat(points);
     cv::Mat w, u, vt;
     // cv::SVD::compute(A,w,u,vt,cv::SVD::MODIFY_A| cv::SVD::FULL_UV);
     cv::SVDecomp(A, w, u, vt);

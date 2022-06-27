@@ -53,7 +53,7 @@ public:
 
     static double getDistanceToClosestSegment(const Point &point, const std::vector<Line> &segments);
 
-    static double getAngleBySlopes(Line line1, Line line2);
+    static double getAngleBySlopes(Line &line1, Line &line2);
 
     static double calculateVariance(const std::vector<double> &distances);
 
@@ -110,6 +110,8 @@ public:
                      const std::pair<Point, Point> &lineFromCenter);
 
     static std::pair<cv::Mat, cv::Mat> alignMap(std::vector<Point> &points);
+
+    static cv::Mat points3d_to_mat(const std::vector<cv::Point3d> &points3d);
 };
 
 static cv::Mat points3d_to_mat(const std::vector<cv::Point3d> &points3d);

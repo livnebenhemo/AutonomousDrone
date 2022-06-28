@@ -14,10 +14,10 @@ AutonomousDrone::AutonomousDrone(std::shared_ptr<ctello::Tello> drone,
                                  std::string cameraYamlPath,
                                  const std::string &arucoYamlPath,
                                  std::string droneWifiName,
+                                 bool loadMap,
+                                 std::string &mapPath, bool saveMap,
                                  int sizeOfFrameStack,
                                  bool withPlot,
-                                 bool isManual,
-                                 bool switchBattery,
                                  std::string chargerBluetoothAddress) {
     currentFrame = Frame();
     home = Point();
@@ -38,12 +38,13 @@ AutonomousDrone::AutonomousDrone(std::shared_ptr<ctello::Tello> drone,
     this->chargerBluetoothAddress = std::move(chargerBluetoothAddress);
     this->arucoYamlPath = arucoYamlPath;
     this->droneWifiName = std::move(droneWifiName);
-    this->isManual = isManual;
-    this->useCharger = !switchBattery;
     markers.emplace_back(std::pair<int, double>(1, 0.07));
     cameraParams = Charger::getCameraCalibration(arucoYamlPath);
     dictionary = cv::aruco::getPredefinedDictionary(
             cv::aruco::DICT_6X6_250);
+    this->loadMap = loadMap;
+    this->mapPath = mapPath;
+    this->saveBinMap = saveMap;
 }
 
 void AutonomousDrone::getCameraFeed() {
@@ -103,7 +104,7 @@ double AutonomousDrone::colorDetection() {
 void AutonomousDrone::runOrbSlam() {
     std::thread getCameraThread(&AutonomousDrone::getCameraFeed, this);
     orbSlamRunning = true;
-    ORB_SLAM2::System SLAM(vocFilePath, yamlFilePath, ORB_SLAM2::System::MONOCULAR, true);
+    ORB_SLAM2::System SLAM(vocFilePath, yamlFilePath, ORB_SLAM2::System::MONOCULAR,true, loadMap, mapPath,true);
     orbSlamPointer = &SLAM;
     double timeStamp = 0.2;
     int amountOfChanges = 0;

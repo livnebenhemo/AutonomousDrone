@@ -24,9 +24,10 @@ class AutonomousDrone {
 public:
     AutonomousDrone(std::shared_ptr<ctello::Tello> drone,/*std::shared_ptr<cv::VideoCapture> capture,*/
                     std::string vocabularyFilePath, std::string cameraYamlPath, const std::string &arucoYamlPath,
-                    std::string droneWifiName, int sizeOfFrameStack = 20,
-                    bool withPlot = false, bool isManual=false, bool switchBattery=false,
-                    std::string chargerBluetoothAddress = "3C:61:05:03:81:E2");
+                    std::string droneWifiName,
+                    bool loadMap,
+                    std::string &mapPath,bool saveMap, int sizeOfFrameStack = 20,
+                    bool withPlot = false, std::string chargerBluetoothAddress = "3C:61:05:03:81:E2");
 
     void run();
 
@@ -192,6 +193,10 @@ private:
     void switchBattery(int switchingTime = 25);
 
     void flyToNavigationPointsNoRRT();
+
+    bool loadMap;
+    bool saveBinMap;
+    std::string mapPath;
 };
 
 #endif //TELLO_AUTONOMOUSDRONE_H

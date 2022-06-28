@@ -1,18 +1,18 @@
 {
   "VocabularyPath": "/home/tzuk/AutonomousDroneCPP/Vocabulary/ORBvoc.bin",
-  "DroneYamlPathSlam": "/home/tzuk/AutonomousDroneCPP/config/tello_5BFA7F.yaml",
-  "DroneYamlPathAruco": "/home/tzuk/AutonomousDroneCPP/config/tello_aruco_5BFA7F.yaml",
-  "DroneName": "TELLO-9EE955",
+  "DroneYamlPathSlam": "/home/tzuk/AutonomousDroneCPP/config/tello_5F2197.yaml",
+  "DroneYamlPathAruco": "/home/tzuk/AutonomousDroneCPP/config/tello_aruco_5F2197.yaml",
+  "DroneName": "TELLO-5F2197",
   "WithPlot": false,
   "sizeOfFrameStack": 20,
-  "offlineVideoTestPath": "/home/tzuk/Documents/AutonomousDroneResults/videos/outcpp2022-01-31T15:02:00Z.avi",
+  "offlineVideoTestPath": "/home/tzuk/Documents/AutonomousDroneResults/videos/outcpp2022-02-01T07:20:21Z.avi",
   "onlineVideoPath": "udp://0.0.0.0:11111?overrun_nonfatal=1&fifo_size=1000",
   "onlineVideoSettingsPath": "/home/tzuk/AutonomousDroneCPP/config/tzukComputerCamera.yaml",
   "runSimulator": false,
   "maxForwardForSimulator": 1500,
   "sizeOfForwardStepSimulator": 200,
-  "loadMap": true,
-  "loadMapPath": "/home/tzuk/slamMap.bin",
+  "loadMap": false,
+  "loadMapPath": "/home/tzuk/slamMapLabOpenSpace.bin",
   "saveMap": true,
-  "saveMapPath": "/home/tzuk/slamMap.bin"
+  "saveMapPath": "/home/tzuk/slamMapLabOpenSpace.bin"
 }

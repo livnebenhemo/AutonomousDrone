@@ -55,16 +55,20 @@ namespace ORB_SLAM2 {
         Frame(const Frame &frame);
 
         // Constructor for stereo cameras.
-        Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeStamp, ORBextractor *extractorLeft,
-              ORBextractor *extractorRight, std::shared_ptr<ORBVocabulary> voc, cv::Mat &K, cv::Mat &distCoef, const float &bf,
+        Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeStamp,
+              std::shared_ptr<ORBextractor> extractorLeft,
+              std::shared_ptr<ORBextractor> extractorRight, std::shared_ptr<ORBVocabulary> voc, cv::Mat &K,
+              cv::Mat &distCoef, const float &bf,
               const float &thDepth);
 
         // Constructor for RGB-D cameras.
-        Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeStamp, ORBextractor *extractor,
+        Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeStamp,
+              std::shared_ptr<ORBextractor> extractor,
               std::shared_ptr<ORBVocabulary> voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth);
 
         // Constructor for Monocular cameras.
-        Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor *extractor, std::shared_ptr<ORBVocabulary> voc, cv::Mat &K,
+        Frame(const cv::Mat &imGray, const double &timeStamp, std::shared_ptr<ORBextractor> extractor,
+              std::shared_ptr<ORBVocabulary> voc, cv::Mat &K,
               cv::Mat &distCoef, const float &bf, const float &thDepth);
 
         // Extract ORB on the image. 0 for left image and 1 for right image.
@@ -116,7 +120,7 @@ namespace ORB_SLAM2 {
         std::shared_ptr<ORBVocabulary> mpORBvocabulary;
 
         // Feature extractor. The right is used only in the stereo case.
-        ORBextractor *mpORBextractorLeft, *mpORBextractorRight;
+        std::shared_ptr<ORBextractor> mpORBextractorLeft, mpORBextractorRight;
         //cv::Ptr<cv::ORB> orb;
 
         // Frame timestamp.

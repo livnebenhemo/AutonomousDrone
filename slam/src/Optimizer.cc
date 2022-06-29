@@ -37,7 +37,8 @@
 namespace ORB_SLAM2 {
 
 
-    void Optimizer::GlobalBundleAdjustemnt(Map *pMap, int nIterations, bool *pbStopFlag, const unsigned long nLoopKF,
+    void Optimizer::GlobalBundleAdjustemnt(const std::shared_ptr<Map> &pMap, int nIterations, bool *pbStopFlag,
+                                           const unsigned long nLoopKF,
                                            const bool bRobust) {
         std::vector<KeyFrame *> vpKFs = pMap->GetAllKeyFrames();
         auto vpMP = pMap->GetAllMapPoints();
@@ -415,7 +416,7 @@ namespace ORB_SLAM2 {
         return nInitialCorrespondences - nBad;
     }
 
-    void Optimizer::filterBySphericalCoordinates(KeyFrame *pKF, Map *pMap) {
+    void Optimizer::filterBySphericalCoordinates(KeyFrame *pKF, const std::shared_ptr<Map>& pMap) {
         std::unordered_map<double, std::unordered_map<double, std::shared_ptr<MapPoint>>> pointsAndAngles;
         auto keyFramePose = ORB_SLAM2::Converter::toVector3d(pKF->GetPose());
         auto points = pKF->GetMapPointMatches();
@@ -450,10 +451,10 @@ namespace ORB_SLAM2 {
         }
     }
 
-    void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool *pbStopFlag, Map *pMap) {
+    void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool *pbStopFlag, const std::shared_ptr<Map>& pMap) {
         // Local KeyFrames: First Breath Search from Current Keyframe
         std::list<KeyFrame *> lLocalKeyFrames;
-       // filterBySphericalCoordinates(pKF, pMap);
+        // filterBySphericalCoordinates(pKF, pMap);
         lLocalKeyFrames.push_back(pKF);
         pKF->mnBALocalForKF = pKF->mnId;
 
@@ -761,7 +762,7 @@ namespace ORB_SLAM2 {
     }
 
 
-    void Optimizer::OptimizeEssentialGraph(Map *pMap, KeyFrame *pLoopKF, KeyFrame *pCurKF,
+    void Optimizer::OptimizeEssentialGraph(const std::shared_ptr<Map>& pMap, KeyFrame *pLoopKF, KeyFrame *pCurKF,
                                            const LoopClosing::KeyFrameAndPose &NonCorrectedSim3,
                                            const LoopClosing::KeyFrameAndPose &CorrectedSim3,
                                            const std::map<KeyFrame *, std::set<KeyFrame *>

@@ -106,7 +106,7 @@ namespace ORB_SLAM2 {
 
     class KeyFrame {
     public:
-        KeyFrame(Frame &F, Map *pMap, std::shared_ptr<KeyFrameDatabase> pKFDB);
+        KeyFrame(Frame &F, std::shared_ptr<Map> pMap, std::shared_ptr<KeyFrameDatabase> pKFDB);
 
         KeyFrame();    /* Default constructor for serialization */
 
@@ -213,7 +213,7 @@ namespace ORB_SLAM2 {
             return pKF1->mnId < pKF2->mnId;
         }
 
-        void SetMap(Map *map);
+        void SetMap(std::shared_ptr<Map> map);
 
         void SetKeyFrameDatabase(const std::shared_ptr<KeyFrameDatabase> &pKeyFrameDB);
 
@@ -345,7 +345,7 @@ namespace ORB_SLAM2 {
 
         float mHalfBaseline; // Only for visualization
 
-        Map *mpMap;
+        std::shared_ptr<Map> mpMap;
 
 // #ifndef _BAR_
         friend class boost::serialization::access;

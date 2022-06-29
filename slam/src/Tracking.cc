@@ -40,15 +40,18 @@
 
 namespace ORB_SLAM2 {
 
-    Tracking::Tracking(System *pSys, std::shared_ptr<ORBVocabulary> pVoc, FrameDrawer *pFrameDrawer,
-                       MapDrawer *pMapDrawer, Map *pMap,
+    Tracking::Tracking(System *pSys, std::shared_ptr<ORBVocabulary> pVoc,
+                       std::shared_ptr<FrameDrawer> pFrameDrawer,
+                       std::shared_ptr<MapDrawer> pMapDrawer, std::shared_ptr<Map> pMap,
                        std::shared_ptr<KeyFrameDatabase> pKFDB, const std::string &strSettingPath, const int sensor,
                        const bool bReuse)
             :
             mState(NO_IMAGES_YET), mSensor(sensor), mbOnlyTracking(bReuse), mbVO(false),
             mpORBVocabulary(std::move(pVoc)),
-            mpKeyFrameDB(std::move(pKFDB)), mpInitializer(static_cast<Initializer *>(nullptr)), mpSystem(pSys),
-            mpFrameDrawer(pFrameDrawer), mpMapDrawer(pMapDrawer), mpMap(pMap), mnLastRelocFrameId(0) {
+            mpKeyFrameDB(std::move(pKFDB)), mpInitializer(static_cast<Initializer *>(nullptr)),
+            mpSystem(pSys),
+            mpFrameDrawer(std::move(pFrameDrawer)), mpMapDrawer(std::move(pMapDrawer)), mpMap(std::move(pMap)),
+            mnLastRelocFrameId(0) {
         // Load camera parameters from settings file
 
         cv::FileStorage fSettings(strSettingPath, cv::FileStorage::READ);
@@ -136,13 +139,15 @@ namespace ORB_SLAM2 {
         int fIniThFAST = fSettings["ORBextractor.iniThFAST"];
         int fMinThFAST = fSettings["ORBextractor.minThFAST"];
 
-        mpORBextractorLeft = new ORBextractor(nFeatures, fScaleFactor, nLevels, fIniThFAST, fMinThFAST);
+        mpORBextractorLeft = std::make_shared<ORBextractor>(nFeatures, fScaleFactor, nLevels, fIniThFAST, fMinThFAST);
 
         if (sensor == System::STEREO)
-            mpORBextractorRight = new ORBextractor(nFeatures, fScaleFactor, nLevels, fIniThFAST, fMinThFAST);
+            mpORBextractorRight = std::make_shared<ORBextractor>(nFeatures, fScaleFactor, nLevels, fIniThFAST,
+                                                                 fMinThFAST);
 
         if (sensor == System::MONOCULAR)
-            mpIniORBextractor = new ORBextractor(2 * nFeatures, fScaleFactor, nLevels, fIniThFAST, fMinThFAST);
+            mpIniORBextractor = std::make_shared<ORBextractor>(2 * nFeatures, fScaleFactor, nLevels, fIniThFAST,
+                                                               fMinThFAST);
 
         std::cout << std::endl << "ORB Extractor Parameters: " << std::endl;
         std::cout << "- Number of Features: " << nFeatures << std::endl;
@@ -166,16 +171,16 @@ namespace ORB_SLAM2 {
 
     }
 
-    void Tracking::SetLocalMapper(LocalMapping *pLocalMapper) {
-        mpLocalMapper = pLocalMapper;
+    void Tracking::SetLocalMapper(std::shared_ptr<LocalMapping> pLocalMapper) {
+        mpLocalMapper = std::move(pLocalMapper);
     }
 
-    void Tracking::SetLoopClosing(LoopClosing *pLoopClosing) {
-        mpLoopClosing = pLoopClosing;
+    void Tracking::SetLoopClosing(std::shared_ptr<LoopClosing> pLoopClosing) {
+        mpLoopClosing = std::move(pLoopClosing);
     }
 
-    void Tracking::SetViewer(Viewer *pViewer) {
-        mpViewer = pViewer;
+    void Tracking::SetViewer(std::shared_ptr<Viewer> pViewer) {
+        mpViewer = std::move(pViewer);
     }
 
 

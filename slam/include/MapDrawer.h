@@ -33,9 +33,9 @@ namespace ORB_SLAM2 {
 
     class MapDrawer {
     public:
-        MapDrawer(Map *pMap, const std::string &strSettingPath);
+        MapDrawer(std::shared_ptr<Map> pMap, const std::string &strSettingPath);
 
-        Map *mpMap;
+        std::shared_ptr<Map> mpMap;
 
         void DrawMapPoints();
 

@@ -41,7 +41,7 @@ class Viewer;
 class FrameDrawer
 {
 public:
-    FrameDrawer(Map* pMap, bool bReuse);
+    FrameDrawer(std::shared_ptr<Map> pMap, bool bReuse);
 
     // Update info from the last processed frame.
     void Update(Tracking *pTracker);
@@ -68,7 +68,7 @@ protected:
     std::vector<int> mvIniMatches;
     int mState;
 
-    Map* mpMap;
+    std::shared_ptr<Map> mpMap;
 
     std::mutex mMutex;
 };

@@ -39,7 +39,7 @@ namespace ORB_SLAM2 {
 
     long unsigned int KeyFrame::nNextId = 0;
 
-    KeyFrame::KeyFrame(Frame &F, Map *pMap, std::shared_ptr<KeyFrameDatabase> pKFDB) :
+    KeyFrame::KeyFrame(Frame &F, std::shared_ptr<Map> pMap, std::shared_ptr<KeyFrameDatabase> pKFDB) :
             mnFrameId(F.mnId), mTimeStamp(F.mTimeStamp), mnGridCols(FRAME_GRID_COLS), mnGridRows(FRAME_GRID_ROWS),
             mfGridElementWidthInv(F.mfGridElementWidthInv), mfGridElementHeightInv(F.mfGridElementHeightInv),
             mnTrackReferenceForFrame(0), mnFuseTargetForKF(0), mnBALocalForKF(0), mnBAFixedForKF(0),
@@ -52,7 +52,7 @@ namespace ORB_SLAM2 {
             mvInvLevelSigma2(F.mvInvLevelSigma2), mnMinX(F.mnMinX), mnMinY(F.mnMinY), mnMaxX(F.mnMaxX),
             mnMaxY(F.mnMaxY), mK(F.mK), mvpMapPoints(F.mvpMapPoints), mpKeyFrameDB(std::move(pKFDB)),
             mpORBvocabulary(F.mpORBvocabulary), mbFirstConnection(true), mpParent(NULL), mbNotErase(false),
-            mbToBeErased(false), mbBad(false), mHalfBaseline(F.mb / 2), mpMap(pMap) {
+            mbToBeErased(false), mbBad(false), mHalfBaseline(F.mb / 2), mpMap(std::move(pMap)) {
 
         image = F.image;
 
@@ -95,8 +95,7 @@ namespace ORB_SLAM2 {
     }
 
     template<class Archive>
-    void KeyFrame::serialize(Archive &ar, const unsigned int version)
-    {
+    void KeyFrame::serialize(Archive &ar, const unsigned int version) {
         // no mutex needed vars
         ar & nNextId;
         ar & mnId;
@@ -132,10 +131,13 @@ namespace ORB_SLAM2 {
         // Pose relative to parent
         ar & mTcp;
         // Scale related
-        ar & const_cast<int &>(mnScaleLevels) & const_cast<float &>(mfScaleFactor) & const_cast<float &>(mfLogScaleFactor);
-        ar & const_cast<std::vector<float> &>(mvScaleFactors) & const_cast<std::vector<float> &>(mvLevelSigma2) & const_cast<std::vector<float> &>(mvInvLevelSigma2);
+        ar & const_cast<int &>(mnScaleLevels) & const_cast<float &>(mfScaleFactor) &
+        const_cast<float &>(mfLogScaleFactor);
+        ar & const_cast<std::vector<float> &>(mvScaleFactors) & const_cast<std::vector<float> &>(mvLevelSigma2) &
+        const_cast<std::vector<float> &>(mvInvLevelSigma2);
         // Image bounds and calibration
-        ar & const_cast<int &>(mnMinX) & const_cast<int &>(mnMinY) & const_cast<int &>(mnMaxX) & const_cast<int &>(mnMaxY);
+        ar & const_cast<int &>(mnMinX) & const_cast<int &>(mnMinY) & const_cast<int &>(mnMaxX) &
+        const_cast<int &>(mnMaxY);
         ar & const_cast<cv::Mat &>(mK);
 
         // mutex needed vars, but don't lock mutex in the save/load procedure
@@ -160,8 +162,10 @@ namespace ORB_SLAM2 {
         ar & mpMap;
         // don't save mutex
     }
-    template void KeyFrame::serialize(boost::archive::binary_iarchive&, const unsigned int);
-    template void KeyFrame::serialize(boost::archive::binary_oarchive&, const unsigned int);
+
+    template void KeyFrame::serialize(boost::archive::binary_iarchive &, const unsigned int);
+
+    template void KeyFrame::serialize(boost::archive::binary_oarchive &, const unsigned int);
 
     void KeyFrame::SetMapPoints(std::vector<std::shared_ptr<MapPoint>> &spMapPoints) {
         // We assume the mvpMapPoints_nIdstd::list has been initialized and contains the Map point IDS
@@ -368,8 +372,8 @@ namespace ORB_SLAM2 {
         }
     }
 
-    void KeyFrame::SetMap(Map *map) {
-        mpMap = map;
+    void KeyFrame::SetMap(std::shared_ptr<Map> map) {
+        mpMap = std::move(map);
     }
 
     void KeyFrame::SetKeyFrameDatabase(const std::shared_ptr<KeyFrameDatabase> &pKeyFrameDB) {

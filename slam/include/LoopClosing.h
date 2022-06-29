@@ -51,11 +51,11 @@ public:
 
 public:
 
-    LoopClosing(Map* pMap, std::shared_ptr<KeyFrameDatabase>  pDB, std::shared_ptr<ORBVocabulary>  pVoc,const bool bFixScale);
+    LoopClosing(std::shared_ptr<Map> pMap, std::shared_ptr<KeyFrameDatabase>  pDB, std::shared_ptr<ORBVocabulary>  pVoc,const bool bFixScale);
 
-    void SetTracker(Tracking* pTracker);
+    void SetTracker(std::shared_ptr<Tracking> pTracker);
 
-    void SetLocalMapper(LocalMapping* pLocalMapper);
+    void SetLocalMapper(std::shared_ptr<LocalMapping> pLocalMapper);
 
     // Main function
     void Run();
@@ -102,13 +102,13 @@ protected:
     bool mbFinished;
     std::mutex mMutexFinish;
 
-    Map* mpMap;
-    Tracking* mpTracker;
+    std::shared_ptr<Map> mpMap;
+    std::shared_ptr<Tracking> mpTracker;
 
     std::shared_ptr<KeyFrameDatabase>  mpKeyFrameDB;
     std::shared_ptr<ORBVocabulary>  mpORBVocabulary;
 
-    LocalMapping *mpLocalMapper;
+    std::shared_ptr<LocalMapping>mpLocalMapper;
 
     std::list<KeyFrame*> mlpLoopKeyFrameQueue;
 

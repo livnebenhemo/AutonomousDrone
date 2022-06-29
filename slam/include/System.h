@@ -78,13 +78,13 @@ namespace ORB_SLAM2 {
                const bool bUseViewer = true, bool reuse = false, std::string mapName = "Slam_latest_Map.bin",
                bool continue_mapping = false, bool isPangolinExists = false);
 
-        LocalMapping *GetLocalMapping() { return mpLocalMapper; };
+        std::shared_ptr<LocalMapping> GetLocalMapping() { return mpLocalMapper; };
 
-        LoopClosing *GetLoopClosing() { return mpLoopCloser; };
+        std::shared_ptr<LoopClosing> GetLoopClosing() { return mpLoopCloser; };
 
-        MapDrawer *GetMapDrawer() { return mpMapDrawer; };
+        std::shared_ptr<MapDrawer> GetMapDrawer() { return mpMapDrawer; };
 
-        FrameDrawer *GetFrameDrawer() { return mpFrameDrawer; };
+        std::shared_ptr<FrameDrawer> GetFrameDrawer() { return mpFrameDrawer; };
 
         // Proccess the given stereo frame. Images must be synchronized and rectified.
         // Input images: RGB (CV_8UC3) or grayscale (CV_8U). RGB is converted to grayscale.
@@ -111,7 +111,7 @@ namespace ORB_SLAM2 {
         // Reset the system (clear map)
         void Reset();
 
-        Map *GetMap();
+        std::shared_ptr<Map> GetMap();
 
         // All threads will be requested to finish.
         // It waits until all threads have finished.
@@ -143,7 +143,7 @@ namespace ORB_SLAM2 {
         // See format details at: http://www.cvlibs.net/datasets/kitti/eval_odometry.php
         void SaveTrajectoryKITTI(const std::string &filename);
 
-        Tracking *GetTracker() { return mpTracker; };
+        std::shared_ptr<Tracking> GetTracker() { return mpTracker; };
 
         // TODO: Save/Load functions
         // SaveMap(const string &filename);
@@ -161,25 +161,25 @@ namespace ORB_SLAM2 {
         std::shared_ptr<KeyFrameDatabase> mpKeyFrameDatabase;
 
         // Map structure that stores the pointers to all KeyFrames and MapPoints.
-        Map *mpMap;
+        std::shared_ptr<Map> mpMap;
 
         // Tracker. It receives a frame and computes the associated camera pose.
         // It also decides when to insert a new keyframe, create some new MapPoints and
         // performs relocalization if tracking fails.
-        Tracking *mpTracker;
+        std::shared_ptr<Tracking> mpTracker;
 
         // Local Mapper. It manages the local map and performs local bundle adjustment.
-        LocalMapping *mpLocalMapper;
+        std::shared_ptr<LocalMapping> mpLocalMapper;
 
         // Loop Closer. It searches loops with every new keyframe. If there is a loop it performs
         // a pose graph optimization and full bundle adjustment (in a new thread) afterwards.
-        LoopClosing *mpLoopCloser;
+        std::shared_ptr<LoopClosing> mpLoopCloser;
 
         // The viewer draws the map and the current camera pose. It uses Pangolin.
-        Viewer *mpViewer;
+        std::shared_ptr<Viewer> mpViewer;
 
-        FrameDrawer *mpFrameDrawer;
-        MapDrawer *mpMapDrawer;
+        std::shared_ptr<FrameDrawer> mpFrameDrawer;
+        std::shared_ptr<MapDrawer> mpMapDrawer;
 
         // System threads: Local Mapping, Loop Closing, Viewer.
         // The Tracking thread "lives" in the main execution thread that creates the System object.

@@ -22,12 +22,15 @@
 #include <pangolin/pangolin.h>
 
 #include <mutex>
+#include <utility>
 
 namespace ORB_SLAM2 {
 
-    Viewer::Viewer(System *pSystem, FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer, Tracking *pTracking,
+    Viewer::Viewer(System *pSystem, std::shared_ptr<FrameDrawer> pFrameDrawer,
+                   std::shared_ptr<MapDrawer> pMapDrawer, std::shared_ptr<Tracking> pTracking,
                    const std::string &strSettingPath, bool bReuse, bool isPangolinExists) :
-            mpSystem(pSystem), mpFrameDrawer(pFrameDrawer), mpMapDrawer(pMapDrawer), mpTracker(pTracking),
+            mpSystem(pSystem), mpFrameDrawer(std::move(pFrameDrawer)), mpMapDrawer(std::move(pMapDrawer)),
+            mpTracker(std::move(pTracking)),
             mbFinishRequested(false), mbFinished(true), mbStopped(false), mbStopRequested(false) {
         cv::FileStorage fSettings(strSettingPath, cv::FileStorage::READ);
 

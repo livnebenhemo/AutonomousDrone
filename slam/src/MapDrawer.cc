@@ -23,11 +23,12 @@
 #include "KeyFrame.h"
 #include <pangolin/pangolin.h>
 #include <mutex>
+#include <utility>
 
 namespace ORB_SLAM2 {
 
 
-    MapDrawer::MapDrawer(Map *pMap, const std::string &strSettingPath) : mpMap(pMap) {
+    MapDrawer::MapDrawer(std::shared_ptr<Map> pMap, const std::string &strSettingPath) : mpMap(std::move(pMap)) {
         cv::FileStorage fSettings(strSettingPath, cv::FileStorage::READ);
         destination = Point(1000, 1000, 1000);
         charger = Point(1000, 1000, 1000);

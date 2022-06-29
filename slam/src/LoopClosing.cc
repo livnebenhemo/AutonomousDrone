@@ -1,23 +1,3 @@
-/**
-* This file is part of ORB-SLAM2.
-*
-* Copyright (C) 2014-2016 Raúl Mur-Artal <raulmur at unizar dot es> (University of Zaragoza)
-* For more information see <https://github.com/raulmur/ORB_SLAM2>
-*
-* ORB-SLAM2 is free software: you can redistribute it and/or modify
-* it under the terms of the GNU General Public License as published by
-* the Free Software Foundation, either version 3 of the License, or
-* (at your option) any later version.
-*
-* ORB-SLAM2 is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-* GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License
-* along with ORB-SLAM2. If not, see <http://www.gnu.org/licenses/>.
-*/
-
 #include "LoopClosing.h"
 
 #include "Sim3Solver.h"
@@ -35,20 +15,22 @@
 
 namespace ORB_SLAM2 {
 
-    LoopClosing::LoopClosing(Map *pMap, std::shared_ptr<KeyFrameDatabase> pDB, std::shared_ptr<ORBVocabulary> pVoc, const bool bFixScale) :
-            mbResetRequested(false), mbFinishRequested(false), mbFinished(true), mpMap(pMap),
-            mpKeyFrameDB(std::move(pDB)), mpORBVocabulary(std::move(pVoc)), mLastLoopKFid(0), mbRunningGBA(false), mbFinishedGBA(true),
+    LoopClosing::LoopClosing(std::shared_ptr<Map> pMap, std::shared_ptr<KeyFrameDatabase> pDB,
+                             std::shared_ptr<ORBVocabulary> pVoc, const bool bFixScale) :
+            mbResetRequested(false), mbFinishRequested(false), mbFinished(true), mpMap(std::move(pMap)),
+            mpKeyFrameDB(std::move(pDB)), mpORBVocabulary(std::move(pVoc)), mLastLoopKFid(0), mbRunningGBA(false),
+            mbFinishedGBA(true),
             mbStopGBA(false), mbFixScale(bFixScale) {
         mnCovisibilityConsistencyTh = 3;
         mpMatchedKF = NULL;
     }
 
-    void LoopClosing::SetTracker(Tracking *pTracker) {
-        mpTracker = pTracker;
+    void LoopClosing::SetTracker(std::shared_ptr<Tracking> pTracker) {
+        mpTracker = std::move(pTracker);
     }
 
-    void LoopClosing::SetLocalMapper(LocalMapping *pLocalMapper) {
-        mpLocalMapper = pLocalMapper;
+    void LoopClosing::SetLocalMapper(std::shared_ptr<LocalMapping> pLocalMapper) {
+        mpLocalMapper = std::move(pLocalMapper);
     }
 
 

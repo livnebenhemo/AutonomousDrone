@@ -40,13 +40,13 @@ public:
     void static BundleAdjustment(const std::vector<KeyFrame*> &vpKF, const std::vector<std::shared_ptr<MapPoint>> &vpMP,
                                  int nIterations = 5, bool *pbStopFlag=NULL, const unsigned long nLoopKF=0,
                                  const bool bRobust = true);
-    void static GlobalBundleAdjustemnt(Map* pMap, int nIterations=5, bool *pbStopFlag=NULL,
+    void static GlobalBundleAdjustemnt(const std::shared_ptr<Map>& pMap, int nIterations=5, bool *pbStopFlag=NULL,
                                        const unsigned long nLoopKF=0, const bool bRobust = true);
-    void static LocalBundleAdjustment(KeyFrame* pKF, bool *pbStopFlag, Map *pMap);
+    void static LocalBundleAdjustment(KeyFrame* pKF, bool *pbStopFlag, const std::shared_ptr<Map>&pMap);
     int static PoseOptimization(Frame* pFrame);
 
     // if bFixScale is true, 6DoF optimization (stereo,rgbd), 7DoF otherwise (mono)
-    void static OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* pCurKF,
+    void static OptimizeEssentialGraph(const std::shared_ptr<Map>& pMap, KeyFrame* pLoopKF, KeyFrame* pCurKF,
                                        const LoopClosing::KeyFrameAndPose &NonCorrectedSim3,
                                        const LoopClosing::KeyFrameAndPose &CorrectedSim3,
                                        const std::map<KeyFrame *, std::set<KeyFrame *> > &LoopConnections,
@@ -56,7 +56,7 @@ public:
     static int OptimizeSim3(KeyFrame* pKF1, KeyFrame* pKF2, std::vector<std::shared_ptr<MapPoint>> &vpMatches1,
                             g2o::Sim3 &g2oS12, const float th2, const bool bFixScale);
 
-    static void filterBySphericalCoordinates(KeyFrame *pKF, Map *pMap);
+    static void filterBySphericalCoordinates(KeyFrame *pKF, const std::shared_ptr<Map>&pMap);
 };
 
 } //namespace ORB_SLAM

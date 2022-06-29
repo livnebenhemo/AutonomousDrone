@@ -22,6 +22,7 @@
 #include "ORBmatcher.h"
 
 #include<mutex>
+#include <utility>
 
 namespace ORB_SLAM2 {
 
@@ -48,11 +49,11 @@ namespace ORB_SLAM2 {
         // mpRefKF = new KeyFrame();
     }
 
-    MapPoint::MapPoint(const cv::Mat &Pos, KeyFrame *pRefKF, Map *pMap) :
+    MapPoint::MapPoint(const cv::Mat &Pos, KeyFrame *pRefKF, std::shared_ptr<Map>pMap) :
             mnFirstKFid(pRefKF->mnId), mnFirstFrame(pRefKF->mnFrameId), nObs(0), mnTrackReferenceForFrame(0),
             mnLastFrameSeen(0), mnBALocalForKF(0), mnFuseCandidateForKF(0), mnLoopPointForKF(0), mnCorrectedByKF(0),
             mnCorrectedReference(0), mnBAGlobalForKF(0), mpRefKF(pRefKF), mnVisible(1), mnFound(1), mbBad(false),
-            mpReplaced(static_cast<MapPoint *>(NULL)), mfMinDistance(0), mfMaxDistance(0), mpMap(pMap) {
+            mpReplaced(static_cast<MapPoint *>(NULL)), mfMinDistance(0), mfMaxDistance(0), mpMap(std::move(pMap)) {
         Pos.copyTo(mWorldPos);
         mNormalVector = cv::Mat::zeros(3, 1, CV_32F);
 
@@ -94,8 +95,8 @@ namespace ORB_SLAM2 {
 
     template void MapPoint::serialize(boost::archive::binary_oarchive &, const unsigned int);
 
-    void MapPoint::SetMap(Map *map) {
-        mpMap = map;
+    void MapPoint::SetMap(std::shared_ptr<Map>map) {
+        mpMap = std::move(map);
     }
 
     void MapPoint::SetObservations(std::vector<KeyFrame *> spKeyFrames) {
@@ -146,11 +147,11 @@ namespace ORB_SLAM2 {
         }
     }
 
-    MapPoint::MapPoint(const cv::Mat &Pos, Map *pMap, Frame *pFrame, const int &idxF) :
+    MapPoint::MapPoint(const cv::Mat &Pos, std::shared_ptr<Map>pMap, Frame *pFrame, const int &idxF) :
             mnFirstKFid(-1), mnFirstFrame(pFrame->mnId), nObs(0), mnTrackReferenceForFrame(0), mnLastFrameSeen(0),
             mnBALocalForKF(0), mnFuseCandidateForKF(0), mnLoopPointForKF(0), mnCorrectedByKF(0),
             mnCorrectedReference(0), mnBAGlobalForKF(0), mpRefKF(static_cast<KeyFrame *>(NULL)), mnVisible(1),
-            mnFound(1), mbBad(false), mpReplaced(NULL), mpMap(pMap) {
+            mnFound(1), mbBad(false), mpReplaced(NULL), mpMap(std::move(pMap)) {
         Pos.copyTo(mWorldPos);
         cv::Mat Ow = pFrame->GetCameraCenter();
         mNormalVector = mWorldPos - Ow;

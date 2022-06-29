@@ -83,7 +83,7 @@ namespace ORB_SLAM2 {
 
         //Create the Map
         if (!bReuse) {
-            mpMap = new Map();
+            mpMap = std::make_shared<Map>();
         }
 
         if (bReuse) {
@@ -126,28 +126,29 @@ namespace ORB_SLAM2 {
 
 
         //Create Drawers. These are used by the Viewer
-        mpFrameDrawer = new FrameDrawer(mpMap, bReuse);
-        mpMapDrawer = new MapDrawer(mpMap, strSettingsFile);
+        mpFrameDrawer = std::make_shared<FrameDrawer>(mpMap, bReuse);
+        mpMapDrawer = std::make_shared<MapDrawer>(mpMap, strSettingsFile);
 
         //Initialize the Tracking thread
         //(it will live in the main thread of execution, the one that called this constructor)
-        mpTracker = new Tracking(this, mpVocabulary, mpFrameDrawer, mpMapDrawer,
-                                 mpMap, mpKeyFrameDatabase, strSettingsFile, mSensor, bReuse);
+        mpTracker = std::make_shared<Tracking>(this, mpVocabulary, mpFrameDrawer, mpMapDrawer,
+                                               mpMap, mpKeyFrameDatabase, strSettingsFile, mSensor, bReuse);
 
         // BAR
         if (continue_mapping)
             mpTracker->InformOnlyTracking(false);
 
         //Initialize the Local Mapping thread and launch
-        mpLocalMapper = new LocalMapping(mpMap, mSensor == MONOCULAR);
+        mpLocalMapper = std::make_shared<LocalMapping>(mpMap, mSensor == MONOCULAR);
         mptLocalMapping = std::thread(&ORB_SLAM2::LocalMapping::Run, mpLocalMapper);
 
         //Initialize the Loop Closing thread and launch
-        mpLoopCloser = new LoopClosing(mpMap, mpKeyFrameDatabase, mpVocabulary, mSensor != MONOCULAR);
+        mpLoopCloser = std::make_shared<LoopClosing>(mpMap, mpKeyFrameDatabase, mpVocabulary, mSensor != MONOCULAR);
         mptLoopClosing = std::thread(&ORB_SLAM2::LoopClosing::Run, mpLoopCloser);
 
         //Initialize the Viewer thread and launch
-        mpViewer = new Viewer(this, mpFrameDrawer, mpMapDrawer, mpTracker, strSettingsFile, bReuse, isPangolinExists);
+        mpViewer = std::make_shared<Viewer>(this, mpFrameDrawer, mpMapDrawer, mpTracker, strSettingsFile, bReuse,
+                                            isPangolinExists);
         if (bUseViewer)
             mptViewer = std::thread(&Viewer::Run, mpViewer);
 
@@ -299,7 +300,7 @@ namespace ORB_SLAM2 {
         mbReset = true;
     }
 
-    Map *System::GetMap() {
+    std::shared_ptr<Map> System::GetMap() {
         return mpMap;
     }
 

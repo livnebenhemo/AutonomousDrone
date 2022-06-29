@@ -29,59 +29,65 @@
 
 #include <mutex>
 
-namespace ORB_SLAM2
-{
+namespace ORB_SLAM2 {
 
-class Tracking;
-class FrameDrawer;
-class MapDrawer;
-class System;
+    class Tracking;
 
-class Viewer
-{
-public:
-    Viewer(System* pSystem, FrameDrawer* pFrameDrawer, MapDrawer* pMapDrawer, Tracking *pTracking, const std::string &strSettingPath, bool bReuse,bool isPangolinExists);
+    class FrameDrawer;
 
-    // Main thread function. Draw points, keyframes, the current camera pose and the last processed
-    // frame. Drawing is refreshed according to the camera fps. We use Pangolin.
-    void Run();
+    class MapDrawer;
 
-    void RequestFinish();
+    class System;
 
-    void RequestStop();
+    class Viewer {
+    public:
+        Viewer(System * pSystem, std::shared_ptr<FrameDrawer> pFrameDrawer,
+               std::shared_ptr<MapDrawer> pMapDrawer, std::shared_ptr<Tracking> pTracking,
+               const std::string &strSettingPath, bool bReuse, bool isPangolinExists);
 
-    bool isFinished();
+        // Main thread function. Draw points, keyframes, the current camera pose and the last processed
+        // frame. Drawing is refreshed according to the camera fps. We use Pangolin.
+        void Run();
 
-    bool isStopped();
+        void RequestFinish();
 
-    void Release();
+        void RequestStop();
 
-private:
+        bool isFinished();
 
-    bool Stop();
-	bool mbReuse;
-    System* mpSystem;
-    FrameDrawer* mpFrameDrawer;
-    MapDrawer* mpMapDrawer;
-    Tracking* mpTracker;
+        bool isStopped();
 
-    // 1/fps in ms
-    double mT;
-    float mImageWidth, mImageHeight;
+        void Release();
 
-    float mViewpointX, mViewpointY, mViewpointZ, mViewpointF;
+    private:
 
-    bool CheckFinish();
-    void SetFinish();
-    bool mbFinishRequested;
-    bool mbFinished;
-    std::mutex mMutexFinish;
+        bool Stop();
 
-    bool mbStopped;
-    bool mbStopRequested;
-    std::mutex mMutexStop;
-    bool isPangolinExists;
-};
+        bool mbReuse;
+        std::shared_ptr<System> mpSystem;
+        std::shared_ptr<FrameDrawer> mpFrameDrawer;
+        std::shared_ptr<MapDrawer> mpMapDrawer;
+        std::shared_ptr<Tracking> mpTracker;
+
+        // 1/fps in ms
+        double mT;
+        float mImageWidth, mImageHeight;
+
+        float mViewpointX, mViewpointY, mViewpointZ, mViewpointF;
+
+        bool CheckFinish();
+
+        void SetFinish();
+
+        bool mbFinishRequested;
+        bool mbFinished;
+        std::mutex mMutexFinish;
+
+        bool mbStopped;
+        bool mbStopRequested;
+        std::mutex mMutexStop;
+        bool isPangolinExists;
+    };
 
 }
 

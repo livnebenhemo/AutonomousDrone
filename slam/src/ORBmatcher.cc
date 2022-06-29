@@ -742,7 +742,7 @@ namespace ORB_SLAM2 {
         return nmatches;
     }
 
-    int ORBmatcher::Fuse(KeyFrame *pKF, const std::vector<std::shared_ptr<MapPoint>> &vpMapPoints, Map *map,
+    int ORBmatcher::Fuse(KeyFrame *pKF, const std::vector<std::shared_ptr<MapPoint>> &vpMapPoints, const std::shared_ptr<Map>&map,
                          const float th) {
         cv::Mat Rcw = pKF->GetRotation();
         cv::Mat tcw = pKF->GetTranslation();

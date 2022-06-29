@@ -24,20 +24,22 @@
 #include "Optimizer.h"
 
 #include<mutex>
+#include <utility>
 
 namespace ORB_SLAM2 {
 
-    LocalMapping::LocalMapping(Map *pMap, const float bMonocular) :
-            mbMonocular(bMonocular), mbResetRequested(false), mbFinishRequested(false), mbFinished(true), mpMap(pMap),
+    LocalMapping::LocalMapping(std::shared_ptr<Map> pMap, const float bMonocular) :
+            mbMonocular(bMonocular), mbResetRequested(false), mbFinishRequested(false), mbFinished(true),
+            mpMap(std::move(pMap)),
             mbAbortBA(false), mbStopped(false), mbStopRequested(false), mbNotStop(false), mbAcceptKeyFrames(true) {
     }
 
-    void LocalMapping::SetLoopCloser(LoopClosing *pLoopCloser) {
-        mpLoopCloser = pLoopCloser;
+    void LocalMapping::SetLoopCloser(std::shared_ptr<LoopClosing> pLoopCloser) {
+        mpLoopCloser = std::move(pLoopCloser);
     }
 
-    void LocalMapping::SetTracker(Tracking *pTracker) {
-        mpTracker = pTracker;
+    void LocalMapping::SetTracker(std::shared_ptr<Tracking> pTracker) {
+        mpTracker = std::move(pTracker);
     }
 
     std::chrono::steady_clock::time_point get_time2() {
@@ -83,7 +85,7 @@ namespace ORB_SLAM2 {
 
                     //BAR
                     //auto start = get_time2();
-                    if (mpMap->KeyFramesInMap() > 2){
+                    if (mpMap->KeyFramesInMap() > 2) {
                         //std::unique_lock<std::mutex> lock(mMutexNewKFs);
                         //SetAcceptKeyFrames(false);
                         //std::unique_lock<std::mutex> lock2(mMutexAccept);
@@ -466,7 +468,6 @@ namespace ORB_SLAM2 {
         auto vpMapPointMatches = mpCurrentKeyFrame->GetMapPointMatches();
         for (auto vit = vpTargetKFs.begin(), vend = vpTargetKFs.end(); vit != vend; vit++) {
             KeyFrame *pKFi = *vit;
-
             matcher.Fuse(pKFi, vpMapPointMatches, mpMap);
         }
 

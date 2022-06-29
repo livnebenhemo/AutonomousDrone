@@ -52,9 +52,9 @@ namespace ORB_SLAM2 {
     public:
         MapPoint();            /* Default constructor for serialization */
         MapPoint(MapPoint &mapPoint);            /* Default constructor for serialization */
-        MapPoint(const cv::Mat &Pos, KeyFrame *pRefKF, Map *pMap);
+        MapPoint(const cv::Mat &Pos, KeyFrame *pRefKF, std::shared_ptr<Map>pMap);
 
-        MapPoint(const cv::Mat &Pos, Map *pMap, Frame *pFrame, const int &idxF);
+        MapPoint(const cv::Mat &Pos, std::shared_ptr<Map>pMap, Frame *pFrame, const int &idxF);
 
         void SetWorldPos(const cv::Mat &Pos);
 
@@ -106,7 +106,7 @@ namespace ORB_SLAM2 {
 
         int PredictScale(const float &currentDist, const float &logScaleFactor);
 
-        void SetMap(Map *map);
+        void SetMap(std::shared_ptr<Map>map);
 
         void SetObservations(std::vector<KeyFrame *>);
 
@@ -170,7 +170,7 @@ namespace ORB_SLAM2 {
         float mfMinDistance;
         float mfMaxDistance;
 
-        Map *mpMap;
+        std::shared_ptr<Map>mpMap;
 
         std::pair<long unsigned int, bool> mref_KfId_pair;
 

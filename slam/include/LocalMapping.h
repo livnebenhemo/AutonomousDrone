@@ -41,11 +41,11 @@ class LocalMapping
 {
 public:
     bool is_ba = false;
-    LocalMapping(Map* pMap, const float bMonocular);
+    LocalMapping(std::shared_ptr<Map> pMap, const float bMonocular);
 
-    void SetLoopCloser(LoopClosing* pLoopCloser);
+    void SetLoopCloser(std::shared_ptr<LoopClosing> pLoopCloser);
 
-    void SetTracker(Tracking* pTracker);
+    void SetTracker(std::shared_ptr<Tracking> pTracker);
 
     // Main function
     void Run();
@@ -100,10 +100,10 @@ protected:
     bool mbFinished;
     std::mutex mMutexFinish;
 
-    Map* mpMap;
+    std::shared_ptr<Map> mpMap;
 
-    LoopClosing* mpLoopCloser;
-    Tracking* mpTracker;
+    std::shared_ptr<LoopClosing> mpLoopCloser;
+    std::shared_ptr<Tracking> mpTracker;
 
     std::list<KeyFrame*> mlNewKeyFrames;
 

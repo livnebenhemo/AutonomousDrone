@@ -103,7 +103,7 @@ int main() {
         for (;;) {
             auto pose = SLAM.TrackMonocular(frame, capture.get(CV_CAP_PROP_POS_MSEC));
             if (!pose.empty()) {
-                saveFrame(frame, pose, amount_of_frames++, SLAM, currentWorkingDir);
+                //saveFrame(frame, pose, amount_of_frames++, SLAM, currentWorkingDir);
             }
             capture >> frame;
 

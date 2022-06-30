@@ -140,11 +140,11 @@ namespace ORB_SLAM2 {
 
         //Initialize the Local Mapping thread and launch
         mpLocalMapper = std::make_shared<LocalMapping>(mpMap, mSensor == MONOCULAR);
-        mptLocalMapping = std::thread(&ORB_SLAM2::LocalMapping::Run, mpLocalMapper);
+        //mptLocalMapping = std::thread(&ORB_SLAM2::LocalMapping::Run, mpLocalMapper);
 
         //Initialize the Loop Closing thread and launch
         mpLoopCloser = std::make_shared<LoopClosing>(mpMap, mpKeyFrameDatabase, mpVocabulary, mSensor != MONOCULAR);
-        mptLoopClosing = std::thread(&ORB_SLAM2::LoopClosing::Run, mpLoopCloser);
+       //mptLoopClosing = std::thread(&ORB_SLAM2::LoopClosing::Run, mpLoopCloser);
 
         //Initialize the Viewer thread and launch
         mpViewer = std::make_shared<Viewer>(this, mpFrameDrawer, mpMapDrawer, mpTracker, strSettingsFile, bReuse,
@@ -314,7 +314,7 @@ namespace ORB_SLAM2 {
                !mpViewer->isFinished() || mpLoopCloser->isRunningGBA()) {
             sleep(3);
         }
-        mptLoopClosing.join();
+        //mptLoopClosing.join();
         mptLocalMapping.join();
         mptViewer.join();
         /*if(mpViewer)

@@ -523,7 +523,7 @@ namespace ORB_SLAM2 {
 
     void KeyFrame::AddMapPoint(std::shared_ptr<MapPoint> pMP, const size_t &idx) {
         std::unique_lock<std::mutex> lock(mMutexFeatures);
-        mvpMapPoints[idx] = pMP;
+        mvpMapPoints[idx] = std::move(pMP);
     }
 
     void KeyFrame::EraseMapPointMatch(const size_t &idx) {
@@ -531,7 +531,7 @@ namespace ORB_SLAM2 {
         mvpMapPoints[idx] = nullptr;
     }
 
-    void KeyFrame::EraseMapPointMatch(std::shared_ptr<MapPoint> pMP) {
+    void KeyFrame::EraseMapPointMatch(const std::shared_ptr<MapPoint>& pMP) {
         int idx = pMP->GetIndexInKeyFrame(this);
         if (idx >= 0)
             mvpMapPoints[idx] = nullptr;
@@ -577,7 +577,7 @@ namespace ORB_SLAM2 {
     }
 
     std::vector<std::shared_ptr<MapPoint>> KeyFrame::GetMapPointMatches() {
-        std::unique_lock<std::mutex> lock(mMutexFeatures);
+        //std::unique_lock<std::mutex> lock(mMutexFeatures);
         return mvpMapPoints;
     }
 

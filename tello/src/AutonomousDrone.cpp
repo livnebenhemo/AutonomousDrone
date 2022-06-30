@@ -60,6 +60,7 @@ void AutonomousDrone::getCameraFeed() {
     while (true) {
         if (runCamera) {
             if (!capture->isOpened() || *holdCamera) {
+                *currentImage = cv::Mat{};
                 usleep(5000);
                 continue;
             }
@@ -104,7 +105,7 @@ double AutonomousDrone::colorDetection() {
 void AutonomousDrone::runOrbSlam() {
     std::thread getCameraThread(&AutonomousDrone::getCameraFeed, this);
     orbSlamRunning = true;
-    ORB_SLAM2::System SLAM(vocFilePath, yamlFilePath, ORB_SLAM2::System::MONOCULAR,true, loadMap, mapPath,true);
+    ORB_SLAM2::System SLAM(vocFilePath, yamlFilePath, ORB_SLAM2::System::MONOCULAR, true, loadMap, mapPath, true);
     orbSlamPointer = &SLAM;
     double timeStamp = 0.2;
     int amountOfChanges = 0;
@@ -112,7 +113,7 @@ void AutonomousDrone::runOrbSlam() {
     while (orbSlamRunning) {
         if (!currentImage->empty()) {
             while (droneRotate) {
-                usleep(40000); // 1/25 fps
+                usleep(20000); // 1/25 fps
             }
             cv::Mat img = currentImage->clone();
             cv::Mat orbSlamCurrentPose = orbSlamPointer->TrackMonocular(img, timeStamp);
@@ -294,7 +295,7 @@ AutonomousDrone::manageAngleDroneCommand(int angle, bool clockwise, int amountOf
 }
 
 bool AutonomousDrone::doTriangulation() {
-    return manageDroneCommand("forward 30", 5, 3) && manageDroneCommand("back 30", 5, 3);
+    return manageDroneCommand("up 30", 5, 3) && manageDroneCommand("down 30", 5, 3);
 }
 
 void AutonomousDrone::rotateDrone(int angle, bool clockwise, bool buildMap) {
@@ -326,7 +327,7 @@ void AutonomousDrone::rotateDrone(int angle, bool clockwise, bool buildMap) {
         }
         if (amountOfLostLocalizations) {
             if (current_drone_mode == navigation) {
-                auto[angleAfterLost, clockwiseAfterLost] = getRotationToFrameAngle(navigationDestination);
+                auto [angleAfterLost, clockwiseAfterLost] = getRotationToFrameAngle(navigationDestination);
                 howToRotate(angleAfterLost, clockwiseAfterLost, false);
             } else {
                 amountOfLostLocalizations %= int(360 / maxRotationAngle);
@@ -517,13 +518,13 @@ void AutonomousDrone::buildSimulatorMap(int rotationAngle) {
     int amountOfRotations = std::floor((360/* - startAngle*/) / rotationAngle);
     for (int i = 0; i < amountOfRotations; i++) {
         howToRotate(rotationAngle, true, true);
-        auto[endYaw, endClockwise] = AutonomousDrone::getRotationToFrameAngle(home);
+        auto [endYaw, endClockwise] = AutonomousDrone::getRotationToFrameAngle(home);
         endYaw = 180 - std::abs(endYaw);
         endClockwise = !endClockwise;
         std::cout << "angle: " << endYaw << " clockwise: " << endClockwise << std::endl;
     }
     howToRotate((360/* - startAngle*/) % rotationAngle, true, true);
-    auto[endYaw, endClockwise] = AutonomousDrone::getRotationToFrameAngle(home);
+    auto [endYaw, endClockwise] = AutonomousDrone::getRotationToFrameAngle(home);
     endYaw = 180 - std::abs(endYaw);
     endClockwise = !endClockwise;
     std::cout << "angle: " << endYaw << " clockwise: " << endClockwise << std::endl;
@@ -548,13 +549,13 @@ void AutonomousDrone::beginScan(bool findHome, int rotationAngle) {
         if (localized) {
             break;
         }
-        if (lowBattery){
+        if (lowBattery) {
             switchBattery();
             lowBattery = true;
         }
         manageAngleDroneCommand(maxRotationAngle, true, 5, 2);
     }
-    std::cout << "starting scan" <<std::endl;
+    std::cout << "starting scan" << std::endl;
     for (int i = 0; i < std::ceil(360 / rotationAngle) + 1; i++) {
         if (lowBattery) {
             switchBattery();
@@ -585,8 +586,20 @@ void AutonomousDrone::beginScan(bool findHome, int rotationAngle) {
     manageDroneCommand("up 40", 3, 3);
     isMinusUp = prevLocation.z > currentLocation.z;
     manageDroneCommand("down 40", 3);
-    orbSlamPointer->GetLoopClosing()->RunGlobalBundleAdjustment(orbSlamPointer->GetMap()->GetMaxKFid());
+    //orbSlamPointer->GetLoopClosing()->RunGlobalBundleAdjustment(orbSlamPointer->GetMap()->GetMaxKFid());
 
+    if (saveBinMap) {
+        char time_buf[21];
+        time_t time_tNow;
+        std::time(&time_tNow);
+        std::strftime(time_buf, 21, "%Y%m%d%H%S%M", gmtime(&time_tNow));
+        std::string currentTime(time_buf);
+        std::string filename = "/tmp/slamMap" + currentTime + ".bin";
+        *holdCamera = true;
+        sleep(1);
+        orbSlamPointer->SaveMap(filename);
+        *holdCamera = false;
+    }
 }
 
 Point AutonomousDrone::convertFrameToPoint(Frame &frame) {
@@ -678,8 +691,9 @@ void AutonomousDrone::maintainAngleToPoint(const Point &destination, bool rotate
                 sleep(4);
                 if (!gettingFurther && !stop && !droneRotate && !isBlocked) {
                     auto navigationVectors = getNavigationVector(dronePreviousPosition, destination);
-                    auto rotationDirections = Auxiliary::getRotationToTargetInFront(navigationVectors.first,   // drone vector
-                                                                                    navigationVectors.second); // exit vector..
+                    auto rotationDirections = Auxiliary::getRotationToTargetInFront(
+                            navigationVectors.first,   // drone vector
+                            navigationVectors.second); // exit vector..
                     if (rotationDirections.first > 8) {
                         howToRotate(rotationDirections.first, rotationDirections.second);
                         sleep(2);
@@ -803,9 +817,9 @@ void AutonomousDrone::collisionDetector(const Point &destination) {
                 if (/*pointIndex != -1*/ !(closePoint == Point())) {
                     std::cout << "we are blocked" << std::endl;
                     Point lastKnownFrameAsPoint = convertFrameToPoint(lastKnownFrame);
-                    auto[angle, clockwise, isUp] = checkMotion(lastKnownFrameAsPoint,
-                                                               currentLocation, /*frame.points[pointIndex]*/
-                                                               closePoint);
+                    auto [angle, clockwise, isUp] = checkMotion(lastKnownFrameAsPoint,
+                                                                currentLocation, /*frame.points[pointIndex]*/
+                                                                closePoint);
                     if (angle > 0) {
                         isBlocked = true;
                         speed = 0;
@@ -1013,7 +1027,7 @@ bool AutonomousDrone::navigateDrone(const Point &destination, bool rotateToFrame
 }
 
 
-void AutonomousDrone::moveWithKeyboard(){
+void AutonomousDrone::moveWithKeyboard() {
     std::cout << "enter char : " << std::endl;
     char c = getchar();
     switch (c) {
@@ -1136,7 +1150,7 @@ void AutonomousDrone::manuallyFlyToNavigationPoints() {
             break;
         }
         count++;
-        if (count == 2){ // for "debug"
+        if (count == 2) { // for "debug"
             std::cout << "reached" << std::endl;
             break;
         }
@@ -1290,7 +1304,7 @@ void AutonomousDrone::runSimulator(int maxForwardDistance, int forwardAmount) {
 }
 
 
-void AutonomousDrone::switchBattery(int switchingTime){
+void AutonomousDrone::switchBattery(int switchingTime) {
     disconnectDrone();
     droneNotFly = true;
     runCamera = false;
@@ -1321,7 +1335,7 @@ void AutonomousDrone::run() {
             home = Point();
             std::cout << "taking off" << std::endl;
             manageDroneCommand("takeoff", 3);
-            sleep(1);  // because error "not joystick"
+            sleep(1);
             beginScan(false);
             while (true) {
                 if (!lowBattery) {
@@ -1368,8 +1382,7 @@ void AutonomousDrone::run() {
                         charger.navigateToBox();
                         connectDrone();
                         manageDroneCommand("takeoff", 3, 5);
-                    }
-                    else {
+                    } else {
                         switchBattery();
                     }
                     if (localized) {

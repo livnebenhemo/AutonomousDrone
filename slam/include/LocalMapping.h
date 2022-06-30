@@ -42,7 +42,7 @@ class LocalMapping
 public:
     bool is_ba = false;
     LocalMapping(std::shared_ptr<Map> pMap, const float bMonocular);
-
+    ~LocalMapping();
     void SetLoopCloser(std::shared_ptr<LoopClosing> pLoopCloser);
 
     void SetTracker(std::shared_ptr<Tracking> pTracker);
@@ -72,6 +72,8 @@ public:
         std::unique_lock<std::mutex> lock(mMutexNewKFs);
         return mlNewKeyFrames.size();
     }
+
+    void HandleNewKeyFrame(KeyFrame *pKF);
 
 protected:
 
@@ -123,7 +125,6 @@ protected:
     bool mbAcceptKeyFrames;
     std::mutex mMutexAccept;
 
-    void HandleNewKeyFrame(KeyFrame *pKF);
 };
 
 } //namespace ORB_SLAM

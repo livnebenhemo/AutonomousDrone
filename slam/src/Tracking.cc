@@ -673,8 +673,8 @@ namespace ORB_SLAM2 {
 
         std::cout << __FUNCTION__ << ": Starting Initial Map Creation..." << std::endl;
         // Create KeyFrames
-        KeyFrame *pKFini = new KeyFrame(mInitialFrame, mpMap, mpKeyFrameDB);
-        KeyFrame *pKFcur = new KeyFrame(mCurrentFrame, mpMap, mpKeyFrameDB);
+        auto *pKFini = new KeyFrame(mInitialFrame, mpMap, mpKeyFrameDB);
+        auto *pKFcur = new KeyFrame(mCurrentFrame, mpMap, mpKeyFrameDB);
 
 
         pKFini->ComputeBoW();
@@ -748,7 +748,9 @@ namespace ORB_SLAM2 {
         }
 
         mpLocalMapper->InsertKeyFrame(pKFini);
+        mpLocalMapper->HandleNewKeyFrame(pKFini);
         mpLocalMapper->InsertKeyFrame(pKFcur);
+        mpLocalMapper->HandleNewKeyFrame(pKFcur);
 
         mCurrentFrame.SetPose(pKFcur->GetPose());
         mnLastKeyFrameId = mCurrentFrame.mnId;
@@ -1063,64 +1065,9 @@ namespace ORB_SLAM2 {
         mpReferenceKF = pKF;
         mCurrentFrame.mpReferenceKF = pKF;
 
-        if (mSensor != System::MONOCULAR) {
-            mCurrentFrame.UpdatePoseMatrices();
-
-            // We sort points by the measured depth by the stereo/RGBD sensor.
-            // We create all those MapPoints whose depth < mThDepth.
-            // If there are less than 100 close points we create the 100 closest.
-            std::vector<std::pair<float, int>> vDepthIdx;
-            vDepthIdx.reserve(mCurrentFrame.N);
-            for (int i = 0; i < mCurrentFrame.N; i++) {
-                float z = mCurrentFrame.mvDepth[i];
-                if (z > 0) {
-                    vDepthIdx.push_back(std::make_pair(z, i));
-                }
-            }
-
-            if (!vDepthIdx.empty()) {
-                sort(vDepthIdx.begin(), vDepthIdx.end());
-
-                int nPoints = 0;
-                for (size_t j = 0; j < vDepthIdx.size(); j++) {
-                    int i = vDepthIdx[j].second;
-
-                    bool bCreateNew = false;
-
-                    auto pMP = mCurrentFrame.mvpMapPoints[i];
-                    if (!pMP)
-                        bCreateNew = true;
-                    else if (pMP->Observations() < 1) {
-                        bCreateNew = true;
-                        mCurrentFrame.mvpMapPoints[i] = nullptr;// static_cast<MapPoint *>(NULL);
-                    }
-
-                    if (bCreateNew) {
-                        cv::Mat x3D = mCurrentFrame.UnprojectStereo(i);
-                        std::shared_ptr<MapPoint> pNewMP = std::make_shared<MapPoint>(x3D, pKF,
-                                                                                      mpMap);// new MapPoint(x3D, pKF, mpMap);
-                        pNewMP->AddObservation(pKF, i);
-                        pKF->AddMapPoint(pNewMP, i);
-                        pNewMP->ComputeDistinctiveDescriptors();
-                        pNewMP->UpdateNormalAndDepth();
-                        mpMap->AddMapPoint(pNewMP);
-
-                        mCurrentFrame.mvpMapPoints[i] = pNewMP;
-                        nPoints++;
-                    } else {
-                        nPoints++;
-                    }
-
-                    if (vDepthIdx[j].first > mThDepth && nPoints > 100)
-                        break;
-                }
-            }
-        }
-
         mpLocalMapper->InsertKeyFrame(pKF);
-
+        mpLocalMapper->HandleNewKeyFrame(pKF);
         mpLocalMapper->SetNotStop(false);
-
         mnLastKeyFrameId = mCurrentFrame.mnId;
         mpLastKeyFrame = pKF;
     }
@@ -1483,12 +1430,12 @@ namespace ORB_SLAM2 {
 
         // Reset Local Mapping
         std::cout << "Reseting Local Mapper...";
-        mpLocalMapper->RequestReset();
+        //mpLocalMapper->RequestReset();
         std::cout << " done" << std::endl;
 
         // Reset Loop Closing
         std::cout << "Reseting Loop Closing...";
-        mpLoopClosing->RequestReset();
+        //mpLoopClosing->RequestReset();
         std::cout << " done" << std::endl;
 
         // Clear BoW Database

@@ -65,7 +65,7 @@ namespace ORB_SLAM2 {
         // }
 
         for (size_t i = 0, iend = vpMPs.size(); i < iend; i++) {
-            if (vpMPs[i]->isBad() || spRefMPs.count(vpMPs[i]))
+            if (!vpMPs[i] || vpMPs[i]->isBad() || spRefMPs.count(vpMPs[i]))
                 continue;
             cv::Mat pos = vpMPs[i]->GetWorldPos();
             // cv::Mat Rwc = mCameraPose.rowRange(0, 3).colRange(0, 3).clone().t();
@@ -277,7 +277,7 @@ namespace ORB_SLAM2 {
 
 
     void MapDrawer::SetCurrentCameraPose(const cv::Mat &Tcw) {
-        std::unique_lock<std::mutex> lock(mMutexCamera);
+        // std::unique_lock<std::mutex> lock(mMutexCamera);
         mCameraPose = Tcw.clone();
     }
 
@@ -286,7 +286,7 @@ namespace ORB_SLAM2 {
             cv::Mat Rwc(3, 3, CV_32F);
             cv::Mat twc(3, 1, CV_32F);
             {
-                std::unique_lock<std::mutex> lock(mMutexCamera);
+                // std::unique_lock<std::mutex> lock(mMutexCamera);
                 Rwc = mCameraPose.rowRange(0, 3).colRange(0, 3).t();
                 twc = -Rwc * mCameraPose.rowRange(0, 3).col(3);
             }

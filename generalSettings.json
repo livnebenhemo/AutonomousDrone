@@ -1,8 +1,8 @@
 {
   "VocabularyPath": "/home/tzuk/AutonomousDroneCPP/Vocabulary/ORBvoc.bin",
-  "DroneYamlPathSlam": "/home/tzuk/AutonomousDroneCPP/config/tello_5F2197.yaml",
-  "DroneYamlPathAruco": "/home/tzuk/AutonomousDroneCPP/config/tello_aruco_5F2197.yaml",
-  "DroneName": "TELLO-5F2197",
+  "DroneYamlPathSlam": "/home/tzuk/AutonomousDroneCPP/config/tello_5C0227.yaml",
+  "DroneYamlPathAruco": "/home/tzuk/AutonomousDroneCPP/config/tello_aruco_5C0227.yaml",
+  "DroneName": "TELLO-5C0227",
   "WithPlot": false,
   "sizeOfFrameStack": 20,
   "offlineVideoTestPath": "/home/tzuk/Documents/AutonomousDroneResults/videos/outcpp2022-02-01T07:20:21Z.avi",

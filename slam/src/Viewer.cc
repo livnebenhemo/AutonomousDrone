@@ -103,7 +103,7 @@ namespace ORB_SLAM2 {
         bool bFollow = true;
         bool bLocalizationMode = mbReuse;
 
-        while (1) {
+        while (true) {
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
             mpMapDrawer->GetCurrentOpenGLCameraMatrix(Twc);
@@ -193,44 +193,43 @@ namespace ORB_SLAM2 {
             if (CheckFinish())
                 break;
         }
-
         SetFinish();
     }
 
     void Viewer::RequestFinish() {
-        std::unique_lock<std::mutex> lock(mMutexFinish);
+        // std::unique_lock<std::mutex> lock(mMutexFinish);
         mbFinishRequested = true;
     }
 
     bool Viewer::CheckFinish() {
-        std::unique_lock<std::mutex> lock(mMutexFinish);
+        // std::unique_lock<std::mutex> lock(mMutexFinish);
         return mbFinishRequested;
     }
 
     void Viewer::SetFinish() {
-        std::unique_lock<std::mutex> lock(mMutexFinish);
+        // std::unique_lock<std::mutex> lock(mMutexFinish);
         mbFinished = true;
     }
 
     bool Viewer::isFinished() {
-        std::unique_lock<std::mutex> lock(mMutexFinish);
+        // std::unique_lock<std::mutex> lock(mMutexFinish);
         return mbFinished;
     }
 
     void Viewer::RequestStop() {
-        std::unique_lock<std::mutex> lock(mMutexStop);
+        // std::unique_lock<std::mutex> lock(mMutexStop);
         if (!mbStopped)
             mbStopRequested = true;
     }
 
     bool Viewer::isStopped() {
-        std::unique_lock<std::mutex> lock(mMutexStop);
+        // std::unique_lock<std::mutex> lock(mMutexStop);
         return mbStopped;
     }
 
     bool Viewer::Stop() {
-        std::unique_lock<std::mutex> lock(mMutexStop);
-        std::unique_lock<std::mutex> lock2(mMutexFinish);
+        // std::unique_lock<std::mutex> lock(mMutexStop);
+        // std::unique_lock<std::mutex> lock2(mMutexFinish);
 
         if (mbFinishRequested)
             return false;
@@ -245,7 +244,7 @@ namespace ORB_SLAM2 {
     }
 
     void Viewer::Release() {
-        std::unique_lock<std::mutex> lock(mMutexStop);
+        // std::unique_lock<std::mutex> lock(mMutexStop);
         mbStopped = false;
     }
 

@@ -251,9 +251,9 @@ namespace ORB_SLAM2 {
             obs = mObservations;
             mObservations.clear();
         }
-        for (std::map<KeyFrame *, size_t>::iterator mit = obs.begin(), mend = obs.end(); mit != mend; mit++) {
-            KeyFrame *pKF = mit->first;
-            pKF->EraseMapPointMatch(mit->second);
+        for (auto & ob : obs) {
+            KeyFrame *pKF = ob.first;
+            pKF->EraseMapPointMatch(ob.second);
         }
         //mpMap->EraseMapPoint(this);
     }

@@ -172,7 +172,7 @@ namespace ORB_SLAM2 {
 
         void EraseMapPointMatch(const size_t &idx);
 
-        void EraseMapPointMatch(std::shared_ptr<MapPoint> pMP);
+        void EraseMapPointMatch(const std::shared_ptr<MapPoint>& pMP);
 
         void ReplaceMapPointMatch(const size_t &idx, std::shared_ptr<MapPoint> pMP);
 

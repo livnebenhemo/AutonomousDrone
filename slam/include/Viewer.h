@@ -41,9 +41,8 @@ namespace ORB_SLAM2 {
 
     class Viewer {
     public:
-        Viewer(System * pSystem, std::shared_ptr<FrameDrawer> pFrameDrawer,
-               std::shared_ptr<MapDrawer> pMapDrawer, std::shared_ptr<Tracking> pTracking,
-               const std::string &strSettingPath, bool bReuse, bool isPangolinExists);
+        Viewer(System *pSystem, FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer, Tracking *pTracking,
+               const std::string &strSettingPath);
 
         // Main thread function. Draw points, keyframes, the current camera pose and the last processed
         // frame. Drawing is refreshed according to the camera fps. We use Pangolin.
@@ -63,11 +62,10 @@ namespace ORB_SLAM2 {
 
         bool Stop();
 
-        bool mbReuse;
-        std::shared_ptr<System> mpSystem;
-        std::shared_ptr<FrameDrawer> mpFrameDrawer;
-        std::shared_ptr<MapDrawer> mpMapDrawer;
-        std::shared_ptr<Tracking> mpTracker;
+        System *mpSystem;
+        FrameDrawer *mpFrameDrawer;
+        MapDrawer *mpMapDrawer;
+        Tracking *mpTracker;
 
         // 1/fps in ms
         double mT;
@@ -86,7 +84,7 @@ namespace ORB_SLAM2 {
         bool mbStopped;
         bool mbStopRequested;
         std::mutex mMutexStop;
-        bool isPangolinExists;
+
     };
 
 }

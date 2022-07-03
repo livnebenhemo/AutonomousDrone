@@ -24,39 +24,61 @@
 #include "Optimizer.h"
 
 #include<mutex>
-#include <utility>
 
 namespace ORB_SLAM2 {
 
-    LocalMapping::LocalMapping(std::shared_ptr<Map> pMap, const float bMonocular) :
-            mbMonocular(bMonocular), mbResetRequested(false), mbFinishRequested(false), mbFinished(true),
-            mpMap(std::move(pMap)),
+    LocalMapping::LocalMapping(Map *pMap, const float bMonocular) :
+            mbMonocular(bMonocular), mbResetRequested(false), mbFinishRequested(false), mbFinished(true), mpMap(pMap),
             mbAbortBA(false), mbStopped(false), mbStopRequested(false), mbNotStop(false), mbAcceptKeyFrames(true) {
     }
 
-    void LocalMapping::SetLoopCloser(std::shared_ptr<LoopClosing> pLoopCloser) {
-        mpLoopCloser = std::move(pLoopCloser);
+    void LocalMapping::SetLoopCloser(LoopClosing *pLoopCloser) {
+        mpLoopCloser = pLoopCloser;
     }
 
-    void LocalMapping::SetTracker(std::shared_ptr<Tracking> pTracker) {
-        mpTracker = std::move(pTracker);
+    void LocalMapping::SetTracker(Tracking *pTracker) {
+        mpTracker = pTracker;
     }
 
-    std::chrono::steady_clock::time_point get_time2() {
-        return std::chrono::steady_clock::now();
-    }
+    void LocalMapping::HandleNewKeyFrame(KeyFrame *pKF) {
+        ResetIfRequested();
+        SetAcceptKeyFrames(false);
+        if (Stop()) {
+            while (isStopped() && !CheckFinish()) {
+                usleep(300);
+            }
+            return;
+        }
+        // BoW conversion and insertion in Map
+        if (mlNewKeyFrames.empty()) {
+            return;
+        }
+        ProcessNewKeyFrame();
+        // Check recent MapPoints
+        MapPointCulling();
+        // Triangulate new MapPoints
+        CreateNewMapPoints();
+        // Find more matches in neighbor keyframes and fuse point duplications
+        SearchInNeighbors();
+        mbAbortBA = false;
+        if (mpMap->KeyFramesInMap() > 2) {
+            Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame, &mbAbortBA, mpMap);
+        }
+        KeyFrameCulling();
+        if (mpCurrentKeyFrame) {
+            //mpLoopCloser->InsertKeyFrame(mpCurrentKeyFrame);
 
-    unsigned int
-    get_time_diff2(std::chrono::steady_clock::time_point start, std::chrono::steady_clock::time_point end) {
-        return std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-    }
+        }
+        SetAcceptKeyFrames(true);
 
+        // Tracking will see that Local Mapping is busy
+    }
 
     void LocalMapping::Run() {
 
         mbFinished = false;
 
-        while (1) {
+        while (true) {
             // Tracking will see that Local Mapping is busy
             SetAcceptKeyFrames(false);
 
@@ -66,7 +88,6 @@ namespace ORB_SLAM2 {
                 ProcessNewKeyFrame();
 
                 // Check recent MapPoints
-                //BAR
                 MapPointCulling();
 
                 // Triangulate new MapPoints
@@ -74,7 +95,6 @@ namespace ORB_SLAM2 {
 
                 if (!CheckNewKeyFrames()) {
                     // Find more matches in neighbor keyframes and fuse point duplications
-                    //BAR
                     SearchInNeighbors();
                 }
 
@@ -82,30 +102,17 @@ namespace ORB_SLAM2 {
 
                 if (!CheckNewKeyFrames() && !stopRequested()) {
                     // Local BA
-
-                    //BAR
-                    //auto start = get_time2();
                     if (mpMap->KeyFramesInMap() > 2) {
-                        //std::unique_lock<std::mutex> lock(mMutexNewKFs);
-                        //SetAcceptKeyFrames(false);
-                        //std::unique_lock<std::mutex> lock2(mMutexAccept);
                         Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame, &mbAbortBA, mpMap);
-                        //SetAcceptKeyFrames(true);
+                        KeyFrameCulling();
                     }
-                    //auto end = get_time2();
-                    //std::cout << "Bundle Adjustment time: " << get_time_diff2(start, end) << std::endl;
-
-
-                    // Check redundant local Keyframes
-                    //BAR
-                    KeyFrameCulling();
                 }
 
-                mpLoopCloser->InsertKeyFrame(mpCurrentKeyFrame);
+                // mpLoopCloser->InsertKeyFrame(mpCurrentKeyFrame);
             } else if (Stop()) {
                 // Safe area to stop
                 while (isStopped() && !CheckFinish()) {
-                    usleep(5000);
+                    usleep(3000);
                 }
                 if (CheckFinish())
                     break;
@@ -126,17 +133,18 @@ namespace ORB_SLAM2 {
     }
 
     void LocalMapping::InsertKeyFrame(KeyFrame *pKF) {
-        std::unique_lock<std::mutex> lock(mMutexNewKFs);
-        mlNewKeyFrames.push_back(pKF);
-        mbAbortBA = true;
+        //std::unique_lock<std::mutex> lock(mMutexNewKFs);
+        if (pKF) {
+            mlNewKeyFrames.push_back(pKF);
+            mbAbortBA = true;
+        }
     }
 
 
     bool LocalMapping::CheckNewKeyFrames() {
-        std::unique_lock<std::mutex> lock(mMutexNewKFs);
+        //std::unique_lock<std::mutex> lock(mMutexNewKFs);
         return (!mlNewKeyFrames.empty());
     }
-
 
     void LocalMapping::ProcessNewKeyFrame() {
         {
@@ -150,10 +158,8 @@ namespace ORB_SLAM2 {
         mpCurrentKeyFrame->ComputeBoW();
 
         // Associate MapPoints to the new keyframe and update normal and descriptor
-        auto vpMapPointMatches = mpCurrentKeyFrame->GetMapPointMatches();
-
-        for (int i = 0; i < vpMapPointMatches.size(); i++) {
-            auto pMP = vpMapPointMatches[i];
+        std::unordered_map<size_t, MapPoint *> vpMapPointMatches = mpCurrentKeyFrame->GetMapPointMatches();
+        for (auto &[i, pMP]: vpMapPointMatches) {
             if (pMP && !pMP->isBad()) {
                 if (!pMP->IsInKeyFrame(mpCurrentKeyFrame)) {
                     pMP->AddObservation(mpCurrentKeyFrame, i);
@@ -179,22 +185,21 @@ namespace ORB_SLAM2 {
         const int cnThObs = 2;
 
         while (lit != mlpRecentAddedMapPoints.end()) {
-            std::shared_ptr<MapPoint> pMP = *lit;
+            MapPoint *pMP = *lit;
             if (pMP->isBad()) {
                 lit = mlpRecentAddedMapPoints.erase(lit);
             } else if (pMP->GetFoundRatio() < 0.25f) {
                 pMP->SetBadFlag();
                 lit = mlpRecentAddedMapPoints.erase(lit);
-                mpMap->EraseMapPoint(pMP);
             } else if (pMP->Observations() <= cnThObs) {
                 pMP->SetBadFlag();
                 lit = mlpRecentAddedMapPoints.erase(lit);
-                mpMap->EraseMapPoint(pMP);
             } else
                 lit++;
         }
 
     }
+
     void LocalMapping::CreateNewMapPoints() {
         // Retrieve neighbor keyframes in covisibility graph
         int nn = 20;
@@ -367,7 +372,7 @@ namespace ORB_SLAM2 {
                     continue;
 
                 // Triangulation is succesfull
-                auto pMP = std::make_shared<MapPoint>(x3D, mpCurrentKeyFrame, mpMap);
+                auto *pMP = new MapPoint(x3D, mpCurrentKeyFrame, mpMap);
 
                 pMP->AddObservation(mpCurrentKeyFrame, idx1);
                 pMP->AddObservation(pKF2, idx2);
@@ -387,50 +392,6 @@ namespace ORB_SLAM2 {
         }
     }
 
-    void LocalMapping::HandleNewKeyFrame(KeyFrame *pKF) {
-        ResetIfRequested();
-        SetAcceptKeyFrames(false);
-        if (Stop()) {
-            while (isStopped() && !CheckFinish()) {
-                usleep(300);
-            }
-            return;
-        }
-        // BoW conversion and insertion in Map
-        if (mlNewKeyFrames.empty()) {
-            return;
-        }
-        ProcessNewKeyFrame();
-        // Check recent MapPoints
-        MapPointCulling();
-        // Triangulate new MapPoints
-        CreateNewMapPoints();
-        // Find more matches in neighbor keyframes and fuse point duplications
-        SearchInNeighbors();
-        bool abortBA = false;
-        if (mpMap->KeyFramesInMap() > 2) {
-            Optimizer::LocalBundleAdjustment(mpCurrentKeyFrame, &abortBA, mpMap);
-        }
-        KeyFrameCulling();
-        if (mpCurrentKeyFrame) {
-            //mpLoopCloser->InsertKeyFrame(mpCurrentKeyFrame);
-
-        }
-        SetAcceptKeyFrames(true);
-
-        // Tracking will see that Local Mapping is busy
-    }
-
-    LocalMapping::~LocalMapping() {
-        mlpRecentAddedMapPoints.clear();
-        for (auto kf: mlNewKeyFrames) {
-            if (kf) {
-                delete kf;
-            }
-        }
-        mlNewKeyFrames.clear();
-    }
-
     void LocalMapping::SearchInNeighbors() {
         // Retrieve neighbor keyframes
         int nn = 10;
@@ -439,7 +400,7 @@ namespace ORB_SLAM2 {
         const std::vector<KeyFrame *> vpNeighKFs = mpCurrentKeyFrame->GetBestCovisibilityKeyFrames(nn);
         std::vector<KeyFrame *> vpTargetKFs;
         for (auto pKFi: vpNeighKFs) {
-            if (!pKFi || pKFi->isBad() || pKFi->mnFuseTargetForKF == mpCurrentKeyFrame->mnId)
+            if (pKFi->isBad() || pKFi->mnFuseTargetForKF == mpCurrentKeyFrame->mnId)
                 continue;
             vpTargetKFs.push_back(pKFi);
             pKFi->mnFuseTargetForKF = mpCurrentKeyFrame->mnId;
@@ -447,17 +408,49 @@ namespace ORB_SLAM2 {
             // Extend to some second neighbors
             const std::vector<KeyFrame *> vpSecondNeighKFs = pKFi->GetBestCovisibilityKeyFrames(5);
             for (auto pKFi2: vpSecondNeighKFs) {
-                if (!pKFi2 || pKFi2->isBad() || pKFi2->mnFuseTargetForKF == mpCurrentKeyFrame->mnId ||
+                if (pKFi2->isBad() || pKFi2->mnFuseTargetForKF == mpCurrentKeyFrame->mnId ||
                     pKFi2->mnId == mpCurrentKeyFrame->mnId)
                     continue;
                 vpTargetKFs.push_back(pKFi2);
             }
         }
-        auto vpMapPointMatches = mpCurrentKeyFrame->GetMapPointMatches();
-        ORBmatcher matcher;
+        std::unordered_map<size_t, MapPoint *> vpMapPointMatches = mpCurrentKeyFrame->GetMapPointMatches();
         for (auto pKFi: vpTargetKFs) {
-            matcher.Fuse(pKFi, vpMapPointMatches, mpMap);
+            ORB_SLAM2::ORBmatcher::Fuse(pKFi, vpMapPointMatches);
         }
+
+        // Search matches by projection from target KFs in current KF
+        std::unordered_map<size_t, MapPoint *> vpFuseCandidates;
+
+        for (auto pKFi: vpTargetKFs) {
+            std::unordered_map<size_t, MapPoint *> vpMapPointsKFi = pKFi->GetMapPointMatches();
+
+            for (auto &[i, pMP]: vpMapPointsKFi) {
+                if (!pMP)
+                    continue;
+                if (pMP->isBad() || pMP->mnFuseCandidateForKF == mpCurrentKeyFrame->mnId)
+                    continue;
+                pMP->mnFuseCandidateForKF = mpCurrentKeyFrame->mnId;
+                vpFuseCandidates[i] = pMP;
+            }
+        }
+
+        ORB_SLAM2::ORBmatcher::Fuse(mpCurrentKeyFrame, vpFuseCandidates);
+
+
+        // Update points
+        vpMapPointMatches = mpCurrentKeyFrame->GetMapPointMatches();
+        for (auto &[i, pMP]: vpMapPointMatches) {
+            if (pMP) {
+                if (!pMP->isBad()) {
+                    pMP->ComputeDistinctiveDescriptors();
+                    pMP->UpdateNormalAndDepth();
+                }
+            }
+        }
+
+        // Update connections in covisibility graph
+        mpCurrentKeyFrame->UpdateConnections();
     }
 
     cv::Mat LocalMapping::ComputeF12(KeyFrame *&pKF1, KeyFrame *&pKF2) {
@@ -479,14 +472,12 @@ namespace ORB_SLAM2 {
     }
 
     void LocalMapping::RequestStop() {
-        std::unique_lock<std::mutex> lock(mMutexStop);
         mbStopRequested = true;
-        std::unique_lock<std::mutex> lock2(mMutexNewKFs);
+        //std::unique_lock<std::mutex> lock2(mMutexNewKFs);
         mbAbortBA = true;
     }
 
     bool LocalMapping::Stop() {
-        std::unique_lock<std::mutex> lock(mMutexStop);
         if (mbStopRequested && !mbNotStop) {
             mbStopped = true;
             std::cout << "Local Mapping STOP" << std::endl;
@@ -497,41 +488,37 @@ namespace ORB_SLAM2 {
     }
 
     bool LocalMapping::isStopped() {
-        std::unique_lock<std::mutex> lock(mMutexStop);
         return mbStopped;
     }
 
     bool LocalMapping::stopRequested() {
-        std::unique_lock<std::mutex> lock(mMutexStop);
         return mbStopRequested;
     }
 
     void LocalMapping::Release() {
-        std::unique_lock<std::mutex> lock(mMutexStop);
-        std::unique_lock<std::mutex> lock2(mMutexFinish);
+        //std::unique_lock<std::mutex> lock2(mMutexFinish);
         if (mbFinished)
             return;
         mbStopped = false;
         mbStopRequested = false;
-        for (auto lit = mlNewKeyFrames.begin(), lend = mlNewKeyFrames.end(); lit != lend; lit++)
-            delete *lit;
+        for (auto &mlNewKeyFrame: mlNewKeyFrames)
+            delete mlNewKeyFrame;
         mlNewKeyFrames.clear();
 
         std::cout << "Local Mapping RELEASE" << std::endl;
     }
 
     bool LocalMapping::AcceptKeyFrames() {
-        std::unique_lock<std::mutex> lock(mMutexAccept);
+        //std::unique_lock<std::mutex> lock(mMutexAccept);
         return mbAcceptKeyFrames;
     }
 
     void LocalMapping::SetAcceptKeyFrames(bool flag) {
-        std::unique_lock<std::mutex> lock(mMutexAccept);
+        //std::unique_lock<std::mutex> lock(mMutexAccept);
         mbAcceptKeyFrames = flag;
     }
 
     bool LocalMapping::SetNotStop(bool flag) {
-        std::unique_lock<std::mutex> lock(mMutexStop);
 
         if (flag && mbStopped)
             return false;
@@ -555,12 +542,12 @@ namespace ORB_SLAM2 {
         for (auto pKF: vpLocalKeyFrames) {
             if (pKF->mnId == 0)
                 continue;
-            auto vpMapPoints = pKF->GetMapPointMatches();
+            std::unordered_map<size_t,MapPoint *> vpMapPoints = pKF->GetMapPointMatches();
             const int thObs = 3;
             int nRedundantObservations = 0;
             int nMPs = 0;
             for (size_t i = 0, iend = vpMapPoints.size(); i < iend; i++) {
-                auto pMP = vpMapPoints[i];
+                MapPoint *pMP = vpMapPoints[i];
                 if (pMP && !pMP->isBad()) {
                     nMPs++;
                     if (pMP->Observations() > thObs) {
@@ -599,22 +586,21 @@ namespace ORB_SLAM2 {
 
     void LocalMapping::RequestReset() {
         {
-            std::unique_lock<std::mutex> lock(mMutexReset);
             mbResetRequested = true;
         }
 
-        while (1) {
+        while (true) {
             {
-                std::unique_lock<std::mutex> lock2(mMutexReset);
                 if (!mbResetRequested)
                     break;
+                ResetIfRequested();
             }
             usleep(3000);
         }
     }
 
     void LocalMapping::ResetIfRequested() {
-        std::unique_lock<std::mutex> lock(mMutexReset);
+        //std::unique_lock<std::mutex> lock(mMutexReset);
         if (mbResetRequested) {
             mlNewKeyFrames.clear();
             mlpRecentAddedMapPoints.clear();
@@ -623,24 +609,23 @@ namespace ORB_SLAM2 {
     }
 
     void LocalMapping::RequestFinish() {
-        std::unique_lock<std::mutex> lock(mMutexFinish);
+        //std::unique_lock<std::mutex> lock(mMutexFinish);
         mbFinishRequested = true;
     }
 
     bool LocalMapping::CheckFinish() {
-        std::unique_lock<std::mutex> lock(mMutexFinish);
+        //std::unique_lock<std::mutex> lock(mMutexFinish);
         return mbFinishRequested;
     }
 
     void LocalMapping::SetFinish() {
-        std::unique_lock<std::mutex> lock(mMutexFinish);
+        //std::unique_lock<std::mutex> lock(mMutexFinish);
         mbFinished = true;
-        std::unique_lock<std::mutex> lock2(mMutexStop);
         mbStopped = true;
     }
 
     bool LocalMapping::isFinished() {
-        std::unique_lock<std::mutex> lock(mMutexFinish);
+        //std::unique_lock<std::mutex> lock(mMutexFinish);
         return mbFinished;
     }
 

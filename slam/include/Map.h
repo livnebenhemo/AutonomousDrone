@@ -25,6 +25,8 @@
 #include "KeyFrame.h"
 #include <set>
 
+#include <mutex>
+
 #include <boost/serialization/serialization.hpp>
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
@@ -33,85 +35,66 @@
 #include <boost/serialization/split_member.hpp>
 #include <boost/serialization/shared_ptr.hpp>
 
-#include <mutex>
+
+namespace ORB_SLAM2
+{
+
+class MapPoint;
+class KeyFrame;
+
+class Map
+{
+public:
+    Map();
+
+    void AddKeyFrame(KeyFrame* pKF);
+    void AddMapPoint(MapPoint* pMP);
+    void EraseMapPoint(MapPoint* pMP);
+    void EraseKeyFrame(KeyFrame* pKF);
+    void SetReferenceMapPoints(const std::vector<MapPoint*> &vpMPs);
+    void InformNewBigChange();
+    int GetLastBigChangeIdx();
+
+    std::vector<KeyFrame*> GetAllKeyFrames();
+    std::vector<MapPoint*> GetAllMapPoints();
+    void EraseCurrentMapPoint();                   // delete
+    std::vector<MapPoint*> GetReferenceMapPoints();
+
+    long unsigned int MapPointsInMap();
+    long unsigned  KeyFramesInMap();
+
+    long unsigned int GetMaxKFid();
+
+    void clear();
+    void clearCurrent();
+
+    std::vector<KeyFrame*> mvpKeyFrameOrigins;
+
+    std::mutex mMutexMapUpdate;
+
+    // This avoid that two points are created simultaneously in separate threads (id conflict)
+    std::mutex mMutexPointCreation;
+
+protected:
+    std::unordered_map<MapPoint*,unsigned long> mspMapPoints;
+    std::unordered_map<KeyFrame*,unsigned long> mspKeyFrames;
+    std::set<KeyFrame*> mspCurrentKeyFrames;
+    std::set<MapPoint *> mspCurrentMapPoints; // Current map points
+    std::vector<MapPoint*> mvpReferenceMapPoints;
 
 
-namespace ORB_SLAM2 {
+    friend class boost::serialization::access;
 
-    class MapPoint;
+    template<class Archive>
+    void serialize(Archive &ar, const unsigned int version);
+    long unsigned int mnMaxKFid;
 
-    class KeyFrame;
+    // Index related to a big change in the map (loop closure, global BA)
+    int mnBigChangeIdx;
 
-    class Map {
-    public:
-        Map();
-
-        void AddKeyFrame(KeyFrame *pKF);
-
-        void AddMapPoint(std::shared_ptr<MapPoint> &pMP);
-
-        void EraseMapPoint(std::shared_ptr<MapPoint> &pMP);
-
-        void EraseKeyFrame(KeyFrame *pKF);
-
-        void SetReferenceMapPoints(const std::vector<std::shared_ptr<MapPoint>> &vpMPs);
-
-        int GetLastBigChangeIdx() { return mnBigChangeIdx; };
-
-        void InformNewBigChange();
-
-        std::vector<KeyFrame *> GetAllKeyFrames();
-
-        std::vector<std::shared_ptr<MapPoint>> GetAllMapPoints();
-
-        std::vector<std::shared_ptr<MapPoint>> GetReferenceMapPoints();
-
-        long unsigned int MapPointsInMap();
-
-        long unsigned KeyFramesInMap();
-
-        long unsigned int GetMaxKFid();
-
-        std::pair<cv::Mat, cv::Mat> calculate_align_matrices();
-
-        std::pair<cv::Mat, cv::Mat> align_map();
-
-        void clear();
-
-        std::vector<KeyFrame *> mvpKeyFrameOrigins;
-
-        mutable std::mutex mMutexMapUpdate;
-
-        // This avoid that two points are created simultaneously in separate threads (id conflict)
-        mutable std::mutex mMutexPointCreation;
-
-    protected:
-        std::set<std::shared_ptr<MapPoint>> mspMapPoints;
-        std::set<KeyFrame *> mspKeyFrames;
-
-        std::vector<std::shared_ptr<MapPoint>> mvpReferenceMapPoints;
-        int mnBigChangeIdx;
-
-        long unsigned int mnMaxKFid;
-
-        std::mutex mMutexMap;
-
-
-        friend class boost::serialization::access;
-
-        template<class Archive>
-        void serialize(Archive &ar, const unsigned int version);
-
-        template<class Archive>
-        void save(Archive &ar, const unsigned int version) const;
-
-
-        template<class Archive>
-        void load(Archive &ar, const unsigned int version);
-
-
-    };
-
+    std::mutex mMutexMap;
+};
 
 } //namespace ORB_SLAM
+
 #endif // MAP_H

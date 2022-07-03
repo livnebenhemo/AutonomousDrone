@@ -24,54 +24,54 @@
 #include "Tracking.h"
 #include "MapPoint.h"
 #include "Map.h"
+#include "../utils/include/Point.h"
 
 #include<opencv2/core/core.hpp>
 #include<opencv2/features2d/features2d.hpp>
 
 #include<mutex>
-#include "../utils/include/Point.h"
 
 
-namespace ORB_SLAM2
-{
+namespace ORB_SLAM2 {
 
-class Tracking;
-class Viewer;
+    class Tracking;
 
-class FrameDrawer
-{
-public:
-    FrameDrawer(std::shared_ptr<Map> pMap, bool bReuse);
+    class Viewer;
 
-    // Update info from the last processed frame.
-    void Update(Tracking *pTracker);
+    class FrameDrawer {
+    public:
+        FrameDrawer(Map *pMap);
 
-    // Draw last processed frame.
-    cv::Mat DrawFrame();
+        // Update info from the last processed frame.
+        void Update(Tracking *pTracker);
 
-    void SetDestination(const Point &point) { destination = point; }
+        // Draw last processed frame.
+        cv::Mat DrawFrame();
 
-    void ClearDestinationPoint() { destination = Point(1000, 1000, 1000); }
-protected:
+        Point SetDestination(const Point &point) { destination = point; }
 
-    void DrawTextInfo(cv::Mat &im, int nState, cv::Mat &imText);
-    Point destination;
+        void ClearDestinationPoint() { destination = Point(1000, 1000, 1000); }
 
-    // Info of the frame to be drawn
-    cv::Mat mIm;
-    int N;
-    std::vector<cv::KeyPoint> mvCurrentKeys;
-    std::vector<bool> mvbMap, mvbVO;
-    bool mbOnlyTracking;
-    int mnTracked, mnTrackedVO;
-    std::vector<cv::KeyPoint> mvIniKeys;
-    std::vector<int> mvIniMatches;
-    int mState;
+    protected:
+        Point destination;
 
-    std::shared_ptr<Map> mpMap;
+        void DrawTextInfo(cv::Mat &im, int nState, cv::Mat &imText);
 
-    std::mutex mMutex;
-};
+        // Info of the frame to be drawn
+        cv::Mat mIm;
+        int N;
+        std::vector<cv::KeyPoint> mvCurrentKeys;
+        std::vector<bool> mvbMap, mvbVO;
+        bool mbOnlyTracking;
+        int mnTracked, mnTrackedVO;
+        std::vector<cv::KeyPoint> mvIniKeys;
+        std::vector<int> mvIniMatches;
+        int mState;
+
+        Map *mpMap;
+
+        std::mutex mMutex;
+    };
 
 } //namespace ORB_SLAM
 

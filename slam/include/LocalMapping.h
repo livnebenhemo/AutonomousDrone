@@ -22,12 +22,7 @@
 #define LOCALMAPPING_H
 
 #include "KeyFrame.h"
-#include "Map.h"
-#include "LoopClosing.h"
 #include "Tracking.h"
-#include "KeyFrameDatabase.h"
-
-#include <mutex>
 
 
 namespace ORB_SLAM2
@@ -40,12 +35,13 @@ class Map;
 class LocalMapping
 {
 public:
-    bool is_ba = false;
-    LocalMapping(std::shared_ptr<Map> pMap, const float bMonocular);
-    ~LocalMapping();
-    void SetLoopCloser(std::shared_ptr<LoopClosing> pLoopCloser);
+    LocalMapping(Map* pMap, const float bMonocular);
 
-    void SetTracker(std::shared_ptr<Tracking> pTracker);
+
+    void HandleNewKeyFrame(KeyFrame *pKF);
+    void SetLoopCloser(LoopClosing* pLoopCloser);
+
+    void SetTracker(Tracking* pTracker);
 
     // Main function
     void Run();
@@ -73,8 +69,6 @@ public:
         return mlNewKeyFrames.size();
     }
 
-    void HandleNewKeyFrame(KeyFrame *pKF);
-
 protected:
 
     bool CheckNewKeyFrames();
@@ -88,7 +82,7 @@ protected:
 
     cv::Mat ComputeF12(KeyFrame* &pKF1, KeyFrame* &pKF2);
 
-    cv::Mat SkewSymmetricMatrix(const cv::Mat &v);
+    static cv::Mat SkewSymmetricMatrix(const cv::Mat &v);
 
     bool mbMonocular;
 
@@ -102,16 +96,16 @@ protected:
     bool mbFinished;
     std::mutex mMutexFinish;
 
-    std::shared_ptr<Map> mpMap;
+    Map* mpMap;
 
-    std::shared_ptr<LoopClosing> mpLoopCloser;
-    std::shared_ptr<Tracking> mpTracker;
+    LoopClosing* mpLoopCloser;
+    Tracking* mpTracker;
 
     std::list<KeyFrame*> mlNewKeyFrames;
 
     KeyFrame* mpCurrentKeyFrame;
 
-    std::list<std::shared_ptr<MapPoint>> mlpRecentAddedMapPoints;
+    std::list<MapPoint*> mlpRecentAddedMapPoints;
 
     std::mutex mMutexNewKFs;
 
@@ -124,7 +118,6 @@ protected:
 
     bool mbAcceptKeyFrames;
     std::mutex mMutexAccept;
-
 };
 
 } //namespace ORB_SLAM

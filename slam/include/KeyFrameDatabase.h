@@ -48,20 +48,20 @@ namespace ORB_SLAM2 {
     class KeyFrameDatabase {
     public:
 
-        KeyFrameDatabase(std::shared_ptr<ORBVocabulary> &voc);
+        KeyFrameDatabase(const ORBVocabulary &voc);
 
         KeyFrameDatabase() { ; }
 
         void add(KeyFrame *pKF);
 
-        void set_vocab(std::shared_ptr<ORBVocabulary> pvoc);
-
         void erase(KeyFrame *pKF);
 
         void clear();
 
+        void set_vocab(const std::shared_ptr<ORBVocabulary>& pvoc);
+
         // Loop Detection
-        std::vector<KeyFrame *> DetectLoopCandidates(KeyFrame *pKF, float minScore);
+        std::vector<KeyFrame *> DetectLoopCandidates(KeyFrame *pKF, double minScore);
 
         // Relocalization
         std::vector<KeyFrame *> DetectRelocalizationCandidates(Frame *F);
@@ -69,13 +69,14 @@ namespace ORB_SLAM2 {
     protected:
 
         // Associated vocabulary
-        std::shared_ptr<ORBVocabulary> mpVoc;
+        const ORBVocabulary *mpVoc;
 
         // Inverted file
-        std::vector<std::list<KeyFrame *> > mvInvertedFile;
+        std::unordered_map<unsigned int, std::unordered_map<KeyFrame *, int> > mvInvertedFile;
 
         // Mutex
         std::mutex mMutex;
+
 
         friend class boost::serialization::access;
 

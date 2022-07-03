@@ -72,6 +72,7 @@ int main() {
     std::time(&now);
     std::strftime(time_buf, 21, "%Y-%m-%d_%H:%S:%MZ", gmtime(&now));
     std::string currentTime(time_buf);
+    std::filesystem::create_directory("../simulatorDataSets/");
     std::filesystem::create_directory("../simulatorDataSets/" + currentTime);
     std::string currentWorkingDir = std::string(currentDirPath) + "/../simulatorDataSets/" + currentTime + "/";
     std::string vocPath = data["VocabularyPath"];

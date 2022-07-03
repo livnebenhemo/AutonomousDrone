@@ -1,3 +1,5 @@
+
+
 #include "FrameDrawer.h"
 #include "Tracking.h"
 
@@ -5,15 +7,11 @@
 #include <opencv2/highgui/highgui.hpp>
 
 #include<mutex>
-#include <utility>
 
 namespace ORB_SLAM2 {
 
-    FrameDrawer::FrameDrawer(std::shared_ptr<Map> pMap, bool bReuse) : mpMap(std::move(pMap)) {
+    FrameDrawer::FrameDrawer(Map *pMap) : mpMap(pMap) {
         mState = Tracking::SYSTEM_NOT_READY;
-        if (bReuse)
-            mState = Tracking::LOST;
-
         mIm = cv::Mat(480, 640, CV_8UC3, cv::Scalar(0, 0, 0));
     }
 
@@ -27,7 +25,7 @@ namespace ORB_SLAM2 {
 
         //Copy variables within scoped mutex
         {
-            std::unique_lock<std::mutex> lock(mMutex);
+            //std::unique_lock<std::mutex> lock(mMutex);
             state = mState;
             if (mState == Tracking::SYSTEM_NOT_READY)
                 mState = Tracking::NO_IMAGES_YET;
@@ -35,21 +33,31 @@ namespace ORB_SLAM2 {
             mIm.copyTo(im);
 
             if (mState == Tracking::NOT_INITIALIZED) {
-                vCurrentKeys = mvCurrentKeys;
                 vIniKeys = mvIniKeys;
                 vMatches = mvIniMatches;
             } else if (mState == Tracking::OK) {
-                vCurrentKeys = mvCurrentKeys;
                 vbVO = mvbVO;
                 vbMap = mvbMap;
-            } else if (mState == Tracking::LOST) {
-                vCurrentKeys = mvCurrentKeys;
             }
+            vCurrentKeys = mvCurrentKeys;
+
         } // destroy scoped mutex -> release mutex
 
         if (im.channels() < 3) //this should be always true
             cvtColor(im, im, CV_GRAY2BGR);
+        /*cv::Mat thresh;
+        cv::Mat gray;
+        cvtColor(im, gray, CV_BGR2GRAY);
+        cv::threshold(gray, thresh, 0, 180,
+                      cv::THRESH_BINARY_INV | cv::THRESH_OTSU);
+        std::vector<std::vector<cv::Point>> contours;
+        std::vector<cv::Vec4i> hierarchy;
+        findContours(thresh, contours, hierarchy, cv::RETR_TREE, cv::CHAIN_APPROX_NONE);
+        cv::Scalar color = cv::Scalar(255, 0, 0);
 
+        for (int i = 0; i < contours.size(); i++) {
+            drawContours(im, contours, i, color, 2, cv::LINE_8, hierarchy, 0);
+        }*/
         //Draw
         if (state == Tracking::NOT_INITIALIZED) //INITIALIZING
         {
@@ -64,7 +72,8 @@ namespace ORB_SLAM2 {
             mnTracked = 0;
             mnTrackedVO = 0;
             const float r = 5;
-            for (int i = 0; i < N; i++) {
+            const int n = vCurrentKeys.size();
+            for (int i = 0; i < n; i++) {
                 if (vbVO[i] || vbMap[i]) {
                     cv::Point2f pt1, pt2;
                     pt1.x = vCurrentKeys[i].pt.x - r;
@@ -127,7 +136,7 @@ namespace ORB_SLAM2 {
 
     }
 
-    void FrameDrawer::Update(Tracking* pTracker) {
+    void FrameDrawer::Update(Tracking *pTracker) {
         std::unique_lock<std::mutex> lock(mMutex);
         pTracker->mImGray.copyTo(mIm);
         mvCurrentKeys = pTracker->mCurrentFrame.mvKeys;
@@ -142,7 +151,7 @@ namespace ORB_SLAM2 {
             mvIniMatches = pTracker->mvIniMatches;
         } else if (pTracker->mLastProcessedState == Tracking::OK) {
             for (int i = 0; i < N; i++) {
-                auto pMP = pTracker->mCurrentFrame.mvpMapPoints[i];
+                MapPoint *pMP = pTracker->mCurrentFrame.mvpMapPoints[i];
                 if (pMP) {
                     if (!pTracker->mCurrentFrame.mvbOutlier[i]) {
                         if (pMP->Observations() > 0)
@@ -156,4 +165,4 @@ namespace ORB_SLAM2 {
         mState = static_cast<int>(pTracker->mLastProcessedState);
     }
 
-} //namespace ORB_SLAM
+}

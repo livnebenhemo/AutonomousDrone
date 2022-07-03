@@ -25,20 +25,15 @@
 #include<opencv2/core/core.hpp>
 #include<opencv2/features2d/features2d.hpp>
 
-
 #include"Viewer.h"
 #include"FrameDrawer.h"
 #include"Map.h"
-#include"LocalMapping.h"
-#include"LoopClosing.h"
 #include"Frame.h"
 #include "ORBVocabulary.h"
 #include"KeyFrameDatabase.h"
 #include"ORBextractor.h"
 #include "Initializer.h"
-#include "MapDrawer.h"
 #include "System.h"
-
 #include <mutex>
 
 namespace ORB_SLAM2 {
@@ -58,35 +53,20 @@ namespace ORB_SLAM2 {
     class Tracking {
 
     public:
-        Tracking(System* pSys, std::shared_ptr<ORBVocabulary> pVoc,
-                 std::shared_ptr<FrameDrawer> pFrameDrawer, std::shared_ptr<MapDrawer> pMapDrawer,
-                 std::shared_ptr<Map> pMap,
-                 std::shared_ptr<KeyFrameDatabase> pKFDB, const std::string &strSettingPath, const int sensor,
-                 const bool bReuse);
-
-        // Preprocess the input and call Track(). Extract features and performs stereo matching.
-        cv::Mat GrabImageStereo(const cv::Mat &imRectLeft, const cv::Mat &imRectRight, const double &timestamp);
-
-        cv::Mat GrabImageRGBD(const cv::Mat &imRGB, const cv::Mat &imD, const double &timestamp);
+        Tracking(System *pSys, ORBVocabulary *pVoc, FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer, Map *pMap,
+                 KeyFrameDatabase *pKFDB, const std::string &strSettingPath, const int sensor);
 
         cv::Mat GrabImageMonocular(const cv::Mat &im, const double &timestamp);
 
-        void SetLocalMapper(std::shared_ptr<LocalMapping> pLocalMapper);
+        void SetLocalMapper(LocalMapping *pLocalMapper);
 
-        void SetLoopClosing(std::shared_ptr<LoopClosing> pLoopClosing);
+        void SetLoopClosing(LoopClosing *pLoopClosing);
 
-        void SetViewer(std::shared_ptr<Viewer> pViewer);
-
-        // Load new settings
-        // The focal lenght should be similar or scale prediction will fail when projecting points
-        void ChangeCalibration(const std::string &strSettingPath);
+        void SetViewer(Viewer *pViewer);
 
         // Use this function if you have deactivated local mapping and you only want to localize the camera.
         void InformOnlyTracking(const bool &flag);
 
-        void SaveDestination();
-
-        void SaveCharger();
 
     public:
 
@@ -108,9 +88,8 @@ namespace ORB_SLAM2 {
         // Current Frame
         Frame mCurrentFrame;
         cv::Mat mImGray;
-
+        Frame mLastFrame;
         // Initialization Variables (Monocular)
-        std::vector<int> mvIniLastMatches;
         std::vector<int> mvIniMatches;
         std::vector<cv::Point2f> mvbPrevMatched;
         std::vector<cv::Point3f> mvIniP3D;
@@ -119,7 +98,7 @@ namespace ORB_SLAM2 {
         // Lists used to recover the full camera trajectory at the end of the execution.
         // Basically we store the reference keyframe for each frame and its relative transformation
         std::list<cv::Mat> mlRelativeFramePoses;
-        std::list<KeyFrame *> mlpReferences;
+        // std::list<KeyFrame *> mlpReferences;
         std::list<double> mlFrameTimes;
         std::list<bool> mlbLost;
 
@@ -172,16 +151,16 @@ namespace ORB_SLAM2 {
         bool mbVO;
 
         //Other Thread Pointers
-        std::shared_ptr<LocalMapping> mpLocalMapper;
-        std::shared_ptr<LoopClosing> mpLoopClosing;
+        LocalMapping *mpLocalMapper;
+        LoopClosing *mpLoopClosing;
 
         //ORB
-        std::shared_ptr<ORBextractor> mpORBextractorLeft, mpORBextractorRight;
-        std::shared_ptr<ORBextractor> mpIniORBextractor;
+        ORBextractor *mpORBextractorLeft;
+        ORBextractor *mpIniORBextractor;
 
         //BoW
-        std::shared_ptr<ORBVocabulary> mpORBVocabulary;
-        std::shared_ptr<KeyFrameDatabase> mpKeyFrameDB;
+        ORBVocabulary *mpORBVocabulary;
+        KeyFrameDatabase *mpKeyFrameDB;
 
         // Initalization (only for monocular)
         Initializer *mpInitializer;
@@ -189,18 +168,18 @@ namespace ORB_SLAM2 {
         //Local Map
         KeyFrame *mpReferenceKF;
         std::vector<KeyFrame *> mvpLocalKeyFrames;
-        std::vector<std::shared_ptr<MapPoint>> mvpLocalMapPoints;
+        std::vector<MapPoint *> mvpLocalMapPoints;
 
         // System
-        std::shared_ptr<System> mpSystem;
+        System *mpSystem;
 
         //Drawers
-        std::shared_ptr<Viewer> mpViewer;
-        std::shared_ptr<FrameDrawer> mpFrameDrawer;
-        std::shared_ptr<MapDrawer> mpMapDrawer;
+        Viewer *mpViewer;
+        FrameDrawer *mpFrameDrawer;
+        MapDrawer *mpMapDrawer;
 
         //Map
-        std::shared_ptr<Map> mpMap;
+        Map *mpMap;
 
         //Calibration matrix
         cv::Mat mK;
@@ -223,8 +202,6 @@ namespace ORB_SLAM2 {
         int mnMatchesInliers;
 
         //Last Frame, KeyFrame and Relocalisation Info
-        KeyFrame *mpLastKeyFrame;
-        Frame mLastFrame;
         unsigned int mnLastKeyFrameId;
         unsigned int mnLastRelocFrameId;
 
@@ -233,8 +210,8 @@ namespace ORB_SLAM2 {
 
         //Color order (true RGB, false BGR, ignored if grayscale)
         bool mbRGB;
-        std::list<std::shared_ptr<MapPoint>> mlpTemporalPoints;
-        bool is_preloaded;
+
+        std::list<MapPoint *> mlpTemporalPoints;
     };
 
 } //namespace ORB_SLAM

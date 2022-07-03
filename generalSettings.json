@@ -11,7 +11,7 @@
   "runSimulator": false,
   "maxForwardForSimulator": 1500,
   "sizeOfForwardStepSimulator": 200,
-  "loadMap": false,
+  "loadMap": true,
   "loadMapPath": "/home/tzuk/slamMapLabOpenSpace.bin",
   "saveMap": true,
   "saveMapPath": "/home/tzuk/slamMapLabOpenSpace.bin"

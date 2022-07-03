@@ -21,19 +21,17 @@
 #ifndef FRAME_H
 #define FRAME_H
 
+#include<vector>
 #include <memory>
 
-#include<vector>
-
 #include "MapPoint.h"
-#include "../DBoW2/DBoW2/BowVector.h"
-#include "../DBoW2/DBoW2/FeatureVector.h"
+#include "../Thirdparty/DBoW2/DBoW2/BowVector.h"
+#include "../Thirdparty/DBoW2/DBoW2/FeatureVector.h"
 #include "ORBVocabulary.h"
 #include "KeyFrame.h"
 #include "ORBextractor.h"
 
 #include <opencv2/opencv.hpp>
-#include <opencv2/features2d.hpp>
 
 namespace ORB_SLAM2 {
 #define FRAME_GRID_ROWS 48
@@ -47,38 +45,21 @@ namespace ORB_SLAM2 {
     public:
         Frame();
 
-        int getFrameId() { return mnId; };
-
-        std::vector<std::shared_ptr<MapPoint>> GetMvpMapPoints() { return mvpMapPoints; };
-
         // Copy constructor.
         Frame(const Frame &frame);
 
-        // Constructor for stereo cameras.
-        Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeStamp,
-              std::shared_ptr<ORBextractor> extractorLeft,
-              std::shared_ptr<ORBextractor> extractorRight, std::shared_ptr<ORBVocabulary> voc, cv::Mat &K,
-              cv::Mat &distCoef, const float &bf,
-              const float &thDepth);
-
-        // Constructor for RGB-D cameras.
-        Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeStamp,
-              std::shared_ptr<ORBextractor> extractor,
-              std::shared_ptr<ORBVocabulary> voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth);
-
         // Constructor for Monocular cameras.
-        Frame(const cv::Mat &imGray, const double &timeStamp, std::shared_ptr<ORBextractor> extractor,
-              std::shared_ptr<ORBVocabulary> voc, cv::Mat &K,
+        Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor *extractor, ORBVocabulary *voc, cv::Mat &K,
               cv::Mat &distCoef, const float &bf, const float &thDepth);
 
         // Extract ORB on the image. 0 for left image and 1 for right image.
-        void ExtractORB(int flag, const cv::Mat &im);
+        void ExtractORB(const cv::Mat &im);
 
         // Compute Bag of Words representation.
         void ComputeBoW();
 
         // Set the camera pose.
-        void SetPose(cv::Mat Tcw);
+        void SetPose(const cv::Mat &Tcw);
 
         // Computes rotation, translation and camera center matrices from the camera pose.
         void UpdatePoseMatrices();
@@ -93,15 +74,27 @@ namespace ORB_SLAM2 {
             return mRwc.clone();
         }
 
+        inline cv::Mat getCameraTranslation() {
+            return mTcw.clone();
+        }
+
+        inline int getFrameId() {
+            return mnId;
+        }
+
+        inline cv::Mat getCameraRotation() {
+            return mRwc.clone();
+        }
+
         // Check if a MapPoint is in the frustum of the camera
         // and fill variables of the MapPoint to be used by the tracking
-        bool isInFrustum(std::shared_ptr<MapPoint> pMP, float viewingCosLimit);
+        bool isInFrustum(MapPoint *pMP, float viewingCosLimit);
 
         // Compute the cell of a keypoint (return false if outside the grid)
-        bool PosInGrid(const cv::KeyPoint &kp, int &posX, int &posY);
+        static bool PosInGrid(const cv::KeyPoint &kp, int &posX, int &posY);
 
-        std::vector<size_t> GetFeaturesInArea(const float &x, const float &y, const float &r, const int minLevel = -1,
-                                              const int maxLevel = -1) const;
+        std::vector<size_t> GetFeaturesInArea(const double &x, const double &y, const double &r, int minLevel = -1,
+                                              int maxLevel = -1) const;
 
         // Search a match for each keypoint in the left image to a keypoint in the right image.
         // If there is a match, depth is computed and the right coordinate associated to the left keypoint is stored.
@@ -114,14 +107,11 @@ namespace ORB_SLAM2 {
         cv::Mat UnprojectStereo(const int &i);
 
     public:
-        cv::Mat image;
-
         // Vocabulary used for relocalization.
-        std::shared_ptr<ORBVocabulary> mpORBvocabulary;
+        ORBVocabulary *mpORBvocabulary;
 
         // Feature extractor. The right is used only in the stereo case.
-        std::shared_ptr<ORBextractor> mpORBextractorLeft, mpORBextractorRight;
-        //cv::Ptr<cv::ORB> orb;
+        ORBextractor *mpORBextractorLeft, *mpORBextractorRight;
 
         // Frame timestamp.
         double mTimeStamp;
@@ -167,8 +157,12 @@ namespace ORB_SLAM2 {
         // ORB descriptor, each row associated to a keypoint.
         cv::Mat mDescriptors, mDescriptorsRight;
 
+        std::unordered_map<size_t,MapPoint *>  GetMvpMapPoints() {
+            return mvpMapPoints;
+        }
+
         // MapPoints associated to keypoints, NULL pointer if no association.
-        std::vector<std::shared_ptr<MapPoint>> mvpMapPoints;
+        std::unordered_map<size_t,MapPoint *> mvpMapPoints;
 
         // Flag to identify outlier associations.
         std::vector<bool> mvbOutlier;
@@ -180,7 +174,8 @@ namespace ORB_SLAM2 {
 
         // Camera pose.
         cv::Mat mTcw;
-
+        cv::Mat mRwc;
+        cv::Mat mOw;
         // Current and Next Frame id.
         static long unsigned int nNextId;
         long unsigned int mnId;
@@ -222,8 +217,8 @@ namespace ORB_SLAM2 {
         // Rotation, translation and camera center
         cv::Mat mRcw;
         cv::Mat mtcw;
-        cv::Mat mRwc;
-        cv::Mat mOw; //==mtwc
+
+        //==mtwc
     };
 
 }// namespace ORB_SLAM

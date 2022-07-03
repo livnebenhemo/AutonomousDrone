@@ -20,64 +20,49 @@
 
 #ifndef MAPDRAWER_H
 #define MAPDRAWER_H
-
 #include"Map.h"
 #include"MapPoint.h"
 #include"KeyFrame.h"
 #include<pangolin/pangolin.h>
-
-#include<mutex>
 #include "../utils/include/Point.h"
+#include<mutex>
 
-namespace ORB_SLAM2 {
+namespace ORB_SLAM2
+{
 
-    class MapDrawer {
-    public:
-        MapDrawer(std::shared_ptr<Map> pMap, const std::string &strSettingPath);
+class MapDrawer
+{
+public:
+    MapDrawer(Map* pMap, const std::string &strSettingPath);
 
-        std::shared_ptr<Map> mpMap;
+    Map* mpMap;
 
-        void DrawMapPoints();
+    void DrawMapPoints();
+    void DrawKeyFrames(bool bDrawKF, bool bDrawGraph);
+    void DrawCurrentCamera(pangolin::OpenGlMatrix &Twc);
+    void SetCurrentCameraPose(const cv::Mat &Tcw);
+    void GetCurrentOpenGLCameraMatrix(pangolin::OpenGlMatrix &M);
+    void SetDestination(const Point& point){destination = point;}
+    void SetCharger(const Point& point){charger = point;}
+    void SetPolygonEdges(const std::vector<Point> &points){polygonEdges = points;}
+    void ClearDestinationPoint(){destination = Point(1000,1000,1000);}
+    void ClearChargerPoint(){charger = Point(1000,1000,1000);}
+    void ClearPolygonEdgesPoint(){polygonEdges = std::vector<Point>{};}
+private:
+    Point destination;
+    Point charger;
+    std::vector<Point> polygonEdges;
+    float mKeyFrameSize;
+    float mKeyFrameLineWidth;
+    float mGraphLineWidth;
+    float mPointSize;
+    float mCameraSize;
+    float mCameraLineWidth;
 
-        void DrawKeyFrames(const bool bDrawKF, const bool bDrawGraph);
+    cv::Mat mCameraPose;
 
-        void DrawCurrentCamera(pangolin::OpenGlMatrix &Twc);
-
-        void SetCurrentCameraPose(const cv::Mat &Tcw);
-
-        void SetReferenceKeyFrame(KeyFrame *pKF);
-
-        void GetCurrentOpenGLCameraMatrix(pangolin::OpenGlMatrix &M);
-
-        void SetDestination(const Point &point) { destination = point; }
-
-        void SetCharger(const Point &point) { charger = point; }
-
-        void SetPolygonEdges(const std::vector<Point> &points) { polygonEdges = points; }
-
-        void ClearDestinationPoint() { destination = Point(1000, 1000, 1000); }
-
-        void ClearChargerPoint() { charger = Point(1000, 1000, 1000); }
-
-        void ClearPolygonEdgesPoint() { polygonEdges = std::vector<Point>{}; }
-
-    private:
-
-        Point destination;
-        Point charger;
-        std::vector<Point> polygonEdges;
-
-        float mKeyFrameSize;
-        float mKeyFrameLineWidth;
-        float mGraphLineWidth;
-        float mPointSize;
-        float mCameraSize;
-        float mCameraLineWidth;
-
-        cv::Mat mCameraPose;
-
-        std::mutex mMutexCamera;
-    };
+    std::mutex mMutexCamera;
+};
 
 } //namespace ORB_SLAM
 

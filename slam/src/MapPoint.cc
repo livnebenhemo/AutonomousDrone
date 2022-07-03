@@ -19,25 +19,24 @@
 */
 
 #include "MapPoint.h"
-#include "ORBmatcher.h"
-
-#include<mutex>
-#include <utility>
 
 namespace ORB_SLAM2 {
 
     long unsigned int MapPoint::nNextId = 0;
     std::mutex MapPoint::mGlobalMutex;
 
-    MapPoint::MapPoint(MapPoint &mapPoint) {
-        this->nObs = mapPoint.nObs;
-        mnId = mapPoint.mnId;
-        mObservations = mapPoint.mObservations;
-        mbBad = mapPoint.mbBad;
-        mfMaxDistance = mapPoint.mfMaxDistance;
+    MapPoint::MapPoint(const cv::Mat &Pos, KeyFrame *pRefKF, Map *pMap) :
+            mnFirstKFid(pRefKF->mnId), nObs(0), mnTrackReferenceForFrame(0),
+            mnLastFrameSeen(0), mnBALocalForKF(0), mnFuseCandidateForKF(0), mnLoopPointForKF(0), mnCorrectedByKF(0),
+            mnCorrectedReference(0), mnBAGlobalForKF(0), mpRefKF(pRefKF), mnVisible(1), mnFound(1), mbBad(false),
+            mpReplaced(static_cast<MapPoint *>(nullptr)), mfMinDistance(0), mfMaxDistance(0), mpMap(pMap) {
+        Pos.copyTo(mWorldPos);
+        mNormalVector = cv::Mat::zeros(3, 1, CV_32F);
 
+        // MapPoints can be created from Tracking and Local Mapping. This mutex avoid conflicts with id.
+        std::unique_lock<std::mutex> lock(mpMap->mMutexPointCreation);
+        mnId = nNextId++;
     }
-
     MapPoint::MapPoint() :
             nObs(0), mnTrackReferenceForFrame(0),
             mnLastFrameSeen(0), mnBALocalForKF(0), mnFuseCandidateForKF(0), mnLoopPointForKF(0), mnCorrectedByKF(0),
@@ -48,23 +47,35 @@ namespace ORB_SLAM2 {
         //mpMap = new Map();
         // mpRefKF = new KeyFrame();
     }
-
-    MapPoint::MapPoint(const cv::Mat &Pos, KeyFrame *pRefKF, std::shared_ptr<Map>pMap) :
-            mnFirstKFid(pRefKF->mnId), mnFirstFrame(pRefKF->mnFrameId), nObs(0), mnTrackReferenceForFrame(0),
-            mnLastFrameSeen(0), mnBALocalForKF(0), mnFuseCandidateForKF(0), mnLoopPointForKF(0), mnCorrectedByKF(0),
-            mnCorrectedReference(0), mnBAGlobalForKF(0), mpRefKF(pRefKF), mnVisible(1), mnFound(1), mbBad(false),
-            mpReplaced(static_cast<MapPoint *>(NULL)), mfMinDistance(0), mfMaxDistance(0), mpMap(std::move(pMap)) {
+    MapPoint::MapPoint(const cv::Mat &Pos, Map *pMap, Frame *pFrame, const int &idxF) :
+            mnFirstKFid(-1), nObs(0), mnTrackReferenceForFrame(0), mnLastFrameSeen(0),
+            mnBALocalForKF(0), mnFuseCandidateForKF(0), mnLoopPointForKF(0), mnCorrectedByKF(0),
+            mnCorrectedReference(0), mnBAGlobalForKF(0), mpRefKF(static_cast<KeyFrame *>(nullptr)), mnVisible(1),
+            mnFound(1), mbBad(false), mpReplaced(nullptr), mpMap(pMap) {
         Pos.copyTo(mWorldPos);
-        mNormalVector = cv::Mat::zeros(3, 1, CV_32F);
+        cv::Mat Ow = pFrame->GetCameraCenter();
+        mNormalVector = mWorldPos - Ow;
+        mNormalVector = mNormalVector / cv::norm(mNormalVector);
 
-        // MapPoints can be created from Tracking and Local Mapping. This recursive_mutex avoid conflicts with id.
+        cv::Mat PC = Pos - Ow;
+        const double dist = cv::norm(PC);
+        const int level = pFrame->mvKeysUn[idxF].octave;
+        const double levelScaleFactor = pFrame->mvScaleFactors[level];
+        const int nLevels = pFrame->mnScaleLevels;
+
+        mfMaxDistance = dist * levelScaleFactor;
+        mfMinDistance = mfMaxDistance / pFrame->mvScaleFactors[nLevels - 1];
+
+        pFrame->mDescriptors.row(idxF).copyTo(mDescriptor);
+
+        // MapPoints can be created from Tracking and Local Mapping. This mutex avoid conflicts with id.
         std::unique_lock<std::mutex> lock(mpMap->mMutexPointCreation);
         mnId = nNextId++;
     }
 
     template<class Archive>
     void MapPoint::serialize(Archive &ar, const unsigned int version) {
-        ar & mnId & nNextId & mnFirstKFid & mnFirstFrame & nObs;
+        ar & mnId & nNextId & mnFirstKFid  & nObs;
         // Tracking related vars
         ar & mTrackProjX;
         ar & mTrackProjY;
@@ -95,8 +106,8 @@ namespace ORB_SLAM2 {
 
     template void MapPoint::serialize(boost::archive::binary_oarchive &, const unsigned int);
 
-    void MapPoint::SetMap(std::shared_ptr<Map>map) {
-        mpMap = std::move(map);
+    void MapPoint::SetMap(const std::shared_ptr<Map>&map) {
+        mpMap = map.get();//std::move(map);
     }
 
     void MapPoint::SetObservations(std::vector<KeyFrame *> spKeyFrames) {
@@ -117,9 +128,9 @@ namespace ORB_SLAM2 {
             {
                 for (std::vector<KeyFrame *>::iterator mit = spKeyFrames.begin(); mit != spKeyFrames.end(); mit++) {
                     KeyFrame *pKf = *mit;
-                    // std::cout << "[" << pKf->mnId << "]";               
+                    // std::cout << "[" << pKf->mnId << "]";
                     if (id == pKf->mnId) {
-                        // std::cout << "[" << id <<"]";                    
+                        // std::cout << "[" << id <<"]";
                         mObservations[pKf] = size;
                         //id = -1;
                         break;
@@ -141,38 +152,11 @@ namespace ORB_SLAM2 {
 
         if (!found_reference) {
             mpRefKF = static_cast<KeyFrame *>(NULL);
-            // std::cout << "refernce KF - " << kfRef_id << "is not found for mappoint " << mnId <<  std::endl;  
+            // std::cout << "refernce KF - " << kfRef_id << "is not found for mappoint " << mnId <<  std::endl;
             // Dummy KF
-            //mpRefKF = new KeyFrame();  
+            //mpRefKF = new KeyFrame();
         }
     }
-
-    MapPoint::MapPoint(const cv::Mat &Pos, std::shared_ptr<Map>pMap, Frame *pFrame, const int &idxF) :
-            mnFirstKFid(-1), mnFirstFrame(pFrame->mnId), nObs(0), mnTrackReferenceForFrame(0), mnLastFrameSeen(0),
-            mnBALocalForKF(0), mnFuseCandidateForKF(0), mnLoopPointForKF(0), mnCorrectedByKF(0),
-            mnCorrectedReference(0), mnBAGlobalForKF(0), mpRefKF(static_cast<KeyFrame *>(NULL)), mnVisible(1),
-            mnFound(1), mbBad(false), mpReplaced(NULL), mpMap(std::move(pMap)) {
-        Pos.copyTo(mWorldPos);
-        cv::Mat Ow = pFrame->GetCameraCenter();
-        mNormalVector = mWorldPos - Ow;
-        mNormalVector = mNormalVector / cv::norm(mNormalVector);
-
-        cv::Mat PC = Pos - Ow;
-        const float dist = cv::norm(PC);
-        const int level = pFrame->mvKeysUn[idxF].octave;
-        const float levelScaleFactor = pFrame->mvScaleFactors[level];
-        const int nLevels = pFrame->mnScaleLevels;
-
-        mfMaxDistance = dist * levelScaleFactor;
-        mfMinDistance = mfMaxDistance / pFrame->mvScaleFactors[nLevels - 1];
-
-        pFrame->mDescriptors.row(idxF).copyTo(mDescriptor);
-
-        // MapPoints can be created from Tracking and Local Mapping. This recursive_mutex avoid conflicts with id.
-        std::unique_lock<std::mutex> lock(mpMap->mMutexPointCreation);
-        mnId = nNextId++;
-    }
-
     void MapPoint::SetWorldPos(const cv::Mat &Pos) {
         std::unique_lock<std::mutex> lock2(mGlobalMutex);
         std::unique_lock<std::mutex> lock(mMutexPos);
@@ -190,12 +174,12 @@ namespace ORB_SLAM2 {
     }
 
     KeyFrame *MapPoint::GetReferenceKeyFrame() {
-        std::unique_lock<std::mutex> lock(mMutexFeatures);
+        // std::unique_lock<std::mutex> lock(mMutexFeatures);
         return mpRefKF;
     }
 
     void MapPoint::AddObservation(KeyFrame *pKF, size_t idx) {
-        std::unique_lock<std::mutex> lock(mMutexFeatures);
+        // std::unique_lock<std::mutex> lock(mMutexFeatures);
         if (mObservations.count(pKF))
             return;
         mObservations[pKF] = idx;
@@ -209,70 +193,62 @@ namespace ORB_SLAM2 {
     void MapPoint::EraseObservation(KeyFrame *pKF) {
         bool bBad = false;
         {
-            std::unique_lock<std::mutex> lock(mMutexFeatures);
-            if (mObservations.count(pKF)) {
-                int idx = mObservations[pKF];
-                if (pKF->mvuRight[idx] >= 0)
-                    nObs -= 2;
-                else
-                    nObs--;
-
-                mObservations.erase(pKF);
-
-                if (mpRefKF == pKF)
+            //std::unique_lock<std::mutex> lock(mMutexFeatures);
+            if (pKF && mObservations.erase(pKF)) {
+                nObs--;
+                if (mpRefKF == pKF && !mObservations.empty() && mObservations.begin()->first)
                     mpRefKF = mObservations.begin()->first;
-
                 // If only 2 observations or less, discard point
-                if (nObs <= 2)
-                    bBad = true;
+                bBad = nObs <= 2;
             }
         }
-
         if (bBad)
             SetBadFlag();
     }
 
-    std::map<KeyFrame *, size_t> MapPoint::GetObservations() {
-        std::unique_lock<std::mutex> lock(mMutexFeatures);
+    std::unordered_map<KeyFrame *, size_t> MapPoint::GetObservations() {
+        // std::unique_lock<std::mutex> lock(mMutexFeatures);
         return mObservations;
     }
 
     int MapPoint::Observations() {
-        std::unique_lock<std::mutex> lock(mMutexFeatures);
+        // std::unique_lock<std::mutex> lock(mMutexFeatures);
         return nObs;
     }
 
     void MapPoint::SetBadFlag() {
-        std::map<KeyFrame *, size_t> obs;
-        {
+        //std::unordered_map<KeyFrame *, size_t> obs;
+        /*{
             std::unique_lock<std::mutex> lock1(mMutexFeatures);
-            std::unique_lock<std::mutex> lock2(mMutexPos);
+            //std::unique_lock<std::mutex> lock2(mMutexPos);
             mbBad = true;
             obs = mObservations;
             mObservations.clear();
+        }*/
+        if (!mObservations.empty()) {
+            for (auto pKf: mObservations) {
+                pKf.first->EraseMapPointMatch(pKf.second);
+            }
+            mObservations.clear();
         }
-        for (auto & ob : obs) {
-            KeyFrame *pKF = ob.first;
-            pKF->EraseMapPointMatch(ob.second);
-        }
-        //mpMap->EraseMapPoint(this);
+        mpMap->EraseMapPoint(this);
     }
 
-    std::shared_ptr<MapPoint> MapPoint::GetReplaced() {
-        std::unique_lock<std::mutex> lock1(mMutexFeatures);
-        std::unique_lock<std::mutex> lock2(mMutexPos);
+    MapPoint *MapPoint::GetReplaced() {
+        //std::unique_lock<std::mutex> lock1(mMutexFeatures);
+        //std::unique_lock<std::mutex> lock2(mMutexPos);
         return mpReplaced;
     }
 
-    void MapPoint::Replace(const std::shared_ptr<MapPoint> &pMP) {
-        if (pMP->mnId == this->mnId)
+    void MapPoint::Replace(MapPoint *pMP) {
+        if (!pMP || pMP->mnId == this->mnId)
             return;
 
         int nvisible, nfound;
-        std::map<KeyFrame *, size_t> obs;
+        std::unordered_map<KeyFrame *, size_t> obs;
         {
-            std::unique_lock<std::mutex> lock1(mMutexFeatures);
-            std::unique_lock<std::mutex> lock2(mMutexPos);
+            // std::unique_lock<std::mutex> lock1(mMutexFeatures);
+            // std::unique_lock<std::mutex> lock2(mMutexPos);
             obs = mObservations;
             mObservations.clear();
             mbBad = true;
@@ -280,54 +256,50 @@ namespace ORB_SLAM2 {
             nfound = mnFound;
             mpReplaced = pMP;
         }
-
-        for (auto mit = obs.begin(), mend = obs.end(); mit != mend; mit++) {
-            // Replace measurement in keyframe
-            KeyFrame *pKF = mit->first;
-
-            if (!pMP->IsInKeyFrame(pKF)) {
-                pKF->ReplaceMapPointMatch(mit->second, pMP);
-                pMP->AddObservation(pKF, mit->second);
+        for (auto pKF: obs) {
+            if (!pMP->IsInKeyFrame(pKF.first)) {
+                pKF.first->ReplaceMapPointMatch(pKF.second, pMP);
+                pMP->AddObservation(pKF.first, pKF.second);
             } else {
-                pKF->EraseMapPointMatch(mit->second);
+                pKF.first->EraseMapPointMatch(pKF.second);
             }
         }
         pMP->IncreaseFound(nfound);
         pMP->IncreaseVisible(nvisible);
         pMP->ComputeDistinctiveDescriptors();
 
-        //mpMap->EraseMapPoint(this);
+        mpMap->EraseMapPoint(this);
     }
 
     bool MapPoint::isBad() {
-        std::unique_lock<std::mutex> lock(mMutexFeatures);
-        std::unique_lock<std::mutex> lock2(mMutexPos);
+        // std::unique_lock<std::mutex> lock(mMutexFeatures);
+        //std::unique_lock<std::mutex> lock2(mMutexPos);
         return mbBad;
     }
 
     void MapPoint::IncreaseVisible(int n) {
-        std::unique_lock<std::mutex> lock(mMutexFeatures);
+        // std::unique_lock<std::mutex> lock(mMutexFeatures);
         mnVisible += n;
     }
 
     void MapPoint::IncreaseFound(int n) {
-        std::unique_lock<std::mutex> lock(mMutexFeatures);
+        // std::unique_lock<std::mutex> lock(mMutexFeatures);
         mnFound += n;
     }
 
     float MapPoint::GetFoundRatio() {
-        std::unique_lock<std::mutex> lock(mMutexFeatures);
-        return static_cast<float>(mnFound) / mnVisible;
+        // std::unique_lock<std::mutex> lock(mMutexFeatures);
+        return static_cast<float>(mnFound) / static_cast<float>(mnVisible);
     }
 
     void MapPoint::ComputeDistinctiveDescriptors() {
         // Retrieve all observed descriptors
         std::vector<cv::Mat> vDescriptors;
 
-        std::map<KeyFrame *, size_t> observations;
+        std::unordered_map<KeyFrame *, size_t> observations;
 
         {
-            std::unique_lock<std::mutex> lock1(mMutexFeatures);
+            //std::unique_lock<std::mutex> lock1(mMutexFeatures);
             if (mbBad)
                 return;
             observations = mObservations;
@@ -337,28 +309,23 @@ namespace ORB_SLAM2 {
             return;
 
         vDescriptors.reserve(observations.size());
-
-        for (std::map<KeyFrame *, size_t>::iterator mit = observations.begin(), mend = observations.end();
-             mit != mend; mit++) {
-            KeyFrame *pKF = mit->first;
-
-            if (!pKF->isBad())
-                vDescriptors.push_back(pKF->mDescriptors.row(mit->second));
+        for (auto observation: observations) {
+            if (!observation.first->isBad()) {
+                vDescriptors.push_back(observation.first->mDescriptors.row(observation.second));
+            }
         }
-
         if (vDescriptors.empty())
             return;
 
         // Compute distances between them
         const size_t N = vDescriptors.size();
 
-        float Distances[N][N];
+        double Distances[N][N];
         for (size_t i = 0; i < N; i++) {
             Distances[i][i] = 0;
             for (size_t j = i + 1; j < N; j++) {
                 int distij = ORBmatcher::DescriptorDistance(vDescriptors[i], vDescriptors[j]);
                 Distances[i][j] = distij;
-                Distances[j][i] = distij;
             }
         }
 
@@ -377,18 +344,18 @@ namespace ORB_SLAM2 {
         }
 
         {
-            std::unique_lock<std::mutex> lock(mMutexFeatures);
+            // std::unique_lock<std::mutex> lock(mMutexFeatures);
             mDescriptor = vDescriptors[BestIdx].clone();
         }
     }
 
     cv::Mat MapPoint::GetDescriptor() {
-        std::unique_lock<std::mutex> lock(mMutexFeatures);
+        // std::unique_lock<std::mutex> lock(mMutexFeatures);
         return mDescriptor.clone();
     }
 
     int MapPoint::GetIndexInKeyFrame(KeyFrame *pKF) {
-        std::unique_lock<std::mutex> lock(mMutexFeatures);
+        // std::unique_lock<std::mutex> lock(mMutexFeatures);
         if (mObservations.count(pKF))
             return mObservations[pKF];
         else
@@ -396,17 +363,19 @@ namespace ORB_SLAM2 {
     }
 
     bool MapPoint::IsInKeyFrame(KeyFrame *pKF) {
-        std::unique_lock<std::mutex> lock(mMutexFeatures);
+        // std::unique_lock<std::mutex> lock(mMutexFeatures);
         return (mObservations.count(pKF));
     }
 
     void MapPoint::UpdateNormalAndDepth() {
-        std::map<KeyFrame *, size_t> observations;
+        std::unordered_map<KeyFrame *, size_t> observations;
         KeyFrame *pRefKF;
         cv::Mat Pos;
+        if (mObservations.empty() || !mpRefKF)
+            return;
         {
-            std::unique_lock<std::mutex> lock1(mMutexFeatures);
-            std::unique_lock<std::mutex> lock2(mMutexPos);
+            //std::unique_lock<std::mutex> lock1(mMutexFeatures);
+            //std::unique_lock<std::mutex> lock2(mMutexPos);
             if (mbBad)
                 return;
             observations = mObservations;
@@ -414,34 +383,22 @@ namespace ORB_SLAM2 {
             Pos = mWorldPos.clone();
         }
 
-        if (observations.empty())
-            return;
-
         cv::Mat normal = cv::Mat::zeros(3, 1, CV_32F);
-        int n = 0;
-        for (std::map<KeyFrame *, size_t>::iterator mit = observations.begin(), mend = observations.end();
-             mit != mend; mit++) {
-            KeyFrame *pKF = mit->first;
-            cv::Mat Owi = pKF->GetCameraCenter();
-            cv::Mat normali = mWorldPos - Owi;
-            normal = normal + normali / cv::norm(normali);
-            n++;
-        }
-
-        if (!pRefKF) {
-
-            return;
+        auto n = observations.size();
+        for (auto observation: observations) {
+            auto pKF = observation.first;
+            cv::Mat normali = Pos - pKF->GetCameraCenter();
+            normal += normali / cv::norm(normali);
         }
 
         cv::Mat PC = Pos - pRefKF->GetCameraCenter();
-        const float dist = cv::norm(PC);
+        const double dist = cv::norm(PC);
         const int level = pRefKF->mvKeysUn[observations[pRefKF]].octave;
-        const float levelScaleFactor = pRefKF->mvScaleFactors[level];
+        const double levelScaleFactor = pRefKF->mvScaleFactors[level];
         const int nLevels = pRefKF->mnScaleLevels;
 
-
         {
-            std::unique_lock<std::mutex> lock3(mMutexPos);
+            // std::unique_lock<std::mutex> lock3(mMutexPos);
             mfMaxDistance = dist * levelScaleFactor;
             mfMinDistance = mfMaxDistance / pRefKF->mvScaleFactors[nLevels - 1];
             mNormalVector = normal / n;
@@ -454,18 +411,41 @@ namespace ORB_SLAM2 {
     }
 
     float MapPoint::GetMaxDistanceInvariance() {
-        std::unique_lock<std::mutex> lock(mMutexPos);
+        //std::unique_lock<std::mutex> lock(mMutexPos);
         return 1.2f * mfMaxDistance;
     }
 
-    int MapPoint::PredictScale(const float &currentDist, const float &logScaleFactor) {
-        float ratio;
+    int MapPoint::PredictScale(const double &currentDist, KeyFrame *pKF) {
+        double ratio;
         {
-            std::unique_lock<std::mutex> lock3(mMutexPos);
+            //std::unique_lock<std::mutex> lock(mMutexPos);
             ratio = mfMaxDistance / currentDist;
         }
 
-        return ceil(log(ratio) / logScaleFactor);
+        int nScale = ceil(log(ratio) / pKF->mfLogScaleFactor);
+        if (nScale < 0)
+            nScale = 0;
+        else if (nScale >= pKF->mnScaleLevels)
+            nScale = pKF->mnScaleLevels - 1;
+
+        return nScale;
     }
+
+    int MapPoint::PredictScale(const double &currentDist, Frame *pF) {
+        double ratio;
+        {
+            //std::unique_lock<std::mutex> lock(mMutexPos);
+            ratio = mfMaxDistance / currentDist;
+        }
+
+        int nScale = ceil(log(ratio) / pF->mfLogScaleFactor);
+        if (nScale < 0)
+            nScale = 0;
+        else if (nScale >= pF->mnScaleLevels)
+            nScale = pF->mnScaleLevels - 1;
+
+        return nScale;
+    }
+
 
 } //namespace ORB_SLAM

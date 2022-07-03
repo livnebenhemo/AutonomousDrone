@@ -19,16 +19,12 @@
 */
 
 #include "MapDrawer.h"
-#include "MapPoint.h"
-#include "KeyFrame.h"
-#include <pangolin/pangolin.h>
-#include <mutex>
-#include <utility>
+
 
 namespace ORB_SLAM2 {
 
 
-    MapDrawer::MapDrawer(std::shared_ptr<Map> pMap, const std::string &strSettingPath) : mpMap(std::move(pMap)) {
+    MapDrawer::MapDrawer(Map *pMap, const std::string &strSettingPath) : mpMap(pMap) {
         cv::FileStorage fSettings(strSettingPath, cv::FileStorage::READ);
         destination = Point(1000, 1000, 1000);
         charger = Point(1000, 1000, 1000);
@@ -38,13 +34,13 @@ namespace ORB_SLAM2 {
         mPointSize = fSettings["Viewer.PointSize"];
         mCameraSize = fSettings["Viewer.CameraSize"];
         mCameraLineWidth = fSettings["Viewer.CameraLineWidth"];
-
     }
 
     void MapDrawer::DrawMapPoints() {
-        auto vpMPs = mpMap->GetAllMapPoints();
-        auto vpRefMPs = mpMap->GetReferenceMapPoints();
-        std::set<std::shared_ptr<MapPoint>> spRefMPs(vpRefMPs.begin(), vpRefMPs.end());
+        const std::vector<MapPoint *> &vpMPs = mpMap->GetAllMapPoints();
+        const std::vector<MapPoint *> &vpRefMPs = mpMap->GetReferenceMapPoints();
+
+        std::set<MapPoint *> spRefMPs(vpRefMPs.begin(), vpRefMPs.end());
 
         if (vpMPs.empty())
             return;
@@ -53,25 +49,10 @@ namespace ORB_SLAM2 {
         glBegin(GL_POINTS);
         glColor3f(0.0, 0.0, 0.0);
 
-        // cv::Mat Rwc;
-        // cv::Mat twc;
-        // bool good = false;
-        // if(!mCameraPose.empty())
-        // {
-        //     unique_lock<mutex> lock(mMutexCamera);
-        //     Rwc = mCameraPose.rowRange(0,3).colRange(0,3).t();
-        //     twc = -Rwc*mCameraPose.rowRange(0,3).col(3);
-        //     good = true;
-        // }
-
-        for (size_t i = 0, iend = vpMPs.size(); i < iend; i++) {
-            if (!vpMPs[i] || vpMPs[i]->isBad() || spRefMPs.count(vpMPs[i]))
+        for (auto vpMP : vpMPs) {
+            if (vpMP->isBad() || spRefMPs.count(vpMP))
                 continue;
-            cv::Mat pos = vpMPs[i]->GetWorldPos();
-            // cv::Mat Rwc = mCameraPose.rowRange(0, 3).colRange(0, 3).clone().t();
-            // cv::Mat twc = -mCameraPose.rowRange(0, 3).col(3);
-            // if(good)
-            //     pos = Rwc*pos - twc;
+            cv::Mat pos = vpMP->GetWorldPos();
             glVertex3f(pos.at<float>(0), pos.at<float>(1), pos.at<float>(2));
         }
         glEnd();
@@ -80,18 +61,13 @@ namespace ORB_SLAM2 {
         glBegin(GL_POINTS);
         glColor3f(1.0, 0.0, 0.0);
 
-        for (auto sit = spRefMPs.begin(), send = spRefMPs.end(); sit != send; sit++) {
-            if ((*sit)->isBad())
+        for (auto spRefMP : spRefMPs) {
+            if (spRefMP->isBad())
                 continue;
-            cv::Mat pos = (*sit)->GetWorldPos();
-            // cv::Mat Rwc = mCameraPose.rowRange(0, 3).colRange(0, 3).clone();
-            // cv::Mat twc = mCameraPose.rowRange(0, 3).col(3);
-            // if(good)
-            //     pos = Rwc*pos - twc;
+            cv::Mat pos = spRefMP->GetWorldPos();
             glVertex3f(pos.at<float>(0), pos.at<float>(1), pos.at<float>(2));
 
         }
-
         glEnd();
         if (charger.x != 1000) {
             glPointSize(mPointSize * 20);
@@ -105,7 +81,7 @@ namespace ORB_SLAM2 {
                 glPointSize(mPointSize * 10);
                 glBegin(GL_POINTS);
                 glColor3f(0.0, 1.0, 0.0);
-                for (auto &polygonEdge: polygonEdges) {
+                for (auto polygonEdge : polygonEdges) {
                     if (!(polygonEdge == destination)) {
                         glVertex3d(polygonEdge.x, polygonEdge.z, polygonEdge.y);
                     }
@@ -122,14 +98,13 @@ namespace ORB_SLAM2 {
 
     void MapDrawer::DrawKeyFrames(const bool bDrawKF, const bool bDrawGraph) {
         const float &w = mKeyFrameSize;
-        const float h = w * 0.75;
-        const float z = w * 0.6;
+        const double h = w * 0.75;
+        const double z = w * 0.6;
 
-        auto vpKFs = mpMap->GetAllKeyFrames();
+        const std::vector<KeyFrame *> vpKFs = mpMap->GetAllKeyFrames();
 
         if (bDrawKF) {
-            for (size_t i = 0; i < vpKFs.size(); i++) {
-                KeyFrame *pKF = vpKFs[i];
+            for (auto pKF : vpKFs) {
                 cv::Mat Twc = pKF->GetPoseInverse().t();
 
                 glPushMatrix();
@@ -170,23 +145,22 @@ namespace ORB_SLAM2 {
             glColor4f(0.0f, 1.0f, 0.0f, 0.6f);
             glBegin(GL_LINES);
 
-            for (size_t i = 0; i < vpKFs.size(); i++) {
+            for (auto vpKF : vpKFs) {
                 // Covisibility Graph
-                auto vCovKFs = vpKFs[i]->GetCovisiblesByWeight(100);
-                cv::Mat Ow = vpKFs[i]->GetCameraCenter();
+                const std::vector<KeyFrame *> vCovKFs = vpKF->GetCovisiblesByWeight(100);
+                cv::Mat Ow = vpKF->GetCameraCenter();
                 if (!vCovKFs.empty()) {
-                    for (auto vit = vCovKFs.begin(), vend = vCovKFs.end();
-                         vit != vend; vit++) {
-                        if ((*vit)->mnId < vpKFs[i]->mnId)
+                    for (auto vCovKF : vCovKFs) {
+                        if (vCovKF->mnId < vpKF->mnId)
                             continue;
-                        cv::Mat Ow2 = (*vit)->GetCameraCenter();
+                        cv::Mat Ow2 = vCovKF->GetCameraCenter();
                         glVertex3f(Ow.at<float>(0), Ow.at<float>(1), Ow.at<float>(2));
                         glVertex3f(Ow2.at<float>(0), Ow2.at<float>(1), Ow2.at<float>(2));
                     }
                 }
 
                 // Spanning tree
-                KeyFrame *pParent = vpKFs[i]->GetParent();
+                KeyFrame *pParent = vpKF->GetParent();
                 if (pParent) {
                     cv::Mat Owp = pParent->GetCameraCenter();
                     glVertex3f(Ow.at<float>(0), Ow.at<float>(1), Ow.at<float>(2));
@@ -194,11 +168,11 @@ namespace ORB_SLAM2 {
                 }
 
                 // Loops
-                auto sLoopKFs = vpKFs[i]->GetLoopEdges();
-                for (auto sit = sLoopKFs.begin(), send = sLoopKFs.end(); sit != send; sit++) {
-                    if ((*sit)->mnId < vpKFs[i]->mnId)
+                std::set<KeyFrame *> sLoopKFs = vpKF->GetLoopEdges();
+                for (auto sLoopKF : sLoopKFs) {
+                    if (sLoopKF->mnId < vpKF->mnId)
                         continue;
-                    cv::Mat Owl = (*sit)->GetCameraCenter();
+                    cv::Mat Owl = sLoopKF->GetCameraCenter();
                     glVertex3f(Ow.at<float>(0), Ow.at<float>(1), Ow.at<float>(2));
                     glVertex3f(Owl.at<float>(0), Owl.at<float>(1), Owl.at<float>(2));
                 }
@@ -212,30 +186,6 @@ namespace ORB_SLAM2 {
         const float &w = mCameraSize;
         const float h = w * 0.75;
         const float z = w * 0.6;
-
-        // auto Twc_backup = Twc;
-
-        // auto& M = Twc;
-
-        // M.m[0] = 1;
-        // M.m[1] = 0;
-        // M.m[2] = 0;
-        // M.m[3]  = 0.0;
-
-        // M.m[4] = 0;
-        // M.m[5] = 1;
-        // M.m[6] = 0;
-        // M.m[7]  = 0.0;
-
-        // M.m[8] = 0;
-        // M.m[9] = 0;
-        // M.m[10] = 1;
-        // M.m[11]  = 0.0;
-
-        // M.m[12] = 0;
-        // M.m[13] = 0;
-        // M.m[14] = 0;
-        // M.m[15]  = 1.0;
 
         glPushMatrix();
 
@@ -271,13 +221,11 @@ namespace ORB_SLAM2 {
         glEnd();
 
         glPopMatrix();
-
-        // Twc = Twc_backup;
     }
 
 
     void MapDrawer::SetCurrentCameraPose(const cv::Mat &Tcw) {
-        // std::unique_lock<std::mutex> lock(mMutexCamera);
+        //std::unique_lock<std::mutex> lock(mMutexCamera);
         mCameraPose = Tcw.clone();
     }
 
@@ -286,7 +234,7 @@ namespace ORB_SLAM2 {
             cv::Mat Rwc(3, 3, CV_32F);
             cv::Mat twc(3, 1, CV_32F);
             {
-                // std::unique_lock<std::mutex> lock(mMutexCamera);
+                std::unique_lock<std::mutex> lock(mMutexCamera);
                 Rwc = mCameraPose.rowRange(0, 3).colRange(0, 3).t();
                 twc = -Rwc * mCameraPose.rowRange(0, 3).col(3);
             }

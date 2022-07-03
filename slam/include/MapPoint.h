@@ -25,19 +25,21 @@
 #include"Frame.h"
 #include"Map.h"
 
+#include<opencv2/core/core.hpp>
+#include<mutex>
+
+#include "ORBmatcher.h"
+
 #include <boost/serialization/serialization.hpp>
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>
 #include <boost/serialization/list.hpp>
 #include <boost/serialization/vector.hpp>
+#include <boost/serialization/unordered_map.hpp>
 #include <boost/serialization/set.hpp>
 #include <boost/serialization/split_member.hpp>
 #include <boost/serialization/split_free.hpp>
 #include <boost/serialization/binary_object.hpp>
-
-
-#include<opencv2/core/core.hpp>
-#include<mutex>
 
 namespace ORB_SLAM2 {
 
@@ -48,13 +50,13 @@ namespace ORB_SLAM2 {
     class Frame;
 
 
-    class MapPoint : public std::enable_shared_from_this<MapPoint> {
+    class MapPoint {
     public:
-        MapPoint();            /* Default constructor for serialization */
-        MapPoint(MapPoint &mapPoint);            /* Default constructor for serialization */
-        MapPoint(const cv::Mat &Pos, KeyFrame *pRefKF, std::shared_ptr<Map>pMap);
+        MapPoint();
 
-        MapPoint(const cv::Mat &Pos, std::shared_ptr<Map>pMap, Frame *pFrame, const int &idxF);
+        MapPoint(const cv::Mat &Pos, KeyFrame *pRefKF, Map *pMap);
+
+        MapPoint(const cv::Mat &Pos, Map *pMap, Frame *pFrame, const int &idxF);
 
         void SetWorldPos(const cv::Mat &Pos);
 
@@ -64,7 +66,7 @@ namespace ORB_SLAM2 {
 
         KeyFrame *GetReferenceKeyFrame();
 
-        std::map<KeyFrame *, size_t> GetObservations();
+        std::unordered_map<KeyFrame *, size_t> GetObservations();
 
         int Observations();
 
@@ -80,19 +82,15 @@ namespace ORB_SLAM2 {
 
         bool isBad();
 
-        void Replace(const std::shared_ptr<MapPoint> &pMP);
+        void Replace(MapPoint *pMP);
 
-        std::shared_ptr<MapPoint> GetReplaced();
+        MapPoint *GetReplaced();
 
         void IncreaseVisible(int n = 1);
 
         void IncreaseFound(int n = 1);
 
         float GetFoundRatio();
-
-        inline int GetFound() {
-            return mnFound;
-        }
 
         void ComputeDistinctiveDescriptors();
 
@@ -104,18 +102,18 @@ namespace ORB_SLAM2 {
 
         float GetMaxDistanceInvariance();
 
-        int PredictScale(const float &currentDist, const float &logScaleFactor);
+        int PredictScale(const double &currentDist, KeyFrame *pKF);
 
-        void SetMap(std::shared_ptr<Map>map);
+        int PredictScale(const double &currentDist, Frame *pF);
 
-        void SetObservations(std::vector<KeyFrame *>);
+        void SetMap(const std::shared_ptr<Map> &map);
 
+        void SetObservations(std::vector<KeyFrame *> spKeyFrames);
 
     public:
         long unsigned int mnId;
         static long unsigned int nNextId;
         long int mnFirstKFid;
-        long int mnFirstFrame;
         int nObs;
 
         // Variables used by the tracking
@@ -141,13 +139,14 @@ namespace ORB_SLAM2 {
 
 
         static std::mutex mGlobalMutex;
+
     protected:
 
         // Position in absolute coordinates
         cv::Mat mWorldPos;
 
         // Keyframes observing the point and associated index in keyframe
-        std::map<KeyFrame *, size_t> mObservations;
+        std::unordered_map<KeyFrame *, size_t> mObservations;
         std::map<long unsigned int, size_t> mObservations_nId;
 
         // Mean viewing direction
@@ -158,48 +157,31 @@ namespace ORB_SLAM2 {
 
         // Reference KeyFrame
         KeyFrame *mpRefKF;
+
         // Tracking counters
         int mnVisible;
         int mnFound;
 
         // Bad flag (we do not currently erase MapPoint from memory)
         bool mbBad;
-        std::shared_ptr<MapPoint> mpReplaced;
+        MapPoint *mpReplaced;
 
         // Scale invariance distances
-        float mfMinDistance;
-        float mfMaxDistance;
+        double mfMinDistance;
+        double mfMaxDistance;
 
-        std::shared_ptr<Map>mpMap;
+        Map *mpMap;
 
-        std::pair<long unsigned int, bool> mref_KfId_pair;
-
-        //id_map mref_KfId_map;
         std::mutex mMutexPos;
         std::mutex mMutexFeatures;
-
+        std::pair<long unsigned int, bool> mref_KfId_pair;
 
         friend class boost::serialization::access;
 
-        /*template<class Archive>
-        void serialize(Archive &ar, const unsigned int version) {
-            boost::serialization::split_member(ar, *this, version);
-        }
-
-
-        template<class Archive>
-        void save(Archive &ar, const unsigned int version) const;
-
-
-        template<class Archive>
-        void load(Archive &ar, const unsigned int version);*/
         template<class Archive>
         void serialize(Archive &ar, const unsigned int version);
     };
 
 } //namespace ORB_SLAM
-
-
-
 
 #endif // MAPPOINT_H

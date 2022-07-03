@@ -132,8 +132,8 @@ void AutonomousDrone::runOrbSlam() {
                         int frameId = orbSlamTracker->mCurrentFrame.getFrameId();
                         std::vector<Point> framePoints;
                         for (auto &p: orbSlamTracker->mCurrentFrame.GetMvpMapPoints()) {
-                            if (p && !p->isBad()) {
-                                Eigen::Matrix<double, 3, 1> v = ORB_SLAM2::Converter::toVector3d(p->GetWorldPos());
+                            if (p.second && !p.second->isBad()) {
+                                Eigen::Matrix<double, 3, 1> v = ORB_SLAM2::Converter::toVector3d(p.second->GetWorldPos());
                                 framePoints.emplace_back(
                                         Point(v.x(), v.z(), v.y(), currentLocation.rotationMatrix, frameId));
                             }
@@ -175,8 +175,8 @@ bool AutonomousDrone::updateCurrentFrame(ORB_SLAM2::Frame frame) {
         int frameId = frame.getFrameId();
         std::vector<Point> framePoints;
         for (auto &p: frame.GetMvpMapPoints()) {
-            if (p && !p->isBad()) {
-                Eigen::Matrix<double, 3, 1> v = ORB_SLAM2::Converter::toVector3d(p->GetWorldPos());
+            if (p.second && !p.second->isBad()) {
+                Eigen::Matrix<double, 3, 1> v = ORB_SLAM2::Converter::toVector3d(p.second->GetWorldPos());
                 framePoints.emplace_back(
                         Point(v.x(), v.z(), v.y(), currentLocation.rotationMatrix, frameId));
             }

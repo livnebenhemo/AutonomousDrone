@@ -90,7 +90,7 @@ namespace ORB_SLAM2 {
         mvuRight = std::vector<float>(N, -1);
         mvDepth = std::vector<float>(N, -1);
         for (int i = 0; i < N; ++i) {
-            mvpMapPoints[i] = static_cast<MapPoint *>(nullptr);
+            mvpMapPoints[i] = static_cast<std::shared_ptr<MapPoint>>(nullptr);
         }
         mvbOutlier = std::vector<bool>(N, false);
 
@@ -147,7 +147,7 @@ namespace ORB_SLAM2 {
         mOw = -mRcw.t() * mtcw;
     }
 
-    bool Frame::isInFrustum(MapPoint *pMP, float viewingCosLimit) {
+    bool Frame::isInFrustum(const std::shared_ptr<MapPoint>&pMP, float viewingCosLimit) {
         pMP->mbTrackInView = false;
 
         // 3D in absolute coordinates

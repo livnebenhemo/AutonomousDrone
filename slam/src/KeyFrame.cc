@@ -21,6 +21,7 @@
 #include "KeyFrame.h"
 #include "Converter.h"
 #include<mutex>
+#include <utility>
 
 namespace ORB_SLAM2 {
 
@@ -155,8 +156,7 @@ namespace ORB_SLAM2 {
 
     template void KeyFrame::serialize(boost::archive::binary_oarchive &, const unsigned int);
 
-    void KeyFrame::SetMapPoints(/*std::vector<std::shared_ptr<MapPoint>> &spMapPoints*/
-            std::vector<MapPoint *> &spMapPoints) {
+    void KeyFrame::SetMapPoints(std::vector<std::shared_ptr<MapPoint>> &spMapPoints) {
         // We assume the mvpMapPoints_nIdstd::list has been initialized and contains the Map point IDS
         // With nid, Search the KetFramestd::list and populate mvpMapPoints
         long unsigned int id;
@@ -501,31 +501,31 @@ namespace ORB_SLAM2 {
             return 0;
     }
 
-    void KeyFrame::AddMapPoint(MapPoint *pMP, const size_t &idx) {
-        //std::unique_lock<std::mutex> lock(mMutexFeatures);
-        mvpMapPoints[idx] = pMP;
+    void KeyFrame::AddMapPoint(std::shared_ptr<MapPoint>pMP, const size_t &idx) {
+        std::unique_lock<std::mutex> lock(mMutexFeatures);
+        mvpMapPoints[idx] = std::move(pMP);
 
     }
 
     void KeyFrame::EraseMapPointMatch(const size_t &idx) {
-        //std::unique_lock<std::mutex> lock(mMutexFeatures);
-        mvpMapPoints[idx] = static_cast<MapPoint *>(nullptr);;
+        std::unique_lock<std::mutex> lock(mMutexFeatures);
+        mvpMapPoints[idx] = static_cast<std::shared_ptr<MapPoint>>(nullptr);;
     }
 
-    void KeyFrame::EraseMapPointMatch(MapPoint *pMP) {
+    void KeyFrame::EraseMapPointMatch(const std::shared_ptr<MapPoint>&pMP) {
         int idx = pMP->GetIndexInKeyFrame(this);
         if (idx >= 0)
-            mvpMapPoints[idx] = static_cast<MapPoint *>(nullptr);
+            mvpMapPoints[idx] = static_cast<std::shared_ptr<MapPoint>>(nullptr);
     }
 
 
-    void KeyFrame::ReplaceMapPointMatch(const size_t &idx, MapPoint *pMP) {
-        mvpMapPoints[idx] = pMP;
+    void KeyFrame::ReplaceMapPointMatch(const size_t &idx, std::shared_ptr<MapPoint>pMP) {
+        mvpMapPoints[idx] = std::move(pMP);
     }
 
-    std::set<MapPoint *> KeyFrame::GetMapPoints() {
+    std::set<std::shared_ptr<MapPoint>> KeyFrame::GetMapPoints() {
         std::unique_lock<std::mutex> lock(mMutexFeatures);
-        std::set<MapPoint *> s;
+        std::set<std::shared_ptr<MapPoint>> s;
         for (auto &[i, pMP]: mvpMapPoints) {
             if (!pMP)
                 continue;
@@ -541,7 +541,7 @@ namespace ORB_SLAM2 {
         int nPoints = 0;
         const bool bCheckObs = minObs > 0;
         for (int i = 0; i < N; i++) {
-            MapPoint *pMP = mvpMapPoints[i];
+            std::shared_ptr<MapPoint>pMP = mvpMapPoints[i];
             if (pMP) {
                 if (!pMP->isBad()) {
                     if (bCheckObs) {
@@ -556,20 +556,17 @@ namespace ORB_SLAM2 {
         return nPoints;
     }
 
-    std::unordered_map<size_t, MapPoint *> KeyFrame::GetMapPointMatches() {
-        //std::unique_lock<std::mutex> lock(mMutexFeatures);
-        return mvpMapPoints;
-    }
 
-    MapPoint *KeyFrame::GetMapPoint(const size_t &idx) {
-        //std::unique_lock<std::mutex> lock(mMutexFeatures);
+
+    std::shared_ptr<MapPoint>KeyFrame::GetMapPoint(const size_t &idx) {
+        std::unique_lock<std::mutex> lock(mMutexFeatures);
         return mvpMapPoints[idx];
     }
 
     void KeyFrame::UpdateConnections() {
         std::unordered_map<KeyFrame *, int> KFcounter;
 
-        std::unordered_map<size_t, MapPoint *> vpMP;
+        std::unordered_map<size_t, std::shared_ptr<MapPoint>> vpMP;
 
         {
             std::unique_lock<std::mutex> lockMPs(mMutexFeatures);
@@ -718,6 +715,9 @@ namespace ORB_SLAM2 {
         for (auto &[i, mvpMapPoint]: mvpMapPoints)
             if (mvpMapPoint) {
                 mvpMapPoint->EraseObservation(this);
+                if (mvpMapPoint->isBad()){
+                    mpMap->EraseMapPoint(mvpMapPoint);
+                }
             }
         {
             // std::unique_lock<std::mutex> lock(mMutexConnections);
@@ -860,7 +860,7 @@ namespace ORB_SLAM2 {
     }
 
     float KeyFrame::ComputeSceneMedianDepth(const int q) {
-        std::vector<MapPoint *> vpMapPoints;
+        std::vector<std::shared_ptr<MapPoint>> vpMapPoints;
         cv::Mat Tcw_;
         {
             std::unique_lock<std::mutex> lock(mMutexFeatures);
@@ -876,10 +876,12 @@ namespace ORB_SLAM2 {
         float zcw = Tcw_.at<float>(2, 3);
         for (int i = 0; i < N; i++) {
             if (mvpMapPoints[i]) {
-                MapPoint *pMP = mvpMapPoints[i];
-                cv::Mat x3Dw = pMP->GetWorldPos();
-                float z = Rcw2.dot(x3Dw) + zcw;
-                vDepths.push_back(z);
+                std::shared_ptr<MapPoint>pMP = mvpMapPoints[i];
+                if (pMP) {
+                    cv::Mat x3Dw = pMP->GetWorldPos();
+                    float z = Rcw2.dot(x3Dw) + zcw;
+                    vDepths.push_back(z);
+                }
             }
         }
 
@@ -888,11 +890,11 @@ namespace ORB_SLAM2 {
         return vDepths[(vDepths.size() - 1) / q];
     }
 
-    std::unordered_map<MapPoint *, int> KeyFrame::GetMapPointsDic() {
+    std::unordered_map<std::shared_ptr<MapPoint>, int> KeyFrame::GetMapPointsDic() {
         //std::unique_lock<std::mutex> lock(mMutexFeatures);
-        std::unordered_map<MapPoint *, int> s;
+        std::unordered_map<std::shared_ptr<MapPoint>, int> s;
         for (size_t i = 0, iend = mvpMapPoints.size(); i < iend; i++) {
-            MapPoint *pMP = mvpMapPoints[i];
+            std::shared_ptr<MapPoint> pMP = mvpMapPoints[i];
             if (!pMP || !pMP->isBad()) {
                 continue;
             }

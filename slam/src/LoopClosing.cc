@@ -209,7 +209,7 @@ namespace ORB_SLAM2 {
         std::vector<Sim3Solver *> vpSim3Solvers;
         vpSim3Solvers.resize(nInitialCandidates);
 
-        std::vector<std::vector<MapPoint *> > vvpMapPointMatches;
+        std::vector<std::vector<std::shared_ptr<MapPoint>> > vvpMapPointMatches;
         vvpMapPointMatches.resize(nInitialCandidates);
 
         std::vector<bool> vbDiscarded;
@@ -269,8 +269,8 @@ namespace ORB_SLAM2 {
 
                 // If RANSAC returns a Sim3, perform a guided matching and optimize with all correspondences
                 if (!Scm.empty()) {
-                    std::vector<MapPoint *> vpMapPointMatches(vvpMapPointMatches[i].size(),
-                                                              static_cast<MapPoint *>(nullptr));
+                    std::vector<std::shared_ptr<MapPoint>> vpMapPointMatches(vvpMapPointMatches[i].size(),
+                                                              static_cast<std::shared_ptr<MapPoint>>(nullptr));
                     for (size_t j = 0, jend = vbInliers.size(); j < jend; j++) {
                         if (vbInliers[j])
                             vpMapPointMatches[j] = vvpMapPointMatches[i][j];
@@ -313,7 +313,7 @@ namespace ORB_SLAM2 {
         vpLoopConnectedKFs.push_back(mpMatchedKF);
         mvpLoopMapPoints.clear();
         for (auto pKF: vpLoopConnectedKFs) {
-            std::unordered_map<size_t, MapPoint *> vpMapPoints = pKF->GetMapPointMatches();
+            std::unordered_map<size_t, std::shared_ptr<MapPoint>> vpMapPoints = pKF->mvpMapPoints;
             for (auto &[i, pMP]: vpMapPoints) {
                 if (pMP) {
                     if (!pMP->isBad() && pMP->mnLoopPointForKF != mpCurrentKF->mnId) {
@@ -416,7 +416,7 @@ namespace ORB_SLAM2 {
 
                     g2o::Sim3 g2oSiw = NonCorrectedSim3[pKFi.first];
 
-                    for (auto &[i, pMPi]: pKFi.first->GetMapPointMatches()) {
+                    for (auto &[i, pMPi]: pKFi.first->mvpMapPoints) {
                         if (!pMPi || pMPi->isBad() || pMPi->mnCorrectedByKF == mpCurrentKF->mnId)
                             continue;
 
@@ -440,10 +440,12 @@ namespace ORB_SLAM2 {
             // Update matched map points and replace if duplicated
             for (size_t i = 0; i < mvpCurrentMatchedPoints.size(); i++) {
                 if (mvpCurrentMatchedPoints[i]) {
-                    MapPoint *pLoopMP = mvpCurrentMatchedPoints[i];
-                    MapPoint *pCurMP = mpCurrentKF->GetMapPoint(i);
-                    if (pCurMP)
+                    auto pLoopMP = mvpCurrentMatchedPoints[i];
+                    auto pCurMP = mpCurrentKF->GetMapPoint(i);
+                    if (pCurMP){
                         pCurMP->Replace(pLoopMP);
+                        mpMap->EraseMapPoint(pCurMP);
+                    }
                     else {
                         mpCurrentKF->AddMapPoint(pLoopMP, i);
                         pLoopMP->AddObservation(mpCurrentKF, i);
@@ -503,14 +505,17 @@ namespace ORB_SLAM2 {
             g2o::Sim3 g2oScw = pKF.second;
             cv::Mat cvScw = Converter::toCvMat(g2oScw);
 
-            std::vector<MapPoint *> vpReplacePoints(mvpLoopMapPoints.size(), static_cast<MapPoint *>(nullptr));
+            std::vector<std::shared_ptr<MapPoint>> vpReplacePoints(mvpLoopMapPoints.size(), static_cast<std::shared_ptr<MapPoint>>(nullptr));
             ORB_SLAM2::ORBmatcher::Fuse(pKF.first, cvScw, mvpLoopMapPoints, 4, vpReplacePoints);
             //std::unique_lock<std::mutex>  lock(mpMap->mMutexMapUpdate);
             const int nLP = mvpLoopMapPoints.size();
             for (int i = 0; i < nLP; i++) {
-                MapPoint *pRep = vpReplacePoints[i];
+                std::shared_ptr<MapPoint>pRep = vpReplacePoints[i];
                 if (pRep) {
                     pRep->Replace(mvpLoopMapPoints[i]);
+                    if(pRep->isBad()){
+                        mpMap->EraseMapPoint(pRep);
+                    }
                 }
             }
         }
@@ -588,7 +593,7 @@ namespace ORB_SLAM2 {
                 }
 
                 // Correct MapPoints
-                const std::vector<MapPoint *> vpMPs = mpMap->GetAllMapPoints();
+                const std::vector<std::shared_ptr<MapPoint>> vpMPs = mpMap->GetAllMapPoints();
 
                 for (auto pMP: vpMPs) {
                     if (pMP->isBad())

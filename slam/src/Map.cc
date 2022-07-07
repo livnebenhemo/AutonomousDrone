@@ -26,9 +26,9 @@ namespace ORB_SLAM2 {
 
     Map::Map() : mnMaxKFid(0), mnBigChangeIdx(0) {
     }
+
     template<class Archive>
-    void Map::serialize(Archive &ar, const unsigned int version)
-    {
+    void Map::serialize(Archive &ar, const unsigned int version) {
         // don't save mutex
         ar & mspMapPoints;
         ar & mvpKeyFrameOrigins;
@@ -36,8 +36,10 @@ namespace ORB_SLAM2 {
         ar & mvpReferenceMapPoints;
         ar & mnMaxKFid & mnBigChangeIdx;
     }
-    template void Map::serialize(boost::archive::binary_iarchive&, const unsigned int);
-    template void Map::serialize(boost::archive::binary_oarchive&, const unsigned int);
+
+    template void Map::serialize(boost::archive::binary_iarchive &, const unsigned int);
+
+    template void Map::serialize(boost::archive::binary_oarchive &, const unsigned int);
 
     void Map::AddKeyFrame(KeyFrame *pKF) {
         //std::unique_lock<std::mutex> lock(mMutexMap);
@@ -49,16 +51,17 @@ namespace ORB_SLAM2 {
         }
     }
 
-    void Map::AddMapPoint(MapPoint *pMP) {
+    void Map::AddMapPoint(const std::shared_ptr<MapPoint>&pMP) {
         //std::unique_lock<std::mutex> lock(mMutexMap);
-        if (!mspMapPoints.count(pMP)) {
-            mspMapPoints[pMP] = pMP->mnId;
+        if (!mspMapPoints.count(pMP->mnId)) {
+            mspMapPoints[pMP->mnId] = pMP;
         }
     }
 
-    void Map::EraseMapPoint(MapPoint *pMP) {
+    void Map::EraseMapPoint(const std::shared_ptr<MapPoint>&pMP) {
         //std::unique_lock<std::mutex> lock(mMutexMap);
-        mspMapPoints.erase(pMP);
+        if (pMP)
+        mspMapPoints.erase(pMP->mnId);
 
         // TODO: This only erase the pointer.
         // Delete the MapPoint
@@ -72,7 +75,7 @@ namespace ORB_SLAM2 {
         // Delete the MapPoint
     }
 
-    void Map::SetReferenceMapPoints(const std::vector<MapPoint *> &vpMPs) {
+    void Map::SetReferenceMapPoints(const std::vector<std::shared_ptr<MapPoint>> &vpMPs) {
         //std::unique_lock<std::mutex> lock(mMutexMap);
         mvpReferenceMapPoints = vpMPs;
     }
@@ -96,11 +99,11 @@ namespace ORB_SLAM2 {
         return keyFrames;
     }
 
-    std::vector<MapPoint *> Map::GetAllMapPoints() {
+    std::vector<std::shared_ptr<MapPoint>> Map::GetAllMapPoints() {
         //std::unique_lock<std::mutex> lock(mMutexMap);
-        std::vector<MapPoint *> mapPoints;
+        std::vector<std::shared_ptr<MapPoint>> mapPoints;
         for (const auto &mapPoint: mspMapPoints) {
-            mapPoints.emplace_back(mapPoint.first);
+            mapPoints.emplace_back(mapPoint.second);
         }
         return mapPoints;
     }
@@ -115,7 +118,7 @@ namespace ORB_SLAM2 {
         return mspKeyFrames.size();
     }
 
-    std::vector<MapPoint *> Map::GetReferenceMapPoints() {
+    std::vector<std::shared_ptr<MapPoint>> Map::GetReferenceMapPoints() {
         //std::unique_lock<std::mutex> lock(mMutexMap);
         return mvpReferenceMapPoints;
     }
@@ -126,16 +129,17 @@ namespace ORB_SLAM2 {
     }
 
     void Map::clear() {
-        for (auto &mspMapPoint: mspMapPoints) {
-            delete mspMapPoint.first;
-            auto point = mspMapPoint.first;
-            point = nullptr;
+        /*for (auto &mspMapPoint: mspMapPoints) {
+            delete mspMapPoint.second;
         }
-
+        for (auto &mspMapPoint: mspCurrentMapPoints) {
+            delete mspMapPoint;
+        }*/
         for (auto mspKeyFrame: mspKeyFrames) {
             delete mspKeyFrame.first;
-            auto keyFrame = mspKeyFrame.first;
-            keyFrame = nullptr;
+        }
+        for (auto mspKeyFrame: mspCurrentKeyFrames) {
+            delete mspKeyFrame;
         }
         if (!mspMapPoints.empty()) {
             mspMapPoints.clear();

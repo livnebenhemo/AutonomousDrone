@@ -182,7 +182,7 @@ namespace ORB_SLAM2 {
         bool mbDeactivateLocalizationMode;
 
         // Tracking state
-        std::unordered_map<size_t, MapPoint *> mTrackedMapPoints;
+        std::unordered_map<size_t, std::shared_ptr<MapPoint>> mTrackedMapPoints;
         std::mutex mMutexState;
 
         void LoadMap(const std::string &filename);

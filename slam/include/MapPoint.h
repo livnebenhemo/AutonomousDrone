@@ -82,9 +82,9 @@ namespace ORB_SLAM2 {
 
         bool isBad();
 
-        void Replace(MapPoint *pMP);
+        void Replace(std::shared_ptr<MapPoint> pMP);
 
-        MapPoint *GetReplaced();
+        std::shared_ptr<MapPoint> GetReplaced();
 
         void IncreaseVisible(int n = 1);
 
@@ -164,7 +164,7 @@ namespace ORB_SLAM2 {
 
         // Bad flag (we do not currently erase MapPoint from memory)
         bool mbBad;
-        MapPoint *mpReplaced;
+        std::shared_ptr<MapPoint> mpReplaced;
 
         // Scale invariance distances
         double mfMinDistance;

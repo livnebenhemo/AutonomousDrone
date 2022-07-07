@@ -168,7 +168,7 @@ namespace ORB_SLAM2 {
         //Local Map
         KeyFrame *mpReferenceKF;
         std::vector<KeyFrame *> mvpLocalKeyFrames;
-        std::vector<MapPoint *> mvpLocalMapPoints;
+        std::vector<std::shared_ptr<MapPoint>> mvpLocalMapPoints;
 
         // System
         System *mpSystem;
@@ -211,7 +211,9 @@ namespace ORB_SLAM2 {
         //Color order (true RGB, false BGR, ignored if grayscale)
         bool mbRGB;
 
-        std::list<MapPoint *> mlpTemporalPoints;
+        std::vector<std::shared_ptr<MapPoint>> mlpTemporalPoints;
+
+        void CleanBadPointsFromMemory();
     };
 
 } //namespace ORB_SLAM

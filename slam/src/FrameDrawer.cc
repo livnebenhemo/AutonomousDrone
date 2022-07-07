@@ -151,7 +151,7 @@ namespace ORB_SLAM2 {
             mvIniMatches = pTracker->mvIniMatches;
         } else if (pTracker->mLastProcessedState == Tracking::OK) {
             for (int i = 0; i < N; i++) {
-                MapPoint *pMP = pTracker->mCurrentFrame.mvpMapPoints[i];
+                auto pMP = pTracker->mCurrentFrame.mvpMapPoints[i];
                 if (pMP) {
                     if (!pTracker->mCurrentFrame.mvbOutlier[i]) {
                         if (pMP->Observations() > 0)

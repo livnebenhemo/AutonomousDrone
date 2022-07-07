@@ -72,7 +72,7 @@ namespace ORB_SLAM2 {
 
         std::set<KeyFrame *> GetConnectedKeyFrames();
 
-        std::unordered_map<MapPoint *, int> GetMapPointsDic();
+        std::unordered_map<std::shared_ptr<MapPoint>, int> GetMapPointsDic();
 
         std::unordered_map<KeyFrame *, int> GetConnectedKeyFramesAsDic();
 
@@ -103,21 +103,20 @@ namespace ORB_SLAM2 {
         std::set<KeyFrame *> GetLoopEdges();
 
         // MapPoint observation functions
-        void AddMapPoint(MapPoint *pMP, const size_t &idx);
+        void AddMapPoint(std::shared_ptr<MapPoint>pMP, const size_t &idx);
 
         void EraseMapPointMatch(const size_t &idx);
 
-        void EraseMapPointMatch(MapPoint *pMP);
+        void EraseMapPointMatch(const std::shared_ptr<MapPoint>&pMP);
 
-        void ReplaceMapPointMatch(const size_t &idx, MapPoint *pMP);
+        void ReplaceMapPointMatch(const size_t &idx, std::shared_ptr<MapPoint>pMP);
 
-        std::set<MapPoint *> GetMapPoints();
+        std::set<std::shared_ptr<MapPoint>> GetMapPoints();
 
-        std::unordered_map<size_t, MapPoint *> GetMapPointMatches();
 
         int TrackedMapPoints(const int &minObs);
 
-        MapPoint *GetMapPoint(const size_t &idx);
+        std::shared_ptr<MapPoint>GetMapPoint(const size_t &idx);
 
         // KeyPoint functions
         std::vector<size_t> GetFeaturesInArea(const double &x, const double &y, const double &r) const;
@@ -155,7 +154,7 @@ namespace ORB_SLAM2 {
         void SetORBvocabulary(const std::shared_ptr<ORBVocabulary> &pORBvocabulary);
 
         //void SetMapPoints(std::vector<std::shared_ptr<MapPoint>> &spMapPoints);
-        void SetMapPoints(std::vector<MapPoint *> &spMapPoints);
+        void SetMapPoints(std::vector<std::shared_ptr<MapPoint>> &spMapPoints);
 
         void SetGridParams(std::vector<KeyFrame *> vpKeyFrames);
 
@@ -165,6 +164,9 @@ namespace ORB_SLAM2 {
 
         void SetMap(const std::shared_ptr<Map> &map);
 
+        // MapPoints associated to keypoints
+        std::unordered_map<size_t, std::shared_ptr<MapPoint>> mvpMapPoints;
+        Map *mpMap;
     public:
 
         static long unsigned int nNextId;
@@ -245,9 +247,6 @@ namespace ORB_SLAM2 {
         cv::Mat Ow;
 
 
-        // MapPoints associated to keypoints
-        std::unordered_map<size_t, MapPoint *> mvpMapPoints;
-
         // BoW
         KeyFrameDatabase *mpKeyFrameDB;
         ORBVocabulary *mpORBvocabulary;
@@ -277,8 +276,6 @@ namespace ORB_SLAM2 {
         bool mbBad;
 
         float mHalfBaseline; // Only for visualization
-
-        Map *mpMap;
 
         friend class boost::serialization::access;
 

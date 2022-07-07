@@ -29,7 +29,8 @@ namespace ORB_SLAM2 {
             mnFirstKFid(pRefKF->mnId), nObs(0), mnTrackReferenceForFrame(0),
             mnLastFrameSeen(0), mnBALocalForKF(0), mnFuseCandidateForKF(0), mnLoopPointForKF(0), mnCorrectedByKF(0),
             mnCorrectedReference(0), mnBAGlobalForKF(0), mpRefKF(pRefKF), mnVisible(1), mnFound(1), mbBad(false),
-            mpReplaced(static_cast<MapPoint *>(nullptr)), mfMinDistance(0), mfMaxDistance(0), mpMap(pMap) {
+            mpReplaced(static_cast<std::shared_ptr<MapPoint>>(nullptr)), mfMinDistance(0), mfMaxDistance(0),
+            mpMap(pMap) {
         Pos.copyTo(mWorldPos);
         mNormalVector = cv::Mat::zeros(3, 1, CV_32F);
 
@@ -37,16 +38,18 @@ namespace ORB_SLAM2 {
         std::unique_lock<std::mutex> lock(mpMap->mMutexPointCreation);
         mnId = nNextId++;
     }
+
     MapPoint::MapPoint() :
             nObs(0), mnTrackReferenceForFrame(0),
             mnLastFrameSeen(0), mnBALocalForKF(0), mnFuseCandidateForKF(0), mnLoopPointForKF(0), mnCorrectedByKF(0),
             mnCorrectedReference(0), mnBAGlobalForKF(0), mnVisible(1), mnFound(1), mbBad(false),
-            mpReplaced(static_cast<MapPoint *>(NULL)), mfMinDistance(0), mfMaxDistance(0) {
+            mpReplaced(static_cast<std::shared_ptr<MapPoint>>(NULL)), mfMinDistance(0), mfMaxDistance(0) {
         //mNormalVector = cv::Mat::zeros(3,1,CV_32F);
         // std::unique_lock<recursive_mutex> lock(mpMap->mMutexPointCreation);
         //mpMap = new Map();
         // mpRefKF = new KeyFrame();
     }
+
     MapPoint::MapPoint(const cv::Mat &Pos, Map *pMap, Frame *pFrame, const int &idxF) :
             mnFirstKFid(-1), nObs(0), mnTrackReferenceForFrame(0), mnLastFrameSeen(0),
             mnBALocalForKF(0), mnFuseCandidateForKF(0), mnLoopPointForKF(0), mnCorrectedByKF(0),
@@ -75,7 +78,7 @@ namespace ORB_SLAM2 {
 
     template<class Archive>
     void MapPoint::serialize(Archive &ar, const unsigned int version) {
-        ar & mnId & nNextId & mnFirstKFid  & nObs;
+        ar & mnId & nNextId & mnFirstKFid & nObs;
         // Tracking related vars
         ar & mTrackProjX;
         ar & mTrackProjY;
@@ -106,7 +109,7 @@ namespace ORB_SLAM2 {
 
     template void MapPoint::serialize(boost::archive::binary_oarchive &, const unsigned int);
 
-    void MapPoint::SetMap(const std::shared_ptr<Map>&map) {
+    void MapPoint::SetMap(const std::shared_ptr<Map> &map) {
         mpMap = map.get();//std::move(map);
     }
 
@@ -157,6 +160,7 @@ namespace ORB_SLAM2 {
             //mpRefKF = new KeyFrame();
         }
     }
+
     void MapPoint::SetWorldPos(const cv::Mat &Pos) {
         std::unique_lock<std::mutex> lock2(mGlobalMutex);
         std::unique_lock<std::mutex> lock(mMutexPos);
@@ -231,16 +235,17 @@ namespace ORB_SLAM2 {
             }
             mObservations.clear();
         }
-        mpMap->EraseMapPoint(this);
+        mbBad = true;
+
     }
 
-    MapPoint *MapPoint::GetReplaced() {
+    std::shared_ptr<MapPoint> MapPoint::GetReplaced() {
         //std::unique_lock<std::mutex> lock1(mMutexFeatures);
         //std::unique_lock<std::mutex> lock2(mMutexPos);
         return mpReplaced;
     }
 
-    void MapPoint::Replace(MapPoint *pMP) {
+    void MapPoint::Replace(std::shared_ptr<MapPoint> pMP) {
         if (!pMP || pMP->mnId == this->mnId)
             return;
 
@@ -267,8 +272,6 @@ namespace ORB_SLAM2 {
         pMP->IncreaseFound(nfound);
         pMP->IncreaseVisible(nvisible);
         pMP->ComputeDistinctiveDescriptors();
-
-        mpMap->EraseMapPoint(this);
     }
 
     bool MapPoint::isBad() {

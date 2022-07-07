@@ -10,7 +10,7 @@ namespace ORB_SLAM2 {
 
     class PnPsolver {
     public:
-        PnPsolver(const Frame &F, std::unordered_map<size_t,MapPoint *> &vpMapPointMatches);
+        PnPsolver(const Frame &F, std::unordered_map<size_t,std::shared_ptr<MapPoint>> &vpMapPointMatches);
 
         ~PnPsolver();
 
@@ -92,7 +92,7 @@ namespace ORB_SLAM2 {
 
         double cws[4][3], ccs[4][3];
 
-        std::unordered_map<size_t,MapPoint *> mvpMapPointMatches;
+        std::unordered_map<size_t,std::shared_ptr<MapPoint>> mvpMapPointMatches;
 
         // 2D Points
         std::vector<cv::Point2f> mvP2D;

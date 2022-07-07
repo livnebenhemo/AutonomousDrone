@@ -173,7 +173,76 @@ namespace ORB_SLAM2 {
         if (mState == NOT_INITIALIZED) {
             return {};
         }
+        //CleanBadPointsFromMemory();
         return mCurrentFrame.mTcw.clone();
+    }
+
+    void Tracking::CleanBadPointsFromMemory() {
+        for (auto &[index, mapPoint]: mCurrentFrame.mvpMapPoints) {
+            if (ORB_SLAM2::MapPoint::nNextId < index) {
+                mCurrentFrame.mvpMapPoints.erase(index);
+                mapPoint = nullptr;
+
+                continue;
+            }
+            if (!mapPoint || mapPoint->isBad()) {
+                mCurrentFrame.mvpMapPoints.erase(index);
+            }
+        }
+        for (auto &[index, mapPoint]: mLastFrame.mvpMapPoints) {
+            if (ORB_SLAM2::MapPoint::nNextId < index) {
+                mLastFrame.mvpMapPoints.erase(index);
+                mapPoint = nullptr;
+                continue;
+            }
+            if (!mapPoint || mapPoint->isBad()) {
+                mapPoint = nullptr;
+                mLastFrame.mvpMapPoints.erase(index);
+            }
+        }
+        for (auto &[index, mapPoint]: mInitialFrame.mvpMapPoints) {
+            if (ORB_SLAM2::MapPoint::nNextId < index) {
+                mInitialFrame.mvpMapPoints.erase(index);
+                mapPoint = nullptr;
+                continue;
+            }
+            if (!mapPoint || mapPoint->isBad()) {
+                mapPoint = nullptr;
+                mInitialFrame.mvpMapPoints.erase(index);
+            }
+        }
+        std::vector<int> removedIndicies;
+        int currentIndex = 0;
+        for (auto &mapPoint: mvpLocalMapPoints) {
+            if (!mapPoint || mapPoint->isBad()) {
+                mapPoint = nullptr;
+                removedIndicies.emplace_back(currentIndex);
+            }
+            currentIndex++;
+        }
+        for (int i = 0; i < removedIndicies.size(); ++i) {
+            mvpLocalMapPoints.erase(mvpLocalMapPoints.begin() + removedIndicies[i] - i);
+        }
+        removedIndicies.clear();
+        currentIndex = 0;
+        for (auto &mapPoint: mlpTemporalPoints) {
+            if (!mapPoint || mapPoint->isBad()) {
+                mapPoint = nullptr;
+                removedIndicies.emplace_back(currentIndex);
+            }
+            currentIndex++;
+        }
+        for (int i = 0; i < removedIndicies.size(); ++i) {
+            mlpTemporalPoints.erase(mlpTemporalPoints.begin() + removedIndicies[i] - i);
+        }
+        for (auto &keyFrame: mvpLocalKeyFrames) {
+            for (auto &[index, mapPoint]: keyFrame->mvpMapPoints) {
+                if (!mapPoint || mapPoint->isBad()) {
+                    mapPoint = nullptr;
+                    mCurrentFrame.mvpMapPoints.erase(index);
+                }
+            }
+        }
     }
 
     void Tracking::Track() {
@@ -234,7 +303,7 @@ namespace ORB_SLAM2 {
                         // the "visual odometry" solution.
                         bool bOKMM = false;
                         bool bOKReloc = false;
-                        std::unordered_map<size_t, MapPoint *> vpMPsMM;
+                        std::unordered_map<size_t, std::shared_ptr<MapPoint>> vpMPsMM;
                         std::vector<bool> vbOutMM;
                         cv::Mat TcwMM;
                         if (!mVelocity.empty()) {
@@ -304,18 +373,18 @@ namespace ORB_SLAM2 {
 
                 // Clean VO matches
                 for (int i = 0; i < mCurrentFrame.N; i++) {
-                    MapPoint *pMP = mCurrentFrame.mvpMapPoints[i];
+                    std::shared_ptr<MapPoint> pMP = mCurrentFrame.mvpMapPoints[i];
                     if (pMP)
                         if (pMP->Observations() < 1) {
                             mCurrentFrame.mvbOutlier[i] = false;
-                            mCurrentFrame.mvpMapPoints[i] = static_cast<MapPoint *>(nullptr);
+                            mCurrentFrame.mvpMapPoints[i] = static_cast<std::shared_ptr<MapPoint>>(nullptr);
                         }
                 }
 
                 // Delete temporal MapPoints
-                for (auto pMP: mlpTemporalPoints) {
+                /*for (auto pMP: mlpTemporalPoints) {
                     delete pMP;
-                }
+                }*/
                 mlpTemporalPoints.clear();
 
                 // Check if we need to insert a new keyframe
@@ -329,7 +398,7 @@ namespace ORB_SLAM2 {
                 // with those points so we discard them in the frame.
                 for (int i = 0; i < mCurrentFrame.N; i++) {
                     if (mCurrentFrame.mvpMapPoints[i] && mCurrentFrame.mvbOutlier[i])
-                        mCurrentFrame.mvpMapPoints[i] = static_cast<MapPoint *>(nullptr);
+                        mCurrentFrame.mvpMapPoints[i] = static_cast<std::shared_ptr<MapPoint>>(nullptr);
                 }
             }
 
@@ -451,7 +520,7 @@ namespace ORB_SLAM2 {
             //Create MapPoint.
             cv::Mat worldPos(mvIniP3D[i]);
 
-            auto *pMP = new MapPoint(worldPos, pKFcur, mpMap);
+            auto pMP = std::make_shared<MapPoint>(worldPos, pKFcur, mpMap);
 
             pKFini->AddMapPoint(pMP, i);
             pKFcur->AddMapPoint(pMP, mvIniMatches[i]);
@@ -497,10 +566,10 @@ namespace ORB_SLAM2 {
         pKFcur->SetPose(Tc2w);
 
         // Scale points
-        std::unordered_map<size_t, MapPoint *> vpAllMapPoints = pKFini->GetMapPointMatches();
+        std::unordered_map<size_t, std::shared_ptr<MapPoint>> vpAllMapPoints = pKFini->mvpMapPoints;
         for (auto &[i, vpAllMapPoint]: vpAllMapPoints) {
             if (vpAllMapPoint) {
-                MapPoint *pMP = vpAllMapPoint;
+                std::shared_ptr<MapPoint> pMP = vpAllMapPoint;
                 pMP->SetWorldPos(pMP->GetWorldPos() * invMedianDepth);
             }
         }
@@ -536,9 +605,9 @@ namespace ORB_SLAM2 {
             }
         }
         /*for (int i = 0; i < mLastFrame.N; i++) {
-            MapPoint *pMP = mLastFrame.mvpMapPoints[i];
+            std::shared_ptr<MapPoint>pMP = mLastFrame.mvpMapPoints[i];
             if (pMP) {
-                MapPoint *pRep = pMP->GetReplaced();
+                std::shared_ptr<MapPoint>pRep = pMP->GetReplaced();
                 if (pRep) {
                     mLastFrame.mvpMapPoints[i] = pRep;
                 }
@@ -554,7 +623,7 @@ namespace ORB_SLAM2 {
         // We perform first an ORB matching with the reference keyframe
         // If enough matches are found we setup a PnP solver
         ORBmatcher matcher(0.7, true);
-        std::unordered_map<size_t, MapPoint *> vpMapPointMatches;
+        std::unordered_map<size_t, std::shared_ptr<MapPoint>> vpMapPointMatches;
 
         int nmatches = matcher.SearchByBoW(mpReferenceKF, mCurrentFrame, vpMapPointMatches);
 
@@ -571,9 +640,9 @@ namespace ORB_SLAM2 {
         for (int i = 0; i < mCurrentFrame.N; i++) {
             if (mCurrentFrame.mvpMapPoints[i]) {
                 if (mCurrentFrame.mvbOutlier[i]) {
-                    MapPoint *pMP = mCurrentFrame.mvpMapPoints[i];
+                    std::shared_ptr<MapPoint> pMP = mCurrentFrame.mvpMapPoints[i];
 
-                    mCurrentFrame.mvpMapPoints[i] = static_cast<MapPoint *>(nullptr);
+                    mCurrentFrame.mvpMapPoints[i] = static_cast<std::shared_ptr<MapPoint>>(nullptr);
                     mCurrentFrame.mvbOutlier[i] = false;
                     pMP->mbTrackInView = false;
                     pMP->mnLastFrameSeen = mCurrentFrame.mnId;
@@ -620,14 +689,14 @@ namespace ORB_SLAM2 {
 
             bool bCreateNew = false;
 
-            MapPoint *pMP = mLastFrame.mvpMapPoints[i];
+            std::shared_ptr<MapPoint> pMP = mLastFrame.mvpMapPoints[i];
             if (!pMP || pMP->Observations() < 1)
                 bCreateNew = true;
 
 
             if (bCreateNew) {
                 cv::Mat x3D = mLastFrame.UnprojectStereo(i);
-                auto *pNewMP = new MapPoint(x3D, mpMap, &mLastFrame, i);
+                auto pNewMP = std::make_shared<MapPoint>(x3D, mpMap, &mLastFrame, i);
 
                 mLastFrame.mvpMapPoints[i] = pNewMP;
 
@@ -650,8 +719,8 @@ namespace ORB_SLAM2 {
         UpdateLastFrame();
 
         mCurrentFrame.SetPose(mVelocity * mLastFrame.mTcw);
-        for(auto &point: mCurrentFrame.mvpMapPoints){
-            mCurrentFrame.mvpMapPoints[point.first] = static_cast<MapPoint *>(nullptr);
+        for (auto &point: mCurrentFrame.mvpMapPoints) {
+            mCurrentFrame.mvpMapPoints[point.first] = static_cast<std::shared_ptr<MapPoint>>(nullptr);
         }
 
         // Project points seen in previous frame
@@ -660,8 +729,8 @@ namespace ORB_SLAM2 {
 
         // If few matches, uses a wider window search
         if (nmatches < 20) {
-            for(auto &point: mCurrentFrame.mvpMapPoints){
-                mCurrentFrame.mvpMapPoints[point.first] = static_cast<MapPoint *>(nullptr);
+            for (auto &point: mCurrentFrame.mvpMapPoints) {
+                mCurrentFrame.mvpMapPoints[point.first] = static_cast<std::shared_ptr<MapPoint>>(nullptr);
             }
             nmatches = matcher.SearchByProjection(mCurrentFrame, mLastFrame, 2 * th);
         }
@@ -677,9 +746,9 @@ namespace ORB_SLAM2 {
         for (int i = 0; i < mCurrentFrame.N; i++) {
             if (mCurrentFrame.mvpMapPoints[i]) {
                 if (mCurrentFrame.mvbOutlier[i]) {
-                    MapPoint *pMP = mCurrentFrame.mvpMapPoints[i];
+                    std::shared_ptr<MapPoint> pMP = mCurrentFrame.mvpMapPoints[i];
 
-                    mCurrentFrame.mvpMapPoints[i] = static_cast<MapPoint *>(nullptr);
+                    mCurrentFrame.mvpMapPoints[i] = static_cast<std::shared_ptr<MapPoint>>(nullptr);
                     mCurrentFrame.mvbOutlier[i] = false;
                     pMP->mbTrackInView = false;
                     pMP->mnLastFrameSeen = mCurrentFrame.mnId;
@@ -782,10 +851,10 @@ namespace ORB_SLAM2 {
     void Tracking::SearchLocalPoints() {
         // Do not search map points already matched
         for (auto &[i, mvpMapPoint]: mCurrentFrame.mvpMapPoints) {
-            MapPoint *pMP = mvpMapPoint;
+            std::shared_ptr<MapPoint> pMP = mvpMapPoint;
             if (pMP) {
                 if (pMP->isBad()) {
-                    mvpMapPoint = static_cast<MapPoint *>(nullptr);
+                    mvpMapPoint = static_cast<std::shared_ptr<MapPoint>>(nullptr);
                 } else {
                     pMP->IncreaseVisible();
                     pMP->mnLastFrameSeen = mCurrentFrame.mnId;
@@ -834,9 +903,9 @@ namespace ORB_SLAM2 {
         mvpLocalMapPoints.clear();
 
         for (auto pKF: mvpLocalKeyFrames) {
-            std::unordered_map<size_t,MapPoint *> vpMPs = pKF->GetMapPointMatches();
+            std::unordered_map<size_t, std::shared_ptr<MapPoint>> vpMPs = pKF->mvpMapPoints;
 
-            for (auto &[i,pMP]: vpMPs) {
+            for (auto &[i, pMP]: vpMPs) {
                 if (!pMP)
                     continue;
                 if (pMP->mnTrackReferenceForFrame == mCurrentFrame.mnId)
@@ -855,7 +924,7 @@ namespace ORB_SLAM2 {
         std::map<KeyFrame *, int> keyframeCounter;
         for (int i = 0; i < mCurrentFrame.N; i++) {
             if (mCurrentFrame.mvpMapPoints[i]) {
-                MapPoint *pMP = mCurrentFrame.mvpMapPoints[i];
+                std::shared_ptr<MapPoint> pMP = mCurrentFrame.mvpMapPoints[i];
                 if (!pMP->isBad()) {
                     auto observations = pMP->GetObservations();
                     for (auto observation: observations)
@@ -957,7 +1026,7 @@ namespace ORB_SLAM2 {
         std::vector<PnPsolver *> vpPnPsolvers;
         vpPnPsolvers.resize(nKFs);
 
-        std::vector<std::unordered_map<size_t,MapPoint *>> vvpMapPointMatches;
+        std::vector<std::unordered_map<size_t, std::shared_ptr<MapPoint>>> vvpMapPointMatches;
         vvpMapPointMatches.resize(nKFs);
 
         std::vector<bool> vbDiscarded;
@@ -1011,7 +1080,7 @@ namespace ORB_SLAM2 {
                 if (!Tcw.empty()) {
                     Tcw.copyTo(mCurrentFrame.mTcw);
 
-                    std::set<MapPoint *> sFound;
+                    std::set<std::shared_ptr<MapPoint>> sFound;
 
                     auto np = vbInliers.size();
                     for (int j = 0; j < np; j++) {
@@ -1032,7 +1101,7 @@ namespace ORB_SLAM2 {
 
                     for (int io = 0; io < mCurrentFrame.N; io++)
                         if (mCurrentFrame.mvbOutlier[io])
-                            mCurrentFrame.mvpMapPoints[io] = static_cast<MapPoint *>(nullptr);
+                            mCurrentFrame.mvpMapPoints[io] = static_cast<std::shared_ptr<MapPoint>>(nullptr);
                     // If few inliers, search by projection in a coarse window and optimize again
                     if (nGood < 20) {
                         int nadditional = matcher2.SearchByProjection(mCurrentFrame, vpCandidateKFs[i], sFound, 10,

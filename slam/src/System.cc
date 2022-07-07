@@ -61,7 +61,7 @@ namespace ORB_SLAM2 {
         std::cout << "Vocabulary loaded!" << std::endl << std::endl;
 
         //Create KeyFrame Database
-        mpKeyFrameDatabase = std::make_shared<KeyFrameDatabase>(*mpVocabulary.get());//new KeyFrameDatabase(mpVocabulary);
+        mpKeyFrameDatabase = std::make_shared<KeyFrameDatabase>(*mpVocabulary);//new KeyFrameDatabase(mpVocabulary);
 
         //Create the Map
         if (!bReuse) {

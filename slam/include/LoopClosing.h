@@ -125,8 +125,8 @@ namespace ORB_SLAM2
         std::vector<ConsistentGroup> mvConsistentGroups;
         std::vector<KeyFrame*> mvpEnoughConsistentCandidates;
         std::vector<KeyFrame*> mvpCurrentConnectedKFs;
-        std::vector<MapPoint*> mvpCurrentMatchedPoints;
-        std::vector<MapPoint*> mvpLoopMapPoints;
+        std::vector<std::shared_ptr<MapPoint>> mvpCurrentMatchedPoints;
+        std::vector<std::shared_ptr<MapPoint>> mvpLoopMapPoints;
         cv::Mat mScw;
         g2o::Sim3 mg2oScw;
 

@@ -11,7 +11,7 @@
 namespace ORB_SLAM2 {
 
 
-    PnPsolver::PnPsolver(const Frame &F, std::unordered_map<size_t, MapPoint *> &vpMapPointMatches) :
+    PnPsolver::PnPsolver(const Frame &F, std::unordered_map<size_t, std::shared_ptr<MapPoint>> &vpMapPointMatches) :
             pws(nullptr), us(nullptr), alphas(nullptr), pcs(nullptr), maximum_number_of_correspondences(0),
             number_of_correspondences(0),
             mnInliersi(0),
@@ -25,7 +25,7 @@ namespace ORB_SLAM2 {
 
         int idx = 0;
         for (size_t i = 0, iend = vpMapPointMatches.size(); i < iend; i++) {
-            MapPoint *pMP = vpMapPointMatches[i];
+            std::shared_ptr<MapPoint>pMP = vpMapPointMatches[i];
             if (pMP && !pMP->isBad()) {
                 const cv::KeyPoint &kp = F.mvKeysUn[i];
 

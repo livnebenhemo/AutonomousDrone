@@ -37,10 +37,10 @@ namespace ORB_SLAM2 {
     }
 
     void MapDrawer::DrawMapPoints() {
-        const std::vector<MapPoint *> &vpMPs = mpMap->GetAllMapPoints();
-        const std::vector<MapPoint *> &vpRefMPs = mpMap->GetReferenceMapPoints();
+        const auto &vpMPs = mpMap->GetAllMapPoints();
+        const auto &vpRefMPs = mpMap->GetReferenceMapPoints();
 
-        std::set<MapPoint *> spRefMPs(vpRefMPs.begin(), vpRefMPs.end());
+        std::set<std::shared_ptr<MapPoint>> spRefMPs(vpRefMPs.begin(), vpRefMPs.end());
 
         if (vpMPs.empty())
             return;
@@ -49,7 +49,7 @@ namespace ORB_SLAM2 {
         glBegin(GL_POINTS);
         glColor3f(0.0, 0.0, 0.0);
 
-        for (auto vpMP : vpMPs) {
+        for (auto &vpMP : vpMPs) {
             if (vpMP->isBad() || spRefMPs.count(vpMP))
                 continue;
             cv::Mat pos = vpMP->GetWorldPos();
@@ -61,7 +61,7 @@ namespace ORB_SLAM2 {
         glBegin(GL_POINTS);
         glColor3f(1.0, 0.0, 0.0);
 
-        for (auto spRefMP : spRefMPs) {
+        for (auto &spRefMP : spRefMPs) {
             if (spRefMP->isBad())
                 continue;
             cv::Mat pos = spRefMP->GetWorldPos();
@@ -81,7 +81,7 @@ namespace ORB_SLAM2 {
                 glPointSize(mPointSize * 10);
                 glBegin(GL_POINTS);
                 glColor3f(0.0, 1.0, 0.0);
-                for (auto polygonEdge : polygonEdges) {
+                for (auto &polygonEdge : polygonEdges) {
                     if (!(polygonEdge == destination)) {
                         glVertex3d(polygonEdge.x, polygonEdge.z, polygonEdge.y);
                     }

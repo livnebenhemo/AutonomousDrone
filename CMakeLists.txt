@@ -110,19 +110,6 @@ target_link_libraries(${PROJECT_NAME}
         ${Boost_LIBRARIES}
 
         )
-
-# Build examples
-
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/exe)
-
-# add_executable(mono_tello
-#         Examples/Monocular/mono_tello.cc)
-# target_link_libraries(mono_tello PUBLIC ${PROJECT_NAME})
-# target_compile_options(mono_tello PRIVATE -Wno-deprecated-declarations) # -Wall -Werror -Wall -Wextra)
-
-#add_executable(tello
-#        exe/tello.cc tello/include/gpio.h tello/src/gpio.cpp)
-#target_link_libraries(tello PUBLIC ${PROJECT_NAME})
 add_executable(testPolygon exe/testPolygon.cpp)
 target_link_libraries(testPolygon ${PROJECT_NAME})
 target_compile_options(${PROJECT_NAME} PRIVATE )

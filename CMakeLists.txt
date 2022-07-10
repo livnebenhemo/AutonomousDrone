@@ -128,11 +128,6 @@ add_executable(offline_orb_slam
         exe/offline_orb_slam.cc)
 target_link_libraries(offline_orb_slam ${PROJECT_NAME})
 
-add_executable(mapCreating
-        exe/mapCreating.cpp)
-target_link_libraries(mapCreating ${PROJECT_NAME})
-add_executable(testDroneCommunication exe/testDroneCommunication.cpp)
-target_link_libraries(testDroneCommunication ctello spdlog Threads::Threads)
 #target_compile_options(offline_orb_slam PRIVATE -Wno-deprecated-declarations)
 #add_executable(computeScaleFactor
 #       Examples/Monocular/computeScaleFactor.cc)

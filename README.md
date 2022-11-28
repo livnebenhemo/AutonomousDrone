@@ -11,8 +11,12 @@ you can check if the checkout worked with
 ```
 git describe --tags
 ```
+Install the boost library:
+```
 
-Afterwards, you need to install the Eigen library.
+```
+
+Afterwards, you need to install the Eigen library. Go to 
 
 Once you've done that, run
 ```
@@ -20,3 +24,11 @@ chmod +x installDep.sh
 ./installDep
 ```
  If there are problems with flip.cpp in ctello/examples, change add "include" to the ctello.h in the file.
+ If there is an error with Eigen, make sure that all the Eigen addresses are crrect in CMakeLists.txt and if it still doesn't work, try:
+ ```
+ cd /usr/local/include
+ sudo cp -r Eigen ..
+ ```
+ 
+ Change the appropiate paths in general_settings.json, make sure that the parameter loadMap is false.
+ 

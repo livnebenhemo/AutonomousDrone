@@ -1,6 +1,6 @@
 * Clone the GitHub repo
 ```
-git clone https://github.com/RonelShorPacker/Zoom_Automation_in_Python.git
+git clone git@github.com:rbdlabhaifa/AutonomousDroneCPP.git
 ```
 * Install Opencv with the following link: https://linuxize.com/post/how-to-install-opencv-on-ubuntu-20-04/
 

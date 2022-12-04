@@ -75,7 +75,7 @@ private:
 
     void getNavigationPoints(bool isExit = false);
 
-    std::pair<int, bool> getRotationToFrameAngle(const Point &point, bool first=false);
+    std::pair<int, bool> getRotationToFrameAngle(const Point &point, bool first=false, double relativeChange = 0);
 
     std::pair<Point, Point> getNavigationVector(const Point &previousPosition, const Point &destination);
 

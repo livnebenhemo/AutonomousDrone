@@ -691,7 +691,7 @@ void AutonomousDrone::getNavigationPoints(bool isExit) {
 }*/
 
 
-std::pair<int, bool> AutonomousDrone::getRotationToFrameAngle(const Point &point, bool first) {
+std::pair<int, bool> AutonomousDrone::getRotationToFrameAngle(const Point &point, bool first, double relativeChange) {
     double timeStamp = 0.2;
     cv::Mat img = currentImage->clone();
     cv::Mat orbSlamCurrentPose = orbSlamPointer->TrackMonocular(img, timeStamp);
@@ -711,7 +711,7 @@ std::pair<int, bool> AutonomousDrone::getRotationToFrameAngle(const Point &point
         angle1 = (angle1 + 0);
     }
     else {
-        angle1 = (angle1 + 90);
+        angle1 = (angle1 + relativeChange);
     }
     std::cout << "(Tello) [rotate_to_dest_angle] current_angle: " << angle1
               << " desired_angle: " << angle2 << std::endl;
@@ -724,7 +724,7 @@ std::pair<int, bool> AutonomousDrone::getRotationToFrameAngle(const Point &point
     std::cout << "(Tello) [rotate_to_dest_angle] ang_diff: " << ang_diff
               << std::endl;
 
-    if (abs(ang_diff) > 8) {
+    if (abs(ang_diff) > 0) {
         // tello_->SendCommand("rc 0 0 0 0");
         sleep(1);
         if (ang_diff > 0)
@@ -787,8 +787,9 @@ AutonomousDrone::getNavigationVector(const Point &previousPosition, const Point 
 
 
 void AutonomousDrone::maintainAngleToPoint(const Point &destination, bool rotateToFrameAngle) {
+    double totalAngleChange = 0;
+    auto howToRotateToFrame = getRotationToFrameAngle(destination, true);
     if (rotateToFrameAngle) {
-        auto howToRotateToFrame = getRotationToFrameAngle(destination, true);
         isDroneRotate = true;
         howToRotate(howToRotateToFrame.first, howToRotateToFrame.second);
         isDroneRotate = false;
@@ -798,18 +799,19 @@ void AutonomousDrone::maintainAngleToPoint(const Point &destination, bool rotate
     while (!stop && !lowBattery) {
         try {
             if (!isBlocked && !droneRotate) {
-                Point dronePreviousPosition = currentLocation;
-                //sleep(gettingCloser ? 2 : 5);
                 sleep(4);
                 if (!stop && !droneRotate && !isBlocked) {
-                    auto navigationVectors = getNavigationVector(dronePreviousPosition, destination);
+                    //auto navigationVectors = getNavigationVector(dronePreviousPosition, destination);
                     /*auto rotationDirections = Auxiliary::getRotationToTargetInFront(navigationVectors.first,   // drone vector
                                                                                     navigationVectors.second); // exit vector..*/
-
-                    auto rotationDirections = getRotationToFrameAngle(destination, true);
-                    if (rotationDirections.first > 0) {
+                    if (howToRotateToFrame.second)
+                        totalAngleChange = -howToRotateToFrame.first;
+                    else
+                        totalAngleChange = howToRotateToFrame.first;
+                    auto howToRotateToFrame = getRotationToFrameAngle(destination, false, totalAngleChange);
+                    if (howToRotateToFrame.first > 0) {
                         isDroneRotate = true;
-                        howToRotate(rotationDirections.first, rotationDirections.second);
+                        howToRotate(howToRotateToFrame.first, howToRotateToFrame.second);
                         isDroneRotate = false;
                         sleep(2);
                     }

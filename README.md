@@ -11,10 +11,7 @@ you can check if the checkout worked with
 ```
 git describe --tags
 ```
-Install the boost library:
-```
 
-```
 
 Afterwards, you need to install the Eigen library. Go to 
 

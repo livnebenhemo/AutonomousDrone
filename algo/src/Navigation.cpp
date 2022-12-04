@@ -182,70 +182,32 @@ std::vector<Point> Navigation::dijkstra(Graph graph) {
 }
 
 std::vector<Point>
-Navigation::getNavigationPathByRRT(std::vector<Point> &cloud, std::pair<Point, Point> &track, bool debug) {
-    double pathLength = Auxiliary::calculateDistanceXY(track.first, track.second);
+Navigation::getNavigationPathByRRT(std::vector<Point> &points, std::pair<Point, Point> &track, bool debug) {
+    return std::vector<Point>{track.second};
+    /*double pathLength = Auxiliary::calculateDistanceXY(track.first, track.second);
     std::cout << "path length: " << pathLength << std::endl;
-    RRT rrt(track, cloud, debug, 20000, 0.3, pathLength / 8);
+    // TODO : previous numberOfIterations was 20000, check if work
+    RRT rrt(track, points, debug, 10, 0.3, pathLength / 8);
     auto graph = rrt.BuildTrack();
     if (graph.start == Point() && graph.end == Point(1, 1, 1)) {
         std::cout << "cant find path" << std::endl;
         return {};
     }
-    if (graph.vertices.size() == 1) {
+    if (graph.vertices.size() <= 1) {
         std::cout << "straight line" << std::endl;
         if (debug) {
             std::cout << "livne" << std::endl;
             Auxiliary::SetupPangolin("path");
-            Auxiliary::drawPathPangolin(cloud, graph.vertices, "path", track);
+            Auxiliary::drawPathPangolin(points, graph.vertices, "path", track);
         }
-        return std::vector<Point>{track.first, track.second};
+        return std::vector<Point>{track.second};
     }
     auto path = dijkstra(graph);
     std::cout << "size of path: " << path.size() << std::endl;
     if (debug) {
         std::cout << "livne" << std::endl;
         Auxiliary::SetupPangolin("path");
-        Auxiliary::drawPathPangolin(cloud, path, "path", track);
+        Auxiliary::drawPathPangolin(points, path, "path", track);
     }
-    return path;
+    return path;*/
 }
-
-//ccl logic
-
-/*double minDistance = Auxiliary::GetMinDistance(pointsInFieldOfView, Auxiliary::calculateDistanceXZ);
-auto x = Auxiliary::getXValues(pointsInFieldOfView);
-auto[xMax, xMin] = Auxiliary::GetMinMax(x);
-auto z = Auxiliary::getZValues(pointsInFieldOfView);
-auto[zMax, zMin] = Auxiliary::GetMinMax(z);
-int rows = std::ceil(std::abs((xMax - xMin) / minDistance));
-int cols = std::ceil(std::abs((zMax - zMin) / minDistance));
-std::cout << "rows: " << rows << " cols:" << cols << std::endl;
-cv::Mat pointsMat(rows, cols, CV_8U);
-std::vector<std::unordered_map<int, std::unordered_map<int, std::vector<Point>>>> results;
-std::unordered_map<int, std::unordered_map<int, std::vector<Point>>> pointsForDisplay;
-for (const auto &point: pointsInFieldOfView) {
-    int row = std::floor((point.x - xMin) / minDistance);
-    int col = std::floor((point.z - zMin) / minDistance);
-    pointsMat.at<int>(row, col) = 1;
-    if (!pointsForDisplay.count(row)) {
-        pointsForDisplay.insert({row, std::unordered_map<int, std::vector<Point>>{}});
-    } else {
-        if (!pointsForDisplay.count(col)) {
-            pointsForDisplay.at(row).insert({col, std::vector<Point>{}});
-        }
-        pointsForDisplay.at(row).at(col).emplace_back(point);
-    }
-}
-results.emplace_back(pointsForDisplay);
-int numberOfLabels = cv::connectedComponentsWithStats(pointsMat, labels, stats, centroids, 8, CV_32S);
-std::cout << numberOfLabels << std::endl;
-std::vector<Point> labeledPoints;
-for (int row = 0; row < labels.rows; row++) {
-    for (int col = 0; col < labels.cols; col++) {
-        if (labels.at<int>(row, col)) {
-            labeledPoints.insert(labeledPoints.end(), pointsForDisplay.at(row).at(col).begin(),
-                                 pointsForDisplay.at(row).at(col).end());
-        }
-    }
-}
-Auxiliary::DrawMapPointsPangolin(points, labeledPoints, pangolinWindowName, track[1]);*/

@@ -34,7 +34,7 @@ Graph RRT::BuildTrack() {
     std::cout << numberOfIterations << std::endl;
     for (int i = 0; i < numberOfIterations; ++i) {
         auto randomVertex = graph.randomPosition();
-        if (Auxiliary::calculateDistanceXY(randomVertex, graph.end) > stepSize * 4) {
+        if (Auxiliary::calculateDistance3D(randomVertex, graph.end) > stepSize * 4) {
             i--;
             continue;
         }
@@ -52,14 +52,15 @@ Graph RRT::BuildTrack() {
             distance.y = (distance.y / length) * min;
             Point newVertex(nearest.first.x + distance.x, nearest.first.y + distance.y, track.first.z);
             auto newId = graph.addVertex(newVertex);
-            graph.addEdge(newId, nearest.second, Auxiliary::calculateDistanceXY(newVertex, nearest.first));
-            double dist = Auxiliary::calculateDistanceXY(newVertex, graph.end);
+            graph.addEdge(newId, nearest.second, Auxiliary::calculateDistance3D(newVertex, nearest.first));
+            double dist = Auxiliary::calculateDistance3D(newVertex, graph.end);
             if (dist < 2 * radius) {
                 graph.addEdge(nearest.second, graph.addVertex(graph.end), dist);
                 return graph;
             }
         }
     }
+    std::cout << "empty graph" << std::endl;
     return {};
 }
 

@@ -82,7 +82,6 @@ namespace ORB_SLAM2 {
                 (*it)->SetSpanningTree(vpKFs);
                 (*it)->SetGridParams(vpKFs);
                 // Reconstruct map points Observation
-
             }
 
             auto vpMPs = mpMap->GetAllMapPoints();

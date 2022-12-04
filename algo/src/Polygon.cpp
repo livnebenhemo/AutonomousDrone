@@ -11,9 +11,13 @@ Polygon::Polygon(std::vector<Point> points,Point polygonCenter, bool isExit) {
 }
 
 std::vector<Point> Polygon::getExitPointsByPolygon(bool isDebug) {
-    //polygonCenter = Auxiliary::GetCenterOfMass(points);
+    polygonCenter = Auxiliary::GetCenterOfMass(points);
     createPointsWithDistance();
     std::vector<std::pair<Point, double>> rawExitPoints = getRawPolygonCorners();
+    /*for (auto pair: rawExitPoints) {
+        std::cout << pair.first.x << ", ";
+        std::cout << pair.first.y << ", ";
+    }*/
     double epsilon = 0.0;
     vertices = std::vector<Point>{};
     for (auto exitPoint : rawExitPoints) {
@@ -39,7 +43,7 @@ std::vector<Point> Polygon::getExitPointsByPolygon(bool isDebug) {
     int minSamples = 5;  // TODO - very important!!! original : 25
     auto rawNavigationPoints =std::vector<Point>{};
     while (rawNavigationPoints.empty() && minSamples > 0){
-        rawNavigationPoints = getNavigationPoints(goodPoints,minSamples);
+        rawNavigationPoints = getNavigationPoints(goodPoints, minSamples);
         minSamples-=5;
     }
     if (isDebug) {
@@ -55,7 +59,6 @@ std::vector<Point> Polygon::getExitPointsByPolygon(bool isDebug) {
         std::sort(navigationPoints.begin(), navigationPoints.end(), [&center](Point p1, Point p2) {
             return Auxiliary::calculateDistanceXY(p1, center) > Auxiliary::calculateDistanceXY(p2, center);
         });
-        navigationPoints = std::vector<Point>{navigationPoints.front()};
     }
     return navigationPoints;
 }

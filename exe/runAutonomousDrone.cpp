@@ -4,7 +4,19 @@
 #include "include/AutonomousDrone.h"
 #include <nlohmann/json.hpp>
 
-int main() {
+int main(int argc, char** argv) {
+    bool isManual = false;
+    bool switchBattery = false;
+    if (argc >= 2){
+        if (strcmp(argv[1],"manual") == 0) {
+            isManual = true;
+        }
+        if (argc == 3){
+            if (strcmp(argv[2],"switchBattery") == 0) {
+                switchBattery = true;
+            }
+        }
+    }
     std::string settingPath = Auxiliary::GetGeneralSettingsPath();
     std::ifstream programData(settingPath);
     nlohmann::json data;
@@ -29,7 +41,7 @@ int main() {
     int sizeOfForwardStepSimulator = data["sizeOfForwardStepSimulator"];
 
     AutonomousDrone autonomousDrone(drone, vocPath, droneYamlPathSlam, droneYamlPathAruco, droneName,
-                                    loadMap, mapPath, saveMap, sizeOfFrameStack, withPlot);
+                                    loadMap, mapPath, saveMap, sizeOfFrameStack, withPlot, isManual, switchBattery);
     if (runSimulator) {
         autonomousDrone.runSimulator(maxForwardForSimulator, sizeOfForwardStepSimulator);
     } else {

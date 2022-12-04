@@ -27,7 +27,8 @@ public:
                     std::string droneWifiName,
                     bool loadMap,
                     std::string &mapPath,bool saveMap, int sizeOfFrameStack = 20,
-                    bool withPlot = false, std::string chargerBluetoothAddress = "3C:61:05:03:81:E2");
+                    bool withPlot = false,  bool isManual=false, bool switchBattery=false,
+                    std::string chargerBluetoothAddress = "3C:61:05:03:81:E2");
 
     void run();
 
@@ -74,7 +75,7 @@ private:
 
     void getNavigationPoints(bool isExit = false);
 
-    std::pair<int, bool> getRotationToFrameAngle(const Point &point);
+    std::pair<int, bool> getRotationToFrameAngle(const Point &point, bool first=false);
 
     std::pair<Point, Point> getNavigationVector(const Point &previousPosition, const Point &destination);
 
@@ -129,6 +130,7 @@ private:
     Point home;
     std::string arucoYamlPath;
     bool stop = false;
+    bool isDroneRotate = false;
     bool orbSlamRunning = false;
     bool runCamera = true;
     bool printSomething = false;
@@ -193,6 +195,8 @@ private:
     void switchBattery(int switchingTime = 25);
 
     void flyToNavigationPointsNoRRT();
+
+    bool doTriangulationUpDown();
 
     bool loadMap;
     bool saveBinMap;

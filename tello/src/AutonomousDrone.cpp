@@ -33,10 +33,10 @@ AutonomousDrone::AutonomousDrone(std::shared_ptr<ctello::Tello> drone,
     this->orbSlamPointer = nullptr;
     exitStayInTheAirLoop = false;
     //this->capture = capture;
-    holdCamera = std::make_shared<bool>(true);
+    holdCamera = std::make_shared<bool>(false);
     lastFrames = std::vector<Frame>{};
     currentImage = std::make_shared<cv::Mat>();
-    //this->capture = std::make_shared<cv::VideoCapture>(TELLO_STREAM_URL, cv::CAP_FFMPEG);
+    this->capture = std::make_shared<cv::VideoCapture>(TELLO_STREAM_URL, cv::CAP_FFMPEG);
     this->chargerBluetoothAddress = std::move(chargerBluetoothAddress);
     this->arucoYamlPath = arucoYamlPath;
     this->droneWifiName = std::move(droneWifiName);
@@ -63,11 +63,9 @@ void AutonomousDrone::getCameraFeed() {
     // idea : while True
     while (true) {
         if (runCamera) {
-	    if (*holdCamera){
-	    	continue;
-	    }	    
-            if (!capture->isOpened()) {
-                *currentImage = cv::Mat{};  // TODO : delete ?
+            if (!capture->isOpened() || *holdCamera) {
+                std::cout << "something happened" << std::endl;
+                // *currentImage = cv::Mat{};  // TODO : delete ?
                 usleep(5000);
                 continue;
             }
@@ -320,12 +318,6 @@ bool AutonomousDrone::doTriangulationUpDown() {
     return a&&b;
 }
 
-bool AutonomousDrone::doTriangulationLeftRight(){
-    bool a = manageDroneCommand("left 30", 5, 3);
-    bool b = manageDroneCommand("right 30", 5, 3);
-    return a&&b;    
-}
-
 void AutonomousDrone::rotateDrone(int angle, bool clockwise, bool buildMap) {
     if (!lowBattery && angle > 5) {
         if (localized) {
@@ -569,19 +561,15 @@ void AutonomousDrone::buildSimulatorMap(int rotationAngle) {
 
 void AutonomousDrone::beginScan(bool findHome, int rotationAngle) {
     current_drone_mode = scanning;
-    manageDroneCommand("up 30", 5, 3);
     manageDroneCommand("forward 30", 5, 3);
     manageDroneCommand("back 30", 5, 3);
     std::cout << "Find localization" << std::endl;
     while (!localized) {
-        doTriangulationUpDown();
-	if (!localized){
-	   doTriangulationLeftRight();
-	}
+        doTriangulation();
         if (localized) {
             break;
         }
-        doTriangulation();
+        doTriangulationUpDown();
         if (lowBattery){
             switchBattery();
             lowBattery = true;
@@ -746,7 +734,6 @@ std::pair<int, bool> AutonomousDrone::getRotationToFrameAngle(const Point &point
             return std::pair<int, bool>{int(-ang_diff), false};
     }
 }
-
 
 std::pair<Point, Point>
 AutonomousDrone::getNavigationVector(const Point &previousPosition, const Point &destination) {
@@ -1033,7 +1020,7 @@ void AutonomousDrone::monitorDroneProgress(const Point &destination) {
     usleep(500000);
     int i = 0;
     int amountOfGettingFurther = 4;
-    closeThreshold = Auxiliary::calculateDistanceXY(currentLocation, destination) / 2.5;
+    closeThreshold = Auxiliary::calculateDistanceXZ(currentLocation, destination) / 2.5;
     std::cout << "close threshold:" << closeThreshold << std::endl;
     double expectedScale = closeThreshold * 0.005;
     std::cout << "scale threshold:" << expectedScale << std::endl;
@@ -1042,7 +1029,7 @@ void AutonomousDrone::monitorDroneProgress(const Point &destination) {
         if (!lowBattery) {
             try {
 
-                double distance = Auxiliary::calculateDistanceXY(currentLocation, destination);
+                double distance = Auxiliary::calculateDistanceXZ(currentLocation, destination);
                 if (!(i % 2)) {
                     std::cout << "distance to destination: " << distance << std::endl;
                 }
@@ -1176,6 +1163,12 @@ void AutonomousDrone::moveWithKeyboard() {
         case 's':
             manageDroneCommand("back 30", 3);
             break;
+        case '1':
+            manageDroneCommand("up 30", 3);
+            break;
+        case '2':
+            manageDroneCommand("down 30", 3);
+            break;
         case 'a':
             manageAngleDroneCommand(25, false, 3);
             break;
@@ -1280,9 +1273,9 @@ void AutonomousDrone::manuallyFlyToNavigationPoints() {
             switchBattery();
             lowBattery = false;
         }
-        std::vector<Point> plottedPoint = std::vector<Point>{};
+        /*std::vector<Point> plottedPoint = std::vector<Point>{};
         plottedPoint.push_back(point);
-        Auxiliary::showCloudPoint(plottedPoint, currentRoom.points);
+        Auxiliary::showCloudPoint(plottedPoint, currentRoom.points);*/
         auto currentMap = getCurrentMap();
         std::pair<Point, Point> track{currentLocation, point};
         if (manuallyNavigateDrone(point)) {  // TODO : I deleted && !loopCloserHappened
@@ -1306,13 +1299,13 @@ void AutonomousDrone::manuallyFlyToNavigationPoints() {
         beginScan(false);*/
 
         // if begin scan in comment ("debug" mode) - need to make B.A :  TODO : need to check if work
-        std::cout << "starting global bundle Adjustments" << std::endl;
+        /*std::cout << "starting global bundle Adjustments" << std::endl;
         std::thread exhaustiveGlobalAdjustmentThread(&AutonomousDrone::exhaustiveGlobalAdjustment, this);
         exhaustiveGlobalAdjustmentInProgress = true;
         while (exhaustiveGlobalAdjustmentInProgress) {
             doTriangulation();
         }
-        exhaustiveGlobalAdjustmentThread.join();
+        exhaustiveGlobalAdjustmentThread.join();*/
     }
 
     orbSlamPointer->GetMapDrawer()->ClearPolygonEdgesPoint();
@@ -1475,12 +1468,7 @@ void AutonomousDrone::switchBattery(int switchingTime){
 
 
 void AutonomousDrone::run() {
-    std::cout << "taking off" << std::endl;
-    while(!drone->SendCommandWithResponse("takeoff", 10000));
-    sleep(7);
-    this->capture = std::make_shared<cv::VideoCapture>(TELLO_STREAM_URL, cv::CAP_FFMPEG);
-    *holdCamera = false;
-    sleep(1);
+
     std::thread orbThread(&AutonomousDrone::runOrbSlam, this);
     while (true) {
         if (canStart) {

@@ -33,10 +33,10 @@ AutonomousDrone::AutonomousDrone(std::shared_ptr<ctello::Tello> drone,
     this->orbSlamPointer = nullptr;
     exitStayInTheAirLoop = false;
     //this->capture = capture;
-    holdCamera = std::make_shared<bool>(false);
+    holdCamera = std::make_shared<bool>(true);
     lastFrames = std::vector<Frame>{};
     currentImage = std::make_shared<cv::Mat>();
-    this->capture = std::make_shared<cv::VideoCapture>(TELLO_STREAM_URL, cv::CAP_FFMPEG);
+    //this->capture = std::make_shared<cv::VideoCapture>(TELLO_STREAM_URL, cv::CAP_FFMPEG);
     this->chargerBluetoothAddress = std::move(chargerBluetoothAddress);
     this->arucoYamlPath = arucoYamlPath;
     this->droneWifiName = std::move(droneWifiName);
@@ -63,7 +63,10 @@ void AutonomousDrone::getCameraFeed() {
     // idea : while True
     while (true) {
         if (runCamera) {
-            if (!capture->isOpened() || *holdCamera) {
+	    if (*holdCamera){
+	    	continue;
+	    }	    
+            if (!capture->isOpened()) {
                 *currentImage = cv::Mat{};  // TODO : delete ?
                 usleep(5000);
                 continue;
@@ -317,6 +320,12 @@ bool AutonomousDrone::doTriangulationUpDown() {
     return a&&b;
 }
 
+bool AutonomousDrone::doTriangulationLeftRight(){
+    bool a = manageDroneCommand("left 30", 5, 3);
+    bool b = manageDroneCommand("right 30", 5, 3);
+    return a&&b;    
+}
+
 void AutonomousDrone::rotateDrone(int angle, bool clockwise, bool buildMap) {
     if (!lowBattery && angle > 5) {
         if (localized) {
@@ -560,15 +569,19 @@ void AutonomousDrone::buildSimulatorMap(int rotationAngle) {
 
 void AutonomousDrone::beginScan(bool findHome, int rotationAngle) {
     current_drone_mode = scanning;
+    manageDroneCommand("up 30", 5, 3);
     manageDroneCommand("forward 30", 5, 3);
     manageDroneCommand("back 30", 5, 3);
     std::cout << "Find localization" << std::endl;
     while (!localized) {
-        doTriangulation();
+        doTriangulationUpDown();
+	if (!localized){
+	   doTriangulationLeftRight();
+	}
         if (localized) {
             break;
         }
-        doTriangulationUpDown();
+        doTriangulation();
         if (lowBattery){
             switchBattery();
             lowBattery = true;
@@ -691,7 +704,7 @@ void AutonomousDrone::getNavigationPoints(bool isExit) {
 }*/
 
 
-std::pair<int, bool> AutonomousDrone::getRotationToFrameAngle(const Point &point, bool first) {
+std::pair<int, bool> AutonomousDrone::getRotationToFrameAngle(const Point &point, bool first, double relativeChange) {
     double timeStamp = 0.2;
     cv::Mat img = currentImage->clone();
     cv::Mat orbSlamCurrentPose = orbSlamPointer->TrackMonocular(img, timeStamp);
@@ -711,7 +724,7 @@ std::pair<int, bool> AutonomousDrone::getRotationToFrameAngle(const Point &point
         angle1 = (angle1 + 0);
     }
     else {
-        angle1 = (angle1 + 90);
+        angle1 = (angle1 + relativeChange);
     }
     std::cout << "(Tello) [rotate_to_dest_angle] current_angle: " << angle1
               << " desired_angle: " << angle2 << std::endl;
@@ -724,7 +737,7 @@ std::pair<int, bool> AutonomousDrone::getRotationToFrameAngle(const Point &point
     std::cout << "(Tello) [rotate_to_dest_angle] ang_diff: " << ang_diff
               << std::endl;
 
-    if (abs(ang_diff) > 8) {
+    if (abs(ang_diff) > 0) {
         // tello_->SendCommand("rc 0 0 0 0");
         sleep(1);
         if (ang_diff > 0)
@@ -733,6 +746,7 @@ std::pair<int, bool> AutonomousDrone::getRotationToFrameAngle(const Point &point
             return std::pair<int, bool>{int(-ang_diff), false};
     }
 }
+
 
 std::pair<Point, Point>
 AutonomousDrone::getNavigationVector(const Point &previousPosition, const Point &destination) {
@@ -787,8 +801,9 @@ AutonomousDrone::getNavigationVector(const Point &previousPosition, const Point 
 
 
 void AutonomousDrone::maintainAngleToPoint(const Point &destination, bool rotateToFrameAngle) {
+    double totalAngleChange = 0;
+    auto howToRotateToFrame = getRotationToFrameAngle(destination, true);
     if (rotateToFrameAngle) {
-        auto howToRotateToFrame = getRotationToFrameAngle(destination, true);
         isDroneRotate = true;
         howToRotate(howToRotateToFrame.first, howToRotateToFrame.second);
         isDroneRotate = false;
@@ -798,18 +813,19 @@ void AutonomousDrone::maintainAngleToPoint(const Point &destination, bool rotate
     while (!stop && !lowBattery) {
         try {
             if (!isBlocked && !droneRotate) {
-                Point dronePreviousPosition = currentLocation;
-                //sleep(gettingCloser ? 2 : 5);
                 sleep(4);
                 if (!stop && !droneRotate && !isBlocked) {
-                    auto navigationVectors = getNavigationVector(dronePreviousPosition, destination);
+                    //auto navigationVectors = getNavigationVector(dronePreviousPosition, destination);
                     /*auto rotationDirections = Auxiliary::getRotationToTargetInFront(navigationVectors.first,   // drone vector
                                                                                     navigationVectors.second); // exit vector..*/
-
-                    auto rotationDirections = getRotationToFrameAngle(destination, true);
-                    if (rotationDirections.first > 0) {
+                    if (howToRotateToFrame.second)
+                        totalAngleChange = -howToRotateToFrame.first;
+                    else
+                        totalAngleChange = howToRotateToFrame.first;
+                    auto howToRotateToFrame = getRotationToFrameAngle(destination, false, totalAngleChange);
+                    if (howToRotateToFrame.first > 0) {
                         isDroneRotate = true;
-                        howToRotate(rotationDirections.first, rotationDirections.second);
+                        howToRotate(howToRotateToFrame.first, howToRotateToFrame.second);
                         isDroneRotate = false;
                         sleep(2);
                     }
@@ -1459,7 +1475,12 @@ void AutonomousDrone::switchBattery(int switchingTime){
 
 
 void AutonomousDrone::run() {
-
+    std::cout << "taking off" << std::endl;
+    while(!drone->SendCommandWithResponse("takeoff", 10000));
+    sleep(7);
+    this->capture = std::make_shared<cv::VideoCapture>(TELLO_STREAM_URL, cv::CAP_FFMPEG);
+    *holdCamera = false;
+    sleep(1);
     std::thread orbThread(&AutonomousDrone::runOrbSlam, this);
     while (true) {
         if (canStart) {

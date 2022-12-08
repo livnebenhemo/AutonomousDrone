@@ -551,8 +551,9 @@ namespace ORB_SLAM2 {
         // Set median depth to 1
         float medianDepth = pKFini->ComputeSceneMedianDepth(2);
         float invMedianDepth = 1.0f / medianDepth;
-
-        if (medianDepth < 0 || pKFcur->TrackedMapPoints(1) < 200) {
+	std::cout << "MedianDepth = " << medianDepth << std::endl;
+	std::cout << "Other = " << pKFcur->TrackedMapPoints(1) << std::endl;
+        if (medianDepth < 0 || pKFcur->TrackedMapPoints(1) < 100) {//change from 200 to 100!!!!!
             std::cout << "Wrong initialization, reseting..." << std::endl;
             Reset();
             mState = NOT_INITIALIZED;

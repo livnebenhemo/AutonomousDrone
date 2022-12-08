@@ -142,7 +142,6 @@ namespace ORB_SLAM2 {
         {
             std::ifstream is(filename);
 
-
             boost::archive::binary_iarchive ia(is, boost::archive::no_header);
             //ia >> mpKeyFrameDatabase;
             ia >> mpMap;
@@ -155,7 +154,7 @@ namespace ORB_SLAM2 {
         // ostrm << fin.rdbuf();
 
         // std::cout << ostrm << std::endl;
-        // std::cout << std::endl << filename <<" : Map Loaded!" << std::endl;
+        std::cout << std::endl << filename <<" : Map Loaded!" << std::endl;
 
         std::fstream file(filename, std::ios::binary);
         auto my_str = std::string();

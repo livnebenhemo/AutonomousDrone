@@ -81,6 +81,8 @@ public:
     Polygon(std::vector<Point> points, Point polygonCenter, bool isExit = false);
     std::vector<Point> vertices;
     std::vector<Point> getExitPointsByPolygon(bool isDebug = false);
+    double distanceFromPolygon(const Point& pt);
+
 
 private:
     std::vector<std::pair<Point, double>> getRawPolygonCorners();

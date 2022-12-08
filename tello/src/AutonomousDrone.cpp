@@ -64,7 +64,6 @@ void AutonomousDrone::getCameraFeed() {
     while (true) {
         if (runCamera) {
             if (!capture->isOpened() || *holdCamera) {
-                std::cout << "something happened" << std::endl;
                 // *currentImage = cv::Mat{};  // TODO : delete ?
                 usleep(5000);
                 continue;
@@ -572,7 +571,7 @@ void AutonomousDrone::beginScan(bool findHome, int rotationAngle) {
         doTriangulationUpDown();
         if (lowBattery){
             switchBattery();
-            lowBattery = true;
+            lowBattery = false;
         }
         manageAngleDroneCommand(maxRotationAngle, true, 5, 2);
     }
@@ -597,14 +596,7 @@ void AutonomousDrone::beginScan(bool findHome, int rotationAngle) {
         std::cout << "starting global bundle Adjustments" << std::endl;
         std::thread exhaustiveGlobalAdjustmentThread(&AutonomousDrone::exhaustiveGlobalAdjustment, this);
         exhaustiveGlobalAdjustmentInProgress = true;
-        /*std::cout << "landing" << std::endl;
-        manageDroneCommand("land", 3, 5);*/
-        /*while (exhaustiveGlobalAdjustmentInProgress) {
-            doTriangulation();
-        }*/
         exhaustiveGlobalAdjustmentThread.join();
-        /*std::cout << "taking off" << std::endl;
-        manageDroneCommand("takeoff", 3);*/
         if (lowBattery) {
             switchBattery();
             lowBattery = false;
@@ -624,7 +616,7 @@ void AutonomousDrone::beginScan(bool findHome, int rotationAngle) {
         std::time(&time_tNow);
         std::strftime(time_buf, 21, "%Y%m%d%H%S%M", gmtime(&time_tNow));
         std::string currentTime(time_buf);
-        std::string filename = "/tmp/slamMap" + currentTime + ".bin";
+        std::string filename = "/home/livne/slamMap" + currentTime + ".bin";
         *holdCamera = true;
         sleep(1);
         orbSlamPointer->SaveMap(filename);
@@ -1020,7 +1012,7 @@ void AutonomousDrone::monitorDroneProgress(const Point &destination) {
     usleep(500000);
     int i = 0;
     int amountOfGettingFurther = 4;
-    closeThreshold = Auxiliary::calculateDistanceXZ(currentLocation, destination) / 2.5;
+    closeThreshold = Auxiliary::calculateDistanceXY(currentLocation, destination) / 2.5;
     std::cout << "close threshold:" << closeThreshold << std::endl;
     double expectedScale = closeThreshold * 0.005;
     std::cout << "scale threshold:" << expectedScale << std::endl;
@@ -1029,7 +1021,7 @@ void AutonomousDrone::monitorDroneProgress(const Point &destination) {
         if (!lowBattery) {
             try {
 
-                double distance = Auxiliary::calculateDistanceXZ(currentLocation, destination);
+                double distance = Auxiliary::calculateDistanceXY(currentLocation, destination);
                 if (!(i % 2)) {
                     std::cout << "distance to destination: " << distance << std::endl;
                 }
@@ -1289,7 +1281,7 @@ void AutonomousDrone::manuallyFlyToNavigationPoints() {
         count++;
         if (count == 2) { // for "debug"
             std::cout << "reached" << std::endl;
-            break;
+            //break;
         }
         /*while (drone->GetBatteryStatus() <= 40) // comment for debug
         {
@@ -1310,6 +1302,18 @@ void AutonomousDrone::manuallyFlyToNavigationPoints() {
 
     orbSlamPointer->GetMapDrawer()->ClearPolygonEdgesPoint();
     std::cout << "we ended fly to polygon" << std::endl;
+    if (saveBinMap) {
+        char time_buf[21];
+        time_t time_tNow;
+        std::time(&time_tNow);
+        std::strftime(time_buf, 21, "%Y%m%d%H%S%M", gmtime(&time_tNow));
+        std::string currentTime(time_buf);
+        std::string filename = "/tmp/slamMap" + currentTime + ".bin";
+        *holdCamera = true;
+        sleep(1);
+        orbSlamPointer->SaveMap(filename);
+        *holdCamera = false;
+    }
 }
 
 

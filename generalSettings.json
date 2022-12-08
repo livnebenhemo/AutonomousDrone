@@ -11,9 +11,9 @@
   "runSimulator": false,
   "maxForwardForSimulator" : 1500,
   "sizeOfForwardStepSimulator": 200,
-  "loadMap": false,
-  "loadMapPath": "/tmp/slamMap20221208115149.bin",
-  "saveMap": true,
+  "loadMap": true,
+  "loadMapPath": "/home/livne/slamMap20221208183453.bin",
+  "saveMap": false,
   "saveMapPath": "/home/livne/slamMapLabOpenSpace.bin"
 }
 

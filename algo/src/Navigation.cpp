@@ -181,6 +181,32 @@ std::vector<Point> Navigation::dijkstra(Graph graph) {
     return {path.begin(), path.end()};
 }
 
+std::vector<Point> Navigation::findOptPath(const std::vector<Point>& points){
+    std::vector<int> indices(points.size());
+    std::iota(indices.begin(), indices.end(), 0);//TODO: is there a better way to represent this?
+    float min_sum = std::numeric_limits<double>::infinity();;
+    std::vector<int> min_path_indices;
+    do
+    {
+        float sum = 0;
+        for (int i = 0; i < indices.size(); i++){
+            sum += Auxiliary::calculateDistanceXY(points[indices[i]], points[indices[(i+1)%indices.size()]]);
+        }
+        if (min_sum > sum) {
+            min_sum = sum;
+            min_path_indices = indices;
+        }
+    }
+    while (std::next_permutation(indices.begin(), indices.end()));
+
+    std::vector<Point> min_path;
+    for (auto index: min_path_indices ){
+        min_path.push_back(points[index]);
+    }
+    return min_path;
+}
+
+
 std::vector<Point>
 Navigation::getNavigationPathByRRT(std::vector<Point> &points, std::pair<Point, Point> &track, bool debug) {
     return std::vector<Point>{track.second};

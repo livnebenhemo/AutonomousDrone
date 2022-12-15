@@ -23,6 +23,8 @@ public:
     std::vector<Point> filterPointsByStartPosition(std::vector<Point> &points, std::pair<Point, Point> &track);
 
     std::vector<Point> dijkstra(Graph graph);
+
+    std::vector<Point> findOptPath(const std::vector<Point>& points);
 };
 
 

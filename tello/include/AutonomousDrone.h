@@ -25,7 +25,7 @@ public:
     AutonomousDrone(std::shared_ptr<ctello::Tello> drone,/*std::shared_ptr<cv::VideoCapture> capture,*/
                     std::string vocabularyFilePath, std::string cameraYamlPath, const std::string &arucoYamlPath,
                     std::string droneWifiName,
-                    bool loadMap,
+                    bool loadMap, std::string &loadMapCSV,
                     std::string &mapPath,bool saveMap, int sizeOfFrameStack = 20,
                     bool withPlot = false,  bool isManual=false, bool switchBattery=false,
                     std::string chargerBluetoothAddress = "3C:61:05:03:81:E2");
@@ -203,6 +203,7 @@ private:
     bool loadMap;
     bool saveBinMap;
     std::string mapPath;
+    std::string loadMapCSV;
 };
 
 #endif //TELLO_AUTONOMOUSDRONE_H

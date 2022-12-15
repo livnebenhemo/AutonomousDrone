@@ -9,12 +9,15 @@
 #include <utility>
 
 
+bool FirstCopy = true;
+
+
 AutonomousDrone::AutonomousDrone(std::shared_ptr<ctello::Tello> drone,
                                  std::string vocabularyFilePath,
                                  std::string cameraYamlPath,
                                  const std::string &arucoYamlPath,
                                  std::string droneWifiName,
-                                 bool loadMap,
+                                 bool loadMap, std::string &loadMapCSV,
                                  std::string &mapPath, bool saveMap,
                                  int sizeOfFrameStack,
                                  bool withPlot,
@@ -47,6 +50,7 @@ AutonomousDrone::AutonomousDrone(std::shared_ptr<ctello::Tello> drone,
     dictionary = cv::aruco::getPredefinedDictionary(
             cv::aruco::DICT_6X6_250);
     this->loadMap = loadMap;
+    this->loadMapCSV = loadMapCSV;
     this->mapPath = mapPath;
     this->saveBinMap = saveMap;
 }
@@ -197,25 +201,51 @@ bool AutonomousDrone::updateCurrentFrame(ORB_SLAM2::Frame frame) {
     }
 }
 
+
+std::vector<Point> getPointsFromFile(const std::string& fileName) {
+    std::vector<Point> points;
+    std::ifstream myFile(fileName);
+    std::string line;
+    while (std::getline(myFile, line)) {
+        std::stringstream lineStream(line);
+        Point point;
+        lineStream >> point.x;
+        if (lineStream.peek() == ',') lineStream.ignore();
+        lineStream >> point.z;
+        if (lineStream.peek() == ',') lineStream.ignore();
+        lineStream >> point.y;
+        if (lineStream.peek() == ',') lineStream.ignore();
+        lineStream >> point.frameId;
+        points.push_back(point);
+    }
+    return points;
+}
+
+
 std::vector<Point> AutonomousDrone::getCurrentMap() {
     std::vector<Point> currentMap;
-    for (auto p: orbSlamPointer->GetMap()->GetAllMapPoints()) {
-        if (p && !p->isBad()) {
-            auto frame = p->GetReferenceKeyFrame();
-            if (!frame){  // TODO : check it !!!!!!!
-                continue;
+    if (!loadMap) {
+        for (auto p: orbSlamPointer->GetMap()->GetAllMapPoints()) {
+            if (p && !p->isBad()) {
+                auto frame = p->GetReferenceKeyFrame();
+                if (!frame) {  // TODO : check it !!!!!!!
+                    continue;
+                }
+                int frameId = frame->mnFrameId;
+                cv::Mat Tcw = frame->GetPose();
+                auto point = p->GetWorldPos();
+                cv::Mat Rwc = Tcw.rowRange(0, 3).colRange(0, 3).t();
+                Eigen::Matrix<double, 3, 1> v = ORB_SLAM2::Converter::toVector3d(point);
+                currentMap.emplace_back(Point(v.x(), v.z(), v.y(), Rwc, frameId));
             }
-            int frameId = frame->mnFrameId;
-            cv::Mat Tcw = frame->GetPose();
-            auto point = p->GetWorldPos();
-            cv::Mat Rwc = Tcw.rowRange(0, 3).colRange(0, 3).t();
-            Eigen::Matrix<double, 3, 1> v = ORB_SLAM2::Converter::toVector3d(point);
-            currentMap.emplace_back(Point(v.x(), v.z(), v.y(), Rwc, frameId));
         }
     }
     saveMap(rooms.size());
+    if (loadMap)
+        currentMap = getPointsFromFile("/tmp/pointDataExtended.csv");
     return currentMap;
 }
+
 
 void AutonomousDrone::saveMap(int fileNumber) {
     while (true) {
@@ -223,7 +253,17 @@ void AutonomousDrone::saveMap(int fileNumber) {
             auto orbSlamMap = orbSlamPointer->GetMap();
             if (orbSlamMap) {
                 std::ofstream pointData;
-                pointData.open("/tmp/pointData" + std::to_string(fileNumber) + ".csv");
+                if (loadMap) {
+                    pointData.open("/tmp/pointDataExtended.csv");
+                    if (FirstCopy) { // copy the base map (first scan)
+                        FirstCopy = false;
+                        std::ifstream sourcePointData(loadMapCSV);
+                        pointData << sourcePointData.rdbuf();
+                        sourcePointData.close();
+                    }
+                }
+                else
+                    pointData.open("/tmp/pointData" + std::to_string(fileNumber) + ".csv");
                 for (auto p: orbSlamMap->GetAllMapPoints()) {
                     if (p && !p->isBad()) {
                         auto frame = p->GetReferenceKeyFrame();
@@ -1017,7 +1057,7 @@ void AutonomousDrone::monitorDroneProgress(const Point &destination) {
     double expectedScale = closeThreshold * 0.005;
     std::cout << "scale threshold:" << expectedScale << std::endl;
     std::vector<double> distances{};
-    while (!stop) {
+    while (!stop || (stop && lowBattery)) {
         if (!lowBattery) {
             try {
 

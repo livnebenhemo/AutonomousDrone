@@ -43,6 +43,7 @@ int main(int argc, char** argv) {
     bool withPlot = data["WithPlot"];
     bool runSimulator = data["runSimulator"];
     bool loadMap = data["loadMap"];
+    std::string loadMapCSV = data["loadMapCSV"];
     bool saveMap = data["saveMap"];
     int sizeOfFrameStack = data["sizeOfFrameStack"];
     int maxForwardForSimulator = data["maxForwardForSimulator"];
@@ -50,7 +51,7 @@ int main(int argc, char** argv) {
     
 
     AutonomousDrone autonomousDrone(drone, vocPath, droneYamlPathSlam, droneYamlPathAruco, droneName,
-                                    loadMap, mapPath, saveMap, sizeOfFrameStack, withPlot, isManual, switchBattery);
+                                    loadMap, loadMapCSV, mapPath, saveMap, sizeOfFrameStack, withPlot, isManual, switchBattery);
     if (runSimulator) {
         autonomousDrone.runSimulator(maxForwardForSimulator, sizeOfForwardStepSimulator);
     } else {

@@ -156,6 +156,7 @@ private:
     bool loopCloserHappened = false;
     double desiredAngle = 0.0;
     bool lowBattery = false;
+    bool holdMonitorThread = false;
     bool droneNotFly = false;
     bool isManual = false;
     bool useCharger = true;

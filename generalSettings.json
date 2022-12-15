@@ -11,10 +11,10 @@
   "runSimulator": false,
   "maxForwardForSimulator" : 1500,
   "sizeOfForwardStepSimulator": 200,
-  "loadMap": true,
-  "loadMapCSV" : "/home/livne/pointData1.csv",
-  "loadMapPath": "/home/livne/slamMap20221215112404.bin",
-  "saveMap": false,
+  "loadMap": false,
+  "loadMapCSV" : "/home/livne/pointData8.csv",
+  "loadMapPath": "/home/livne/slamMap20221215180938.bin",
+  "saveMap": true,
   "saveMapPath": "/home/livne/slamMapLabOpenSpace.bin"
 }
 

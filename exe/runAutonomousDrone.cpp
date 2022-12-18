@@ -50,7 +50,7 @@ int main(int argc, char** argv) {
     int sizeOfForwardStepSimulator = data["sizeOfForwardStepSimulator"];
     std::string saveMapPath = data["saveMapPath"];
     std::string saveMapPathCSV = data["saveMapPathCSV"];
-    
+
 
     AutonomousDrone autonomousDrone(drone, vocPath, droneYamlPathSlam, droneYamlPathAruco, droneName,
                                     loadMap, loadMapCSV, mapPath, saveMap, saveMapPath, saveMapPathCSV, sizeOfFrameStack, withPlot, isManual, switchBattery);

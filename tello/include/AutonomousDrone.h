@@ -26,7 +26,8 @@ public:
                     std::string vocabularyFilePath, std::string cameraYamlPath, const std::string &arucoYamlPath,
                     std::string droneWifiName,
                     bool loadMap, std::string &loadMapCSV,
-                    std::string &mapPath,bool saveMap, std::string& saveMapPath, std::string& saveMapPathCSV, int sizeOfFrameStack = 20,
+                    std::string &mapPath,bool saveMap, std::string& saveMapPath,
+                    std::string& saveMapPathCSV, int sizeOfFrameStack = 20,
                     bool withPlot = false,  bool isManual=false, bool switchBattery=false,
                     std::string chargerBluetoothAddress = "3C:61:05:03:81:E2");
 
@@ -83,7 +84,8 @@ private:
 
     void monitorDroneProgress(const Point &destination);
 
-    void maintainAngleToPoint(const Point &destination, bool rotateToFrameAngle = true);
+    std::pair<int, bool> maintainAngleToPoint(const Point &destination, bool rotateToFrameAngle = true
+            , bool first = true, double relativeChange = 0);
 
     std::tuple<int, bool, int>
     checkMotion(const Point &oldestPosition, const Point &currentPosition, const Point &closePoint,
@@ -200,7 +202,7 @@ private:
     void flyToNavigationPointsNoRRT();
 
     bool doTriangulationUpDown();
-    
+
     bool doTriangulationLeftRight();
 
     bool loadMap;

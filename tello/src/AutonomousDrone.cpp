@@ -18,8 +18,10 @@ AutonomousDrone::AutonomousDrone(std::shared_ptr<ctello::Tello> drone,
                                  const std::string &arucoYamlPath,
                                  std::string droneWifiName,
                                  bool loadMap, std::string &loadMapCSV,
-                                 std::string &mapPath, bool saveMap,
-				 std::string& saveMapPath, std::string& saveMapPathCSV, 
+                                 std::string &mapPath,
+                                 bool saveMap,
+				                 std::string& saveMapPath,
+                                 std::string& saveMapPathCSV,
                                  int sizeOfFrameStack,
                                  bool withPlot,
                                  bool isManual,
@@ -245,7 +247,7 @@ std::vector<Point> AutonomousDrone::getCurrentMap() {
     }
     saveMap(rooms.size());
     if (loadMap)
-        currentMap = getPointsFromFile(loadMapCSV);//________
+        currentMap = getPointsFromFile("/tmp/pointDataExtended.csv");
     return currentMap;
 }
 
@@ -259,6 +261,7 @@ void AutonomousDrone::saveMap(int fileNumber) {
                 if (loadMap) {
                     pointData.open("/tmp/pointDataExtended.csv");
                     if (FirstCopy) { // copy the base map (first scan)
+                        std::cout << "Copy base map" << std::endl;
                         FirstCopy = false;
                         std::ifstream sourcePointData(loadMapCSV);
                         char ch;
@@ -391,7 +394,7 @@ void AutonomousDrone::rotateDrone(int angle, bool clockwise, bool buildMap) {
             doTriangulation();
         }
         if (amountOfLostLocalizations) {
-            if (current_drone_mode == navigation) {
+            /*if (current_drone_mode == navigation) {
                 auto [angleAfterLost, clockwiseAfterLost] = getRotationToFrameAngle(navigationDestination);
                 howToRotate(angleAfterLost, clockwiseAfterLost, false);
             } else {
@@ -401,23 +404,26 @@ void AutonomousDrone::rotateDrone(int angle, bool clockwise, bool buildMap) {
                     amountOfLostLocalizations--;
                 }
                 rotateDrone(angle, clockwise, true);
+            }*/
+            amountOfLostLocalizations %= int(360 / maxRotationAngle);
+            while (amountOfLostLocalizations - 1) {
+                rotateDrone(maxRotationAngle, clockwise, false);
+                amountOfLostLocalizations--;
             }
+            rotateDrone(angle, clockwise, true);
         }
     }
 }
 
 void AutonomousDrone::howToRotate(int angle, bool clockwise, bool buildMap) {
     if (angle < 360) {
-	//if angle is small, a simple rotation will work, otherwise there is a chance of losing localization therefore
-	//we do small rotations
         if (angle < 30) {
             rotateDrone(angle, clockwise, buildMap);
         } else {
             int amountOfRotation = ceil(angle / maxRotationAngle);
             while (amountOfRotation--) {
-                if (!lowBattery) {//Change
-                   manageAngleDroneCommand(maxRotationAngle, clockwise); 
-		   //rotateDrone(maxRotationAngle, clockwise, buildMap);
+                if (!lowBattery) {
+                    rotateDrone(maxRotationAngle, clockwise, buildMap);
                 } else {
                     switchBattery();
                     // return;
@@ -733,53 +739,39 @@ void AutonomousDrone::getNavigationPoints(bool isExit) {
 
 
 std::pair<int, bool> AutonomousDrone::getRotationToFrameAngle(const Point &point, bool first, double relativeChange) {
-    double timeStamp = 0.2;
+    /*double timeStamp = 0.2;
     cv::Mat img = currentImage->clone();
     cv::Mat orbSlamCurrentPose = orbSlamPointer->TrackMonocular(img, timeStamp);
     localized = true;
-    updateCurrentLocation(orbSlamCurrentPose);
+    updateCurrentLocation(orbSlamCurrentPose);*/
     std::cout << "(Tello) [rotate_to_dest_angle] Starting" << std::endl;
     // Get angle from Rwc
-    // Extracting z angle of current pose from rotation matrix(depth)
     cv::Mat Rwc = currentLocation.rotationMatrix.t();
     auto angles = Auxiliary::rotationMatrixToEulerAngles(Rwc);
     float angle1 = angles.z;
-    // Extracting desired angle 
+
     cv::Point2f vec1(point.x - currentLocation.x,
                      point.y - currentLocation.y);
     // Get angle from vec1
     float angle2 = std::atan2(vec1.y, vec1.x) * 180 / M_PI;
-    angle1 = angle1+90;
-
-    // Why????
-    /*if (first) {
+    if (first) {
         angle1 = (angle1 + 0);
     }
     else {
-        angle1 = (angle1 + 90);
-    }*/
-
-    std::cout << "desired angle = " << angle2 << std::endl;
-    std::cout << "current angle = " << angle1 - 90 << std::endl;
-    std::cout << "current angle + relative change = " << angle1 << std::endl;
-
-
+        angle1 = (angle1 + relativeChange);
+    }
     std::cout << "(Tello) [rotate_to_dest_angle] current_angle: " << angle1
               << " desired_angle: " << angle2 << std::endl;
-    
-    //Difference between desired angle to current angle
+
     float ang_diff = angle2 - angle1;
-    ang_diff = -ang_diff;// Why????
-    //Why???? if ang_diff is bigger than 180, then it is faster to do the complement rotation, ang_diff - 360
+    ang_diff = -ang_diff;
     while (ang_diff > 180) ang_diff -= 360;
     while (ang_diff <= -180) ang_diff += 360;
-    
-    std::cout << "angle difference = " << ang_diff << std::endl;
+
     std::cout << "(Tello) [rotate_to_dest_angle] ang_diff: " << ang_diff
               << std::endl;
 
     if (abs(ang_diff) > 0) {
-        // tello_->SendCommand("rc 0 0 0 0");
         sleep(1);
         if (ang_diff > 0)
             return std::pair<int, bool>{int(ang_diff), true};
@@ -796,61 +788,19 @@ AutonomousDrone::getNavigationVector(const Point &previousPosition, const Point 
     return std::pair<Point, Point>{droneVector, exitVector};
 }
 
-/*void AutonomousDrone::maintainAngleToPoint(const Point &destination, bool rotateToFrameAngle) {
-    if (rotateToFrameAngle) {
-        auto howToRotateToFrame = getRotationToFrameAngle(destination);
-        howToRotate(howToRotateToFrame.first, howToRotateToFrame.second);
-    }
-    sleep(3);
-    while (!stop && !lowBattery) {
-        try {
-            if (!isBlocked && !droneRotate) {
-                Point dronePreviousPosition = currentLocation;
-                //sleep(gettingCloser ? 2 : 5);
-                if (gettingFurther) {
-                    isTurning = true;
-                    std::cout << "turning around" << std::endl;
-                    howToRotate(180, true, true);
-                    gettingFurther = false;
-                    sleep(3);
-                    isTurning = false;
-                    continue;
-                }
-                sleep(4);
-                if (!gettingFurther && !stop && !droneRotate && !isBlocked) {
-                    auto navigationVectors = getNavigationVector(dronePreviousPosition, destination);
-                    auto rotationDirections = Auxiliary::getRotationToTargetInFront(
-                            navigationVectors.first,   // drone vector
-                            navigationVectors.second); // exit vector..
-                    if (rotationDirections.first > 8) {
-                        howToRotate(rotationDirections.first, rotationDirections.second);
-                        sleep(2);
-                    }
-                }
-            } else {
-                usleep(500000);
-            }
-        } catch (std::exception &e) {
-            std::cout << e.what() << " in maintainAngleToPoint" << std::endl;
-        } catch (...) {
-            std::cout << "unknown exception in maintainAngleToPoint" << std::endl;
-        }
 
-    }
-}*/
-
-
-void AutonomousDrone::maintainAngleToPoint(const Point &destination, bool rotateToFrameAngle) {
+std::pair<int, bool> AutonomousDrone::maintainAngleToPoint(const Point &destination, bool rotateToFrameAngle, bool first,
+                                                           double relativeChange) {
     double totalAngleChange = 0;
     std::cout << "Computing angle to rotate" << std::endl;
-    auto howToRotateToFrame = getRotationToFrameAngle(destination, true);
+    auto howToRotateToFrame = getRotationToFrameAngle(destination, first, relativeChange);
     if (rotateToFrameAngle) {
         isDroneRotate = true;
         howToRotate(howToRotateToFrame.first, howToRotateToFrame.second);
         isDroneRotate = false;
     }
     sleep(3);
-
+    return howToRotateToFrame;
     /*while (!stop && !lowBattery) {
         try {
             if (!isBlocked && !droneRotate) {
@@ -1148,6 +1098,8 @@ bool AutonomousDrone::navigateDrone(const Point &destination, bool rotateToFrame
     //                                       rotateToFrameAngle);
     std::thread monitorDroneProgressThread(&AutonomousDrone::monitorDroneProgress, this, destination);
     bool areWeNavigatingHome = destination == home;
+    auto howToRotateToFrame = maintainAngleToPoint(destination, rotateToFrameAngle, true, 0);
+    double relativeChange = 0;
     while ((!stop && !loopCloserHappened) || (stop && lowBattery)) {
         if (lowBattery) {
             switchBattery();
@@ -1164,10 +1116,12 @@ bool AutonomousDrone::navigateDrone(const Point &destination, bool rotateToFrame
                     }
                 } else {
                     if (!droneNotFly && !isDroneRotate) {
-			maintainAngleToPoint(destination, true);
-			std::cout << "Going forward rc = 30" <<std::endl;
-                        drone->SendCommand("rc 30 " + std::to_string(speed)
-                                           + " 0 0");
+                        manageDroneCommand("forward 50", 3, 2);
+                        if (howToRotateToFrame.second)
+                            relativeChange -= howToRotateToFrame.first;
+                        else
+                            relativeChange += howToRotateToFrame.first;
+                        howToRotateToFrame = maintainAngleToPoint(destination, rotateToFrameAngle, false, relativeChange);
                     }
                     if (areWeNavigatingHome) {
                         std::cout << "going home" << std::endl;
@@ -1192,7 +1146,7 @@ bool AutonomousDrone::navigateDrone(const Point &destination, bool rotateToFrame
     current_drone_mode = scanning;
     std::cout << "waiting for the threads to finish" << std::endl;
     monitorDroneProgressThread.join();
-    //maintainAngleToPointThread.join();
+    // maintainAngleToPointThread.join();
     //collisionDetectorThread.join();
     std::cout << "threads finished" << std::endl;
     navigationDestination = Point(1000, 1000, 1000);
@@ -1523,7 +1477,7 @@ void AutonomousDrone::switchBattery(int switchingTime){
         if (localized) {
             break;
         }
-        manageAngleDroneCommand(maxRotationAngle, true, 5, 2);
+        manageAngleDroneCommand(maxRotationAngle, false, 5, 2);
     }
 }
 

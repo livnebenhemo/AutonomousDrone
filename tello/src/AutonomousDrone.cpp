@@ -10,6 +10,7 @@
 
 
 bool FirstCopy = true;
+bool runDrone = true;  // TODO : use or delete it
 
 
 AutonomousDrone::AutonomousDrone(std::shared_ptr<ctello::Tello> drone,
@@ -73,7 +74,6 @@ void AutonomousDrone::getCameraFeed() {
     while (true) {
         if (runCamera) {
             if (!capture->isOpened() || *holdCamera) {
-                // *currentImage = cv::Mat{};  // TODO : delete ?
                 usleep(5000);
                 continue;
             }
@@ -261,6 +261,7 @@ void AutonomousDrone::saveMap(int fileNumber) {
                 if (loadMap) {
                     pointData.open("/tmp/pointDataExtended.csv");
                     if (FirstCopy) { // copy the base map (first scan)
+                        pointData.clear();
                         std::cout << "Copy base map" << std::endl;
                         FirstCopy = false;
                         std::ifstream sourcePointData(loadMapCSV);
@@ -708,7 +709,7 @@ void AutonomousDrone::getNavigationPoints(bool isExit) {
     }
     currentRoom.exitPoints = exitPoints;
     exitStayInTheAirLoop = true;
-    std::cout << "we got the polygon navigation points:" << exitPoints.size() << std::endl;
+    std::cout << """the polygon navigation points:" << exitPoints.size() << std::endl;
 }
 
 
@@ -1048,7 +1049,7 @@ void AutonomousDrone::monitorDroneProgress(const Point &destination) {
                         std::cout << "mean of distances: " << mean << std::endl;
                     }
                     safetyThreshold = mean * 5;//gettingCloser ? mean * 3 : mean * 2
-                    weInAWrongScale = mean < (gettingCloser ? expectedScale / 2 : expectedScale);
+                    weInAWrongScale = mean < (gettingCloser ? expectedScale / 2 : expectedScale);  // TODO : maybe delete ?
                     distances.erase(distances.begin());
                 }
                 distances.emplace_back(distance);
@@ -1109,10 +1110,8 @@ bool AutonomousDrone::navigateDrone(const Point &destination, bool rotateToFrame
             if (!droneRotate && !isBlocked) {
                 if (!localized) {
                     manageDroneCommand("back 20", 3, 2);
-                    if(!localized) {  // TODO : check if not overkill
+                    if(!localized) {
                         doTriangulation();
-                        /*if (!localized)
-                            doTriangulationUpDown();*/
                     }
                 } else {
                     if (!droneNotFly && !isDroneRotate) {
@@ -1227,7 +1226,7 @@ bool AutonomousDrone::manuallyNavigateDrone(const Point &destination, bool rotat
 void AutonomousDrone::flyToNavigationPoints() {
     Navigation navigation;
     orbSlamPointer->GetMapDrawer()->SetPolygonEdges(currentRoom.exitPoints);
-    orbSlamPointer->GetMapDrawer()->DrawMapPoints();  // TODO : check it
+    orbSlamPointer->GetMapDrawer()->DrawMapPoints();
     std::cout << currentRoom.exitPoints.size() << std::endl;
     for (const Point &point: currentRoom.exitPoints) {
         int battery = drone->GetBatteryStatus();
@@ -1269,30 +1268,22 @@ void AutonomousDrone::manuallyFlyToNavigationPoints() {
     Navigation navigation;
     orbSlamPointer->GetMapDrawer()->SetPolygonEdges(currentRoom.exitPoints);
     std::cout << currentRoom.exitPoints.size() << std::endl;
-    int count = 0;
     for (const Point &point: currentRoom.exitPoints) {
         int battery = drone->GetBatteryStatus();
         if (battery < 40) {
             switchBattery();
             lowBattery = false;
         }
-        /*std::vector<Point> plottedPoint = std::vector<Point>{};
-        plottedPoint.push_back(point);
-        Auxiliary::showCloudPoint(plottedPoint, currentRoom.points);*/
         auto currentMap = getCurrentMap();
         std::pair<Point, Point> track{currentLocation, point};
-        if (manuallyNavigateDrone(point)) {  // TODO : I deleted && !loopCloserHappened
-            if (loopCloserHappened) {  // TODO : I deleted we are in a wrong scale becuase I thing its not relevant to manually mode
+        if (manuallyNavigateDrone(point)) {
+            if (loopCloserHappened) {
                 std::cout << "loop closer happened" << std::endl;
                 break;
             }
         } else {
+            std::cout << "we break here" << std::endl;
             break;
-        }
-        count++;
-        if (count == 2) { // for "debug"
-            std::cout << "reached" << std::endl;
-            //break;
         }
         /*while (drone->GetBatteryStatus() <= 40) // comment for debug
         {
@@ -1504,13 +1495,13 @@ void AutonomousDrone::run() {
                         manuallyFlyToNavigationPoints();
                     else
                         flyToNavigationPoints();
-                    if (weInAWrongScale && !lowBattery) {
+                    /*if (weInAWrongScale && !lowBattery) {
                         std::cout << "going back to base" << std::endl;
                         if (!checkIfPointInFront(home)) {
                             howToRotate(180, true, true);
                         }
                         navigateDrone(home, false);
-                    }
+                    }*/
                 }
                 if (lowBattery) {
                     std::cout << "no battery" << std::endl;

@@ -112,6 +112,8 @@ private:
     std::vector<Line> edges;
     int angle = 25;
     bool isExit;
+
+    std::vector<Point> findOptPath(const std::vector<Point> &points);
 };
 
 

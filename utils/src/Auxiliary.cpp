@@ -105,6 +105,7 @@ void Auxiliary::showCloudPoint(const std::vector<Point> &redPoints, const std::v
     matplotlibcpp::clf();
     matplotlibcpp::scatter(getXValues(cloud), getYValues(cloud), 2.0);
     matplotlibcpp::plot(getXValues(redPoints), getYValues(redPoints), "ro");
+    matplotlibcpp::plot(getXValues(redPoints), getYValues(redPoints));
     matplotlibcpp::show();
 }
 

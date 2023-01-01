@@ -707,10 +707,16 @@ void AutonomousDrone::getNavigationPoints(bool isExit) {
         }
         pointIndex += 1;
     }
+    std::cout << "find optimal path" << std::endl;
+    Navigation navigation;
+    exitPoints = navigation.findOptPath(exitPoints, currentLocation);
+    if (!isManual)
+        exitPoints = navigation.createStarNavigation(exitPoints, currentLocation);
     currentRoom.exitPoints = exitPoints;
     exitStayInTheAirLoop = true;
     std::cout << """the polygon navigation points:" << exitPoints.size() << std::endl;
 }
+
 
 
 /*std::pair<int, bool> AutonomousDrone::getRotationToFrameAngle(const Point &point) {
@@ -1086,7 +1092,6 @@ bool AutonomousDrone::navigateDrone(const Point &destination, bool rotateToFrame
     std::cout << "start navigation to:" << destination.to_string() << std::endl;
     navigationDestination = destination;
     orbSlamPointer->GetMapDrawer()->SetDestination(navigationDestination);
-    std::cout << "check me" << std::endl;
     stop = false;
     loopCloserHappened = false;
     weInAWrongScale = false;
@@ -1238,14 +1243,19 @@ void AutonomousDrone::flyToNavigationPoints() {
         std::pair<Point, Point> track{currentLocation, point};
         auto path = navigation.getNavigationPathByRRT(currentMap, track);
         for (const auto &pathPoint: path) {
-            if (navigateDrone(pathPoint) && !loopCloserHappened) {
-                /*if (!checkIfPointInFront(home)) {
-                    howToRotate(180, true, true);
-                }*/
-                if (loopCloserHappened || weInAWrongScale) {
+            if (navigateDrone(pathPoint)) {
+                if (loopCloserHappened) {
+                    std::cout << "loop closer happened" << std::endl;
                     break;
                 }
-                /*if (!navigateDrone(home, false) || loopCloserHappened || lowBattery) {
+                if (weInAWrongScale) {
+                    std::cout << "we in wrong scale" << std::endl;
+                    break;
+                }
+                /*if (!checkIfPointInFront(home)) {
+                    howToRotate(180, true, true);
+                }
+                 if (!navigateDrone(home, false) || loopCloserHappened || lowBattery) {
                     break;
                 }*/
             }
@@ -1254,13 +1264,22 @@ void AutonomousDrone::flyToNavigationPoints() {
                 switchBattery();
                 navigateDrone(pathPoint);
             }
-            /*} else {
-                break;
-            }*/
         }
     }
     orbSlamPointer->GetMapDrawer()->ClearPolygonEdgesPoint();
     std::cout << "we ended fly to polygon" << std::endl;
+    if (saveBinMap) {
+        char time_buf[21];
+        time_t time_tNow;
+        std::time(&time_tNow);
+        std::strftime(time_buf, 21, "%Y%m%d%H%S%M", gmtime(&time_tNow));
+        std::string currentTime(time_buf);
+        std::string filename = "/tmp/" + currentTime + ".bin";
+        *holdCamera = true;
+        sleep(1);
+        orbSlamPointer->SaveMap(filename);
+        *holdCamera = false;
+    }
 }
 
 
@@ -1285,12 +1304,7 @@ void AutonomousDrone::manuallyFlyToNavigationPoints() {
             std::cout << "we break here" << std::endl;
             break;
         }
-        /*while (drone->GetBatteryStatus() <= 40) // comment for debug
-        {
-            std::cout << "Battery less than 40 " << std::endl;
-            switchBattery();
-        }
-        beginScan(false);*/
+        //beginScan(false);
 
         // if begin scan in comment ("debug" mode) - need to make B.A :  TODO : need to check if work
         /*std::cout << "starting global bundle Adjustments" << std::endl;

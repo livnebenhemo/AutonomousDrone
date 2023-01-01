@@ -181,14 +181,14 @@ std::vector<Point> Navigation::dijkstra(Graph graph) {
     return {path.begin(), path.end()};
 }
 
-std::vector<Point> Navigation::findOptPath(const std::vector<Point>& points){
+std::vector<Point> Navigation::findOptPath(const std::vector<Point>& points, const Point &currentPoint){
     std::vector<int> indices(points.size());
     std::iota(indices.begin(), indices.end(), 0);//TODO: is there a better way to represent this?
     float min_sum = std::numeric_limits<double>::infinity();;
     std::vector<int> min_path_indices;
     do
     {
-        float sum = 0;
+        float sum = Auxiliary::calculateDistanceXY(currentPoint, points[indices[0]]);
         for (int i = 0; i < indices.size(); i++){
             sum += Auxiliary::calculateDistanceXY(points[indices[i]], points[indices[(i+1)%indices.size()]]);
         }
@@ -204,6 +204,17 @@ std::vector<Point> Navigation::findOptPath(const std::vector<Point>& points){
         min_path.push_back(points[index]);
     }
     return min_path;
+}
+
+
+std::vector<Point> Navigation::createStarNavigation(const std::vector<Point>& navigationPoints, const Point &currentPoint) {
+    std::vector<Point> starNavigationPoints;
+    for (int i = 0; i < navigationPoints.size() - 1; ++i) {
+        starNavigationPoints.emplace_back(currentPoint);
+        starNavigationPoints.emplace_back(navigationPoints[i]);
+    }
+    starNavigationPoints.emplace_back(currentPoint);
+    return starNavigationPoints;
 }
 
 

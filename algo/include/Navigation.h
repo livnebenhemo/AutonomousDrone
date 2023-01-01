@@ -25,6 +25,10 @@ public:
     std::vector<Point> dijkstra(Graph graph);
 
     std::vector<Point> findOptPath(const std::vector<Point>& points);
+
+    std::vector<Point> findOptPath(const std::vector<Point> &points, const Point &currentPoint);
+
+    std::vector<Point> createStarNavigation(const std::vector<Point> &navigationPoints, const Point &currentPoint);
 };
 
 

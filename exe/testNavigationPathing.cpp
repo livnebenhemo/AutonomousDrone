@@ -10,6 +10,7 @@
 #include <opencv2/core.hpp>
 #include "../utils/include/Frame.h"
 #include "include/RRT.h"
+#include "include/Polygon.h"
 
 
 std::pair<cv::Mat, cv::Mat> calculate_align_matrices(std::vector<cv::Point3d> points) {
@@ -150,11 +151,11 @@ std::vector<Point> getPointsFromXYZFile(const std::string &fileName) {
 }
 
 int main() {
-    std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "buildings/HUJI/Koma2/pointData8.csv";
+    std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "pointDataExtended.csv";
     auto points = getPointsFromFile(datasetFilePath);
-    auto[R, T] = align_map(points);
+    Polygon polygon(points, Point());
     auto start = std::chrono::high_resolution_clock::now();
-    std::vector<Point> pathPoints{Point(), Point(-0.5, -0.5, -0.05)};
+    std::vector<Point> pathPoints = polygon.getExitPointsByPolygon(false);
     std::vector<Point> navigationPoints;
     navigationPoints.emplace_back(pathPoints[0]);
     Navigation navigation;
@@ -164,12 +165,12 @@ int main() {
         navigationPoints.insert(navigationPoints.end(), result.begin(), result.end());
     }
     //auto filteredPoints = navigation.filterPointsByStartPosition(points.second,track);
-    //navigation.objectDetection(points.second, track, false);
-    //navigation.getFloor(points.second, points.second.size() / 100);
     auto stop = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start);
     std::cout << "exe time in seconds: " << duration.count() * 0.000000001 << std::endl;
-
+    std::cout << "find optimal path" << std::endl;
+    navigationPoints = navigation.findOptPath(navigationPoints, Point());
+    Auxiliary::showCloudPoint(navigationPoints, points);
     Auxiliary::SetupPangolin("full path");
     Auxiliary::drawPathPangolin(points, navigationPoints, "full path",
                                 std::pair<Point, Point>{pathPoints[0], pathPoints[1]});

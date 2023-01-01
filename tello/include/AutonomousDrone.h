@@ -82,7 +82,7 @@ private:
 
     void collisionDetector(const Point &mdestination);
 
-    void monitorDroneProgress(const Point &destination);
+    void monitorDroneProgress(const Point &destination, bool toHome = false);
 
     std::pair<int, bool> maintainAngleToPoint(const Point &destination, bool rotateToFrameAngle = true
             , bool first = true, double relativeChange = 0);
@@ -103,7 +103,7 @@ private:
 
     double distanceToHome();
 
-    bool navigateDrone(const Point &destination, bool rotateToFrameAngle = true);
+    bool navigateDrone(const Point &destination, bool rotateToFrameAngle = true, bool isHome=false);
 
     void goUpOrDown(const Point &destination);
 
@@ -209,6 +209,8 @@ private:
     bool saveBinMap;
     std::string mapPath;
     std::string loadMapCSV;
+
+    bool stopCondition(const std::vector<Point> &navigationPoints);
 };
 
 #endif //TELLO_AUTONOMOUSDRONE_H

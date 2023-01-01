@@ -209,11 +209,10 @@ std::vector<Point> Navigation::findOptPath(const std::vector<Point>& points, con
 
 std::vector<Point> Navigation::createStarNavigation(const std::vector<Point>& navigationPoints, const Point &currentPoint) {
     std::vector<Point> starNavigationPoints;
-    for (int i = 0; i < navigationPoints.size() - 1; ++i) {
-        starNavigationPoints.emplace_back(currentPoint);
+    for (int i = 0; i < navigationPoints.size(); ++i) {
         starNavigationPoints.emplace_back(navigationPoints[i]);
+        starNavigationPoints.emplace_back(currentPoint);
     }
-    starNavigationPoints.emplace_back(currentPoint);
     return starNavigationPoints;
 }
 

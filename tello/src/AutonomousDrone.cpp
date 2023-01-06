@@ -369,17 +369,18 @@ bool AutonomousDrone::doTriangulationUpDown() {
 }
 
 void AutonomousDrone::rotateDrone(int angle, bool clockwise, bool buildMap) {
-    if (!lowBattery && angle > 5) {
+    if (!lowBattery && angle >= 3) {
         if (localized) {
             while (!manageAngleDroneCommand(angle, clockwise, 10, 2)) {
                 usleep(300000);
             }
         }
         int amountOfLostLocalizations = 0;
-        if (!localized) {
+        if (!localized  && !stop) {  // TODO : check if 1stop is not wrong
             int regainLocalizationAngle = angle;
             manageDroneCommand("back 20", 1, 1);
             while (!localized && !lowBattery) {
+                // manageDroneCommand("back 20", 1, 1);
                 sleep(3);
                 manageAngleDroneCommand(angle, !clockwise, 3, 5);
                 if (!localized) {
@@ -794,7 +795,7 @@ std::pair<int, bool> AutonomousDrone::getRotationToFrameAngle(const Point &point
               << std::endl;
 
     if (abs(ang_diff) > 0) {
-        if (abs(ang_diff) < 5)  // Drone doesn't rotate in this range
+        if (abs(ang_diff) < 3)  // Drone doesn't rotate in this range
             ang_diff = 0;
         sleep(1);
         if (ang_diff > 0)
@@ -1019,7 +1020,7 @@ void AutonomousDrone::monitorDroneProgress(const Point &destination, bool toHome
     usleep(500000);
     int i = 0;
     int amountOfGettingFurther = 4;
-    closeThreshold = Auxiliary::calculateDistanceXY(currentLocation, destination) / 2.5;
+    closeThreshold = Auxiliary::calculateDistanceXY(currentLocation, destination) / 1.5;  // TODO : change 2.5
     if (toHome)
         closeThreshold /= 2;
     std::cout << "close threshold:" << closeThreshold << std::endl;
@@ -1437,7 +1438,7 @@ void AutonomousDrone::switchBattery(int switchingTime){
     printSomething = true;
     localized = false;
     std::cout << switchingTime << " second for battery switching" << std::endl;
-    relativeChange = 0;  // TODO : check if needed
+    // relativeChange = 0;  // TODO : check if needed
     sleep(switchingTime);
     droneNotFly = false;
     connectDrone(false);
@@ -1469,6 +1470,7 @@ void AutonomousDrone::run() {
             std::cout << "taking off" << std::endl;
             manageDroneCommand("takeoff", 3);
             sleep(1);  // because error "not joystick"
+            manageDroneCommand("up 20", 3); // TODO : delete
             beginScan(false);
             while (runDrone) {
                 if (!lowBattery) {
@@ -1478,6 +1480,7 @@ void AutonomousDrone::run() {
                     if (stopCondition(currentRoom.exitPoints)){
                         std::cout << "stop condition held" << std::endl;
                         runDrone = false;
+                        break;
                     }
                     if (this->isManual)
                         manuallyFlyToNavigationPoints();

@@ -10,7 +10,7 @@
 
 
 bool FirstCopy = true;
-bool runDrone = true;  // TODO : use or delete it
+bool runDrone = true;
 double relativeChange = 0;
 
 
@@ -376,7 +376,7 @@ void AutonomousDrone::rotateDrone(int angle, bool clockwise, bool buildMap) {
             }
         }
         int amountOfLostLocalizations = 0;
-        if (!localized  && !stop) {  // TODO : check if 1stop is not wrong
+        if (!localized  && !stop) {
             int regainLocalizationAngle = angle;
             manageDroneCommand("back 20", 1, 1);
             while (!localized && !lowBattery) {
@@ -1020,7 +1020,7 @@ void AutonomousDrone::monitorDroneProgress(const Point &destination, bool toHome
     usleep(500000);
     int i = 0;
     int amountOfGettingFurther = 4;
-    closeThreshold = Auxiliary::calculateDistanceXY(currentLocation, destination) / 1.5;  // TODO : change 2.5
+    closeThreshold = Auxiliary::calculateDistanceXY(currentLocation, destination) / 2.5;
     if (toHome)
         closeThreshold /= 2;
     std::cout << "close threshold:" << closeThreshold << std::endl;
@@ -1228,7 +1228,7 @@ void AutonomousDrone::flyToNavigationPoints() {
                     break;
                 }*/
             }
-            if (lowBattery) {  // TODO : validate this mode - I miss one point but can continue?
+            if (lowBattery) {
                 std::cout << "I'm here" << std::endl;
                 switchBattery();
                 navigateDrone(pathPoint);
@@ -1438,7 +1438,6 @@ void AutonomousDrone::switchBattery(int switchingTime){
     printSomething = true;
     localized = false;
     std::cout << switchingTime << " second for battery switching" << std::endl;
-    // relativeChange = 0;  // TODO : check if needed
     sleep(switchingTime);
     droneNotFly = false;
     connectDrone(false);
@@ -1470,7 +1469,7 @@ void AutonomousDrone::run() {
             std::cout << "taking off" << std::endl;
             manageDroneCommand("takeoff", 3);
             sleep(1);  // because error "not joystick"
-            manageDroneCommand("up 20", 3); // TODO : delete
+            //manageDroneCommand("up 20", 3); // TODO : delete
             beginScan(false);
             while (runDrone) {
                 if (!lowBattery) {

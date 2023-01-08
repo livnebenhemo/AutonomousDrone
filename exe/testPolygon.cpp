@@ -30,8 +30,8 @@ int main() {
     // std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "buildings/Lab/pointData3.csv";
     // std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "buildings/RonelLab/pointData100.csv";
     // std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "buildings/HUJI/Koma2/pointData8.csv";
-    //std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "pointData1.csv";
-    std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "pointDataExtended.csv";
+    std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "pointData1.csv";
+    //std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "pointDataExtended_autonomous.csv";
     auto points = getPointsFromFile(datasetFilePath);
     auto start = std::chrono::high_resolution_clock::now();
     Polygon polygon(points, Point());

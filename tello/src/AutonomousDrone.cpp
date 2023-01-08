@@ -1086,13 +1086,16 @@ bool AutonomousDrone::navigateDrone(const Point &destination, bool rotateToFrame
                     }
                 } else {
                     if (!droneNotFly && !isDroneRotate) {
-                        manageDroneCommand("forward 50", 3, 2);
+                        if (gettingCloser)
+                            manageDroneCommand("forward 30", 3, 2);
+                        else
+                            manageDroneCommand("forward 50", 3, 2);
                         if (howToRotateToFrame.second)
                             // Pay attention : relaticeChange is  a global variable which initialized once
                             relativeChange -= howToRotateToFrame.first;
                         else
                             relativeChange += howToRotateToFrame.first;
-                        std::cout << "relatice change : " << relativeChange << std::endl;
+                        std::cout << "relative change : " << relativeChange << std::endl;
                         howToRotateToFrame = maintainAngleToPoint(destination, rotateToFrameAngle, false, relativeChange);
                     }
                     if (areWeNavigatingHome) {

@@ -66,9 +66,9 @@ private:
 
     void getCameraFeed();
 
-    void howToRotate(int angle, bool clockwise, bool buildMap = false);
+    void howToRotate(int angle, bool clockwise, bool buildMap = false, bool isHome = false);
 
-    void rotateDrone(int angle, bool clockwise, bool buildMap = false);
+    void rotateDrone(int angle, bool clockwise, bool buildMap = false, bool isHome = false);
 
     bool checkIfPointInFront(const Point &point, int minSamples = 15, double eps = 0.125);
 
@@ -85,7 +85,7 @@ private:
     void monitorDroneProgress(const Point &destination, bool toHome = false);
 
     std::pair<int, bool> maintainAngleToPoint(const Point &destination, bool rotateToFrameAngle = true
-            , bool first = true, double relativeChange = 0);
+            , bool first = true, double relativeChange = 0, bool isHome = false);
 
     std::tuple<int, bool, int>
     checkMotion(const Point &oldestPosition, const Point &currentPosition, const Point &closePoint,
@@ -211,6 +211,8 @@ private:
     std::string loadMapCSV;
 
     bool stopCondition(const std::vector<Point> &navigationPoints);
+
+    std::stack<std::string> navigateDroneHomePath;
 };
 
 #endif //TELLO_AUTONOMOUSDRONE_H

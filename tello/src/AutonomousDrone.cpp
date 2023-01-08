@@ -60,6 +60,7 @@ AutonomousDrone::AutonomousDrone(std::shared_ptr<ctello::Tello> drone,
     this->saveBinMap = saveMap;
     this->saveMapPath = saveMapPath;
     this->saveMapPathCSV = saveMapPathCSV;
+    this->navigateDroneHomePath = std::stack<std::string>{};
 }
 
 void AutonomousDrone::getCameraFeed() {
@@ -368,17 +369,25 @@ bool AutonomousDrone::doTriangulationUpDown() {
     return a&&b;
 }
 
-void AutonomousDrone::rotateDrone(int angle, bool clockwise, bool buildMap) {
+void AutonomousDrone::rotateDrone(int angle, bool clockwise, bool buildMap, bool isHome) {
     if (!lowBattery && angle >= 3) {
         if (localized) {
             while (!manageAngleDroneCommand(angle, clockwise, 10, 2)) {
                 usleep(300000);
+            }
+            if (!isHome){
+                if (clockwise)
+                    this->navigateDroneHomePath.push("ccw " + std::to_string(angle));
+                else
+                    this->navigateDroneHomePath.push("cw" + std::to_string(angle));
             }
         }
         int amountOfLostLocalizations = 0;
         if (!localized  && !stop) {
             int regainLocalizationAngle = angle;
             manageDroneCommand("back 20", 1, 1);
+            if (!isHome)
+                this->navigateDroneHomePath.push("forward 20");
             while (!localized && !lowBattery) {
                 // manageDroneCommand("back 20", 1, 1);
                 sleep(3);
@@ -418,21 +427,21 @@ void AutonomousDrone::rotateDrone(int angle, bool clockwise, bool buildMap) {
     }
 }
 
-void AutonomousDrone::howToRotate(int angle, bool clockwise, bool buildMap) {
+void AutonomousDrone::howToRotate(int angle, bool clockwise, bool buildMap, bool isHome) {
     if (angle < 360) {
         if (angle < 30) {
-            rotateDrone(angle, clockwise, buildMap);
+            rotateDrone(angle, clockwise, buildMap, isHome);
         } else {
             int amountOfRotation = ceil(angle / maxRotationAngle);
             while (amountOfRotation--) {
                 if (!lowBattery) {
-                    rotateDrone(maxRotationAngle, clockwise, buildMap);
+                    rotateDrone(maxRotationAngle, clockwise, buildMap, isHome);
                 } else {
                     switchBattery();
                     // return;
                 }
             }
-            rotateDrone(int(angle % maxRotationAngle), clockwise, buildMap);
+            rotateDrone(int(angle % maxRotationAngle), clockwise, buildMap, isHome);
         }
     }
 }
@@ -815,13 +824,13 @@ AutonomousDrone::getNavigationVector(const Point &previousPosition, const Point 
 
 
 std::pair<int, bool> AutonomousDrone::maintainAngleToPoint(const Point &destination, bool rotateToFrameAngle, bool first,
-                                                           double relativeChange) {
+                                                           double relativeChange, bool isHome) {
     double totalAngleChange = 0;
     std::cout << "Computing angle to rotate" << std::endl;
     auto howToRotateToFrame = getRotationToFrameAngle(destination, first, relativeChange);
     if (rotateToFrameAngle) {
         isDroneRotate = true;
-        howToRotate(howToRotateToFrame.first, howToRotateToFrame.second);
+        howToRotate(howToRotateToFrame.first, howToRotateToFrame.second, isHome);
         isDroneRotate = false;
     }
     sleep(3);

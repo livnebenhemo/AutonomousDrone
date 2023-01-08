@@ -60,7 +60,7 @@ AutonomousDrone::AutonomousDrone(std::shared_ptr<ctello::Tello> drone,
     this->saveBinMap = saveMap;
     this->saveMapPath = saveMapPath;
     this->saveMapPathCSV = saveMapPathCSV;
-    this->navigateDroneHomePath = std::stack<std::string>{};
+    this->navigateDroneHomePath = std::stack<std::string>();
 }
 
 void AutonomousDrone::getCameraFeed() {
@@ -1080,46 +1080,80 @@ bool AutonomousDrone::navigateDrone(const Point &destination, bool rotateToFrame
     //                                       rotateToFrameAngle);
     std::thread monitorDroneProgressThread(&AutonomousDrone::monitorDroneProgress, this, destination, isHome);
     bool areWeNavigatingHome = destination == home;
-    auto howToRotateToFrame = maintainAngleToPoint(destination, rotateToFrameAngle, false, relativeChange);
-    while ((!stop && !loopCloserHappened) || (stop && lowBattery)) {
-        if (lowBattery) {
-            switchBattery();
-            stop = false;
-            lowBattery = false;
-        } else {
-            if (!droneRotate && !isBlocked) {
-                if (!localized) {
-                    manageDroneCommand("back 20", 3, 2);
-                    if(!localized) {
-                        doTriangulation();
-                    }
-                } else {
-                    if (!droneNotFly && !isDroneRotate) {
-                        if (gettingCloser)
-                            manageDroneCommand("forward 30", 3, 2);
-                        else
-                            manageDroneCommand("forward 50", 3, 2);
-                        if (howToRotateToFrame.second)
-                            // Pay attention : relaticeChange is  a global variable which initialized once
-                            relativeChange -= howToRotateToFrame.first;
-                        else
-                            relativeChange += howToRotateToFrame.first;
-                        std::cout << "relative change : " << relativeChange << std::endl;
-                        howToRotateToFrame = maintainAngleToPoint(destination, rotateToFrameAngle, false, relativeChange);
-                    }
-                    if (areWeNavigatingHome) {
-                        std::cout << "going home" << std::endl;
-                        if (findAndGoHome(90, true)) {
-                            break;
+    if(!isHome) {
+        this->navigateDroneHomePath = std::stack<std::string>();
+        auto howToRotateToFrame = maintainAngleToPoint(destination, rotateToFrameAngle, false, relativeChange);
+        while ((!stop && !loopCloserHappened) || (stop && lowBattery)) {
+            if (lowBattery) {
+                switchBattery();
+                stop = false;
+                lowBattery = false;
+            } else {
+                if (!droneRotate && !isBlocked) {
+                    if (!localized) {
+                        manageDroneCommand("back 20", 3, 2);
+                        this->navigateDroneHomePath.push("forward 20");
+                        if (!localized) {
+                            doTriangulation();
                         }
-                        usleep(1500000);
-                        continue;
+                    } else {
+                        if (!droneNotFly && !isDroneRotate) {
+                            if (gettingCloser) {
+                                manageDroneCommand("forward 30", 3, 2);
+                                this->navigateDroneHomePath.push("back 30");
+                            }
+                            else{
+                                manageDroneCommand("forward 50", 3, 2);
+                                this->navigateDroneHomePath.push("back 50");
+                            }
+                            if (howToRotateToFrame.second)
+                                // Pay attention : relaticeChange is  a global variable which initialized once
+                                relativeChange -= howToRotateToFrame.first;
+                            else
+                                relativeChange += howToRotateToFrame.first;
+                            std::cout << "relative change : " << relativeChange << std::endl;
+                            howToRotateToFrame = maintainAngleToPoint(destination, rotateToFrameAngle, false,
+                                                                      relativeChange, isHome);
+                        }
+                        if (areWeNavigatingHome) {
+                            std::cout << "going home" << std::endl;
+                            if (findAndGoHome(90, true)) {
+                                break;
+                            }
+                            usleep(1500000);
+                            continue;
+                        }
                     }
                 }
             }
+
+            sleep(2);
         }
-        sleep(2);
     }
+    else{
+        // Navigating back home
+        while ((!stop && !loopCloserHappened) || (stop && lowBattery) || !this->navigateDroneHomePath.empty()) {
+            if (lowBattery) {
+                switchBattery();
+                stop = false;
+                lowBattery = false;
+            } else {
+                if (!droneRotate && !isBlocked) {
+                    if (!localized) {
+                        manageDroneCommand("back 20", 3, 2);
+                        this->navigateDroneHomePath.push("forward 20");
+                        if (!localized) {
+                            doTriangulation();
+                        }
+                    } else {
+                        if (!droneNotFly && !isDroneRotate) {
+                            std::string command_drone = this->navigateDroneHomePath.top();
+                            this->navigateDroneHomePath.pop();
+                            manageDroneCommand(command_drone);
+                        }
+                    }
+    }
+
     /*if (!droneNotFly) {
         drone->SendCommand("rc 0 0 0 0");
     }*/

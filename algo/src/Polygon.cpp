@@ -10,10 +10,10 @@ Polygon::Polygon(std::vector<Point> points,Point polygonCenter, bool isExit) {
     this->polygonCenter = polygonCenter;
 }
 
-std::vector<Point> Polygon::getExitPointsByPolygon(bool isDebug) {
-    polygonCenter = Auxiliary::GetCenterOfMass(points);
+std::vector<Point> Polygon::getExitPointsByPolygon(bool isDebug, bool returnPolygon, int angle, double ratio) {
+    polygonCenter = Auxiliary::GetCenterOfMass(points);  // TODO : think about it
     createPointsWithDistance();
-    std::vector<std::pair<Point, double>> rawExitPoints = getRawPolygonCorners();
+    std::vector<std::pair<Point, double>> rawExitPoints = getRawPolygonCorners(angle, ratio);
     /*for (auto pair: rawExitPoints) {
         std::cout << pair.first.x << ", ";
         std::cout << pair.first.y << ", ";
@@ -29,6 +29,8 @@ std::vector<Point> Polygon::getExitPointsByPolygon(bool isDebug) {
         Auxiliary::showCloudPoint(vertices, points);
     }
     smoothPolygon();
+    if (returnPolygon)
+        return vertices;
     filterPointsInsidePolygon();
     std::vector<Point> goodPoints = filterPointsByVariances(getSlicesWithVariances(angle), epsilon);
     if (isDebug) {
@@ -246,8 +248,8 @@ void Polygon::smoothPolygon(int angleRange) {
     }
 }
 
-std::vector<std::pair<Point, double>> Polygon::getRawPolygonCorners() {
-    angle = 10;  // TODO : smart choice - due to points amount, room / open space?
+std::vector<std::pair<Point, double>> Polygon::getRawPolygonCorners(int angle, double ratio) {
+    //angle = 10;  // TODO : smart choice - due to points amount, room / open space?
     std::vector<Line> lines = Pizza::createPizzaLines(polygonCenter, angle);
     auto slices = Pizza::createPizzaSlices(polygonCenter, pointsWithDistance, angle);
     std::vector<std::pair<Point, double>> polygonVertices;
@@ -256,7 +258,7 @@ std::vector<std::pair<Point, double>> Polygon::getRawPolygonCorners() {
     };
     for (auto slice : slices) {
         std::sort(slice.second.begin(), slice.second.end(), sortRule);
-        std::pair<Point, double> medianPoint = slice.second[slice.second.size() * 0.5];  // TODO : change 0.5
+        std::pair<Point, double> medianPoint = slice.second[slice.second.size() * ratio];  // TODO : change 0.5
         polygonVertices.push_back(medianPoint);
     }
     return polygonVertices;

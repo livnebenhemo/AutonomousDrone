@@ -109,6 +109,15 @@ void Auxiliary::showCloudPoint(const std::vector<Point> &redPoints, const std::v
     matplotlibcpp::show();
 }
 
+
+void Auxiliary::saveCloudPoint(const std::vector<Point> &cloud, const std::string& fileName) {
+    matplotlibcpp::clf();
+    matplotlibcpp::scatter(getXValues(cloud), getYValues(cloud), 2.0);
+    matplotlibcpp::show();
+    //matplotlibcpp::save(fileName);
+}
+
+
 void Auxiliary::exportToXYZFile(const std::vector<Point> &points, std::string fileName) {
     std::ofstream pointData;
     pointData.open(fileName);

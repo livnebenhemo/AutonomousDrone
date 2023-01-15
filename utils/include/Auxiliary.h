@@ -112,6 +112,8 @@ public:
     static std::pair<cv::Mat, cv::Mat> alignMap(std::vector<Point> &points);
 
     static cv::Mat points3d_to_mat(const std::vector<cv::Point3d> &points3d);
+
+    static void saveCloudPoint(const std::vector<Point> &cloud, const std::string &fileName);
 };
 
 static cv::Mat points3d_to_mat(const std::vector<cv::Point3d> &points3d);

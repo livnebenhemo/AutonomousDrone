@@ -25,13 +25,65 @@ std::vector<Point> getPointsFromFile(const std::string& fileName) {
     return points;
 }
 
+
+void divide_points(std::vector<Point> basePoints, std::vector<Point> points){
+    std::vector<std::vector<Point>> clouds;
+    for (int i=0; i<basePoints.size(); i++)
+        clouds.emplace_back(std::vector<Point>{});
+    for (auto point : points){
+        int minDistance = 1000000000;
+        int minIndex = -1;
+        for (int i=0; i<basePoints.size(); i++) {
+            auto distance = Auxiliary::calculateDistanceXY(point, basePoints[i]);
+            if (distance < minDistance) {
+                minDistance = distance;
+                minIndex = i;
+            }
+        }
+        clouds[minIndex].emplace_back(point);
+    }
+    // TODO : important! think if combine in BFS logic
+    int angle = 30;
+    double ratio = 0.4;
+    matplotlibcpp::clf();
+    // show merged clouds
+    for (auto cloud : clouds) {
+        matplotlibcpp::scatter(Auxiliary::getXValues(cloud), Auxiliary::getYValues(cloud), 2.0);
+        Polygon polygon(cloud, Point());
+        auto vertex = polygon.getExitPointsByPolygon(false, true, angle, ratio);
+        matplotlibcpp::plot(Auxiliary::getXValues(vertex), Auxiliary::getYValues(vertex));
+    }
+    matplotlibcpp::scatter(Auxiliary::getXValues(basePoints), Auxiliary::getYValues(basePoints), 30.0);
+    matplotlibcpp::show();
+    // show each cloud separately with each next navigation points
+    for (auto cloud : clouds) {
+        matplotlibcpp::scatter(Auxiliary::getXValues(cloud), Auxiliary::getYValues(cloud), 2.0);
+        Polygon polygon(cloud, Point());
+        auto vertex = polygon.getExitPointsByPolygon(false, true, angle, ratio);
+        matplotlibcpp::plot(Auxiliary::getXValues(vertex), Auxiliary::getYValues(vertex));
+        auto navigationPoints = polygon.getExitPointsByPolygon(false, false, angle, ratio);
+        matplotlibcpp::scatter(Auxiliary::getXValues(navigationPoints), Auxiliary::getYValues(navigationPoints), 30);
+        matplotlibcpp::show();
+    }
+}
+
+
+void plot_for_dan(){
+    std::string datasetFilePathBase = Auxiliary::GetDataSetsDirPath() + "pointData1.csv";
+    std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "pointDataExtended.csv";
+    auto points = getPointsFromFile(datasetFilePath);
+    auto basePoints = getPointsFromFile(datasetFilePathBase);
+    Polygon polygon(basePoints, Point());
+    auto vertex = polygon.getExitPointsByPolygon(false);
+    divide_points(vertex, points);
+}
+
+
+
 int main() {
 
-    // std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "buildings/Lab/pointData3.csv";
-    // std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "buildings/RonelLab/pointData100.csv";
-    // std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "buildings/HUJI/Koma2/pointData8.csv";
-    std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "pointData1.csv";
-    //std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "pointDataExtended_autonomous.csv";
+    //std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "pointData1.csv";
+    /*std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "pointDataExtended.csv";
     auto points = getPointsFromFile(datasetFilePath);
     auto start = std::chrono::high_resolution_clock::now();
     Polygon polygon(points, Point());
@@ -40,6 +92,7 @@ int main() {
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
     std::cout << duration.count() << std::endl;
     Auxiliary::SetupPangolin("full path");
-    Auxiliary::drawPathPangolin(points, polygon.vertices, "full path",{Point(),Point()});
+    Auxiliary::drawPathPangolin(points, polygon.vertices, "full path",{Point(),Point()});*/
+    plot_for_dan();
 
 }

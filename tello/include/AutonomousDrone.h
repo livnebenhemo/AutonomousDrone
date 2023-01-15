@@ -209,10 +209,21 @@ private:
     bool saveBinMap;
     std::string mapPath;
     std::string loadMapCSV;
+    std::vector<std::vector<Point>> pointsPerCloud;
 
     bool stopCondition(const std::vector<Point> &navigationPoints);
 
     std::stack<std::string> navigateDroneHomePath;
+
+    void BFS_navigation(const std::vector<Point> &basePoints, const std::vector<std::vector<Point>> &clouds);
+
+    void getNavigationPointsBFS(bool isExit, const Point &base, const std::vector<Point> &cloud);
+
+    void chargerHelper();
+
+    void lowBatteryHelper();
+
+    std::vector<std::vector<Point>> divide_points(std::vector<Point> basePoints, std::vector<Point> points);
 };
 
 #endif //TELLO_AUTONOMOUSDRONE_H

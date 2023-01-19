@@ -12,6 +12,7 @@
 #include <opencv2/videoio.hpp>
 #include <opencv2/highgui.hpp>
 #include <memory>
+#include <algorithm>
 #include "../slam/include/System.h"
 #include <iostream>
 #include <unistd.h>
@@ -52,7 +53,7 @@ private:
 
     void areWeInWrongScale(std::vector<Frame> &frames);
 
-    std::vector<Point> getCurrentMap();
+    std::vector<Point> getCurrentMap(bool save=false);
 
     bool manageDroneCommand(const std::string &command, int amountOfAttempt = 3, int amountOfSleep = 0);
 
@@ -213,7 +214,13 @@ private:
 
     bool stopCondition(const std::vector<Point> &navigationPoints);
 
+    void updateIteration();
+
     std::stack<std::string> navigateDroneHomePath;
+
+    std::vector<int> roomsFramesIDs;
+    int iteration;
+    std::vector<std::ofstream> pointDataRooms;
 
     void BFS_navigation(const std::vector<Point> &basePoints, const std::vector<std::vector<Point>> &clouds);
 
@@ -227,4 +234,3 @@ private:
 };
 
 #endif //TELLO_AUTONOMOUSDRONE_H
-

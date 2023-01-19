@@ -166,8 +166,20 @@ namespace ORB_SLAM2 {
     void System::SaveMap(const std::string &filename) {
         std::ofstream os(filename);
         {
-            ::boost::archive::binary_oarchive oa(os, ::boost::archive::no_header);
-            oa << mpMap;
+            try {
+                std::cout << "Creating file" << std::endl;
+                ::boost::archive::binary_oarchive oa(os, ::boost::archive::no_header);
+                std::cout << "Writing to file" << std::endl;
+                oa << mpMap;
+                std::cout << "Wrote to file" << std::endl;
+            }
+            catch (std::exception& e) {
+                std::cout << "Segmentation Fault" << std::endl;
+                std::cout << "The exception was " << e.what() << std::endl;
+            }
+            catch (...) {
+                std::cout << "Failure in saving file correctly" << std::endl;
+            }
         }
         std::cout << std::endl << "Map saved to " << filename << std::endl;
 

@@ -63,6 +63,9 @@ AutonomousDrone::AutonomousDrone(std::shared_ptr<ctello::Tello> drone,
     this->saveMapPath = saveMapPath;
     this->saveMapPathCSV = saveMapPathCSV;
     this->navigateDroneHomePath = std::stack<std::string>();
+    this->roomsFramesIDs = std::vector<int>();
+    this->iteration = 0;
+    this->pointDataRooms = std::vector<std::ofstream>();
 }
 
 void AutonomousDrone::getCameraFeed() {
@@ -88,6 +91,17 @@ void AutonomousDrone::getCameraFeed() {
             std::cout << std::flush;
     }
     video.release();
+}
+
+void AutonomousDrone::updateIteration() {
+    std::cout << "New iteration, Iteration number " + std::to_string(this->iteration + 1) << std::endl;
+    std::ofstream newRoomPointData;
+    this->pointDataRooms.emplace_back(std::move(newRoomPointData));
+    this->pointDataRooms[this->iteration].open("/tmp/pointData" + std::to_string(this->iteration) + ".csv");
+    std::cout << "/tmp/pointData" + std::to_string(this->iteration) + ".csv" << std::endl;
+    this->pointDataRooms[this->iteration].close();
+    saveMap(1000);
+    this->iteration++;
 }
 
 double AutonomousDrone::colorDetection() {
@@ -127,6 +141,10 @@ void AutonomousDrone::runOrbSlam() {
     double timeStamp = 0.2;
     int amountOfChanges = 0;
     canStart = true;
+
+    int lastIteration = this->iteration;
+    int iterLastFrameId = 0;
+
     while (orbSlamRunning) {
         if (!currentImage->empty()) {
             while (droneRotate) {
@@ -147,6 +165,16 @@ void AutonomousDrone::runOrbSlam() {
                     //updateCurrentFrame(orbSlamTracker->mCurrentFrame);
                     if (orbSlamTracker->mCurrentFrame.getFrameId() != currentFrame.frameId) {
                         int frameId = orbSlamTracker->mCurrentFrame.getFrameId();
+
+                        iterLastFrameId = frameId;
+                        if (this->iteration != lastIteration){
+                            this->roomsFramesIDs.emplace_back(iterLastFrameId);
+                            std::cout << "Number of rooms: " + std::to_string(this->roomsFramesIDs.size()) << std::endl;
+                        }
+                        //std::cout << "Number of rooms: " + std::to_string(this->roomsFramesIDs.size()) << std::endl;
+                        //std::cout << "Iteration number: " + std::to_string(this->iteration) << std::endl;
+                        lastIteration = this->iteration;
+
                         std::vector<Point> framePoints;
                         for (auto &p: orbSlamTracker->mCurrentFrame.GetMvpMapPoints()) {
                             if (p.second && !p.second->isBad()) {
@@ -176,7 +204,7 @@ void AutonomousDrone::runOrbSlam() {
 
         }
     }
-    std::cout << "shuting orbslam down " << std::endl;
+    std::cout << "shutting orbslam down " << std::endl;
     orbSlamPointer->Shutdown();
     cvDestroyAllWindows();
 }
@@ -231,7 +259,7 @@ std::vector<Point> getPointsFromFile(const std::string& fileName) {
 }
 
 
-std::vector<Point> AutonomousDrone::getCurrentMap() {
+std::vector<Point> AutonomousDrone::getCurrentMap(bool save) {
     std::vector<Point> currentMap;
     if (!loadMap) {
         for (auto p: orbSlamPointer->GetMap()->GetAllMapPoints()) {
@@ -249,9 +277,10 @@ std::vector<Point> AutonomousDrone::getCurrentMap() {
             }
         }
     }
-    saveMap(rooms.size());
+    if (save)
+        saveMap(rooms.size());
     if (loadMap)
-        currentMap = getPointsFromFile("/tmp/pointDataExtended.csv");
+        currentMap = getPointsFromFile(loadMapCSV);
     return currentMap;
 }
 
@@ -263,7 +292,7 @@ void AutonomousDrone::saveMap(int fileNumber) {
             if (orbSlamMap) {
                 std::ofstream pointData;
                 if (loadMap) {
-                    pointData.open("/tmp/pointDataExtended.csv");
+                    pointData.open(loadMapCSV);
                     if (FirstCopy) { // copy the base map (first scan)
                         pointData.clear();
                         std::cout << "Copy base map" << std::endl;
@@ -276,8 +305,10 @@ void AutonomousDrone::saveMap(int fileNumber) {
                         sourcePointData.close();
                     }
                 }
-                else
-                    pointData.open("/tmp/pointData" + std::to_string(fileNumber) + ".csv");
+                else {
+                    //pointData.open("/tmp/pointData" + std::to_string(fileNumber) + ".csv");
+                    pointData.open("/tmp/pointDataExtended.csv");
+                }
                 for (auto p: orbSlamMap->GetAllMapPoints()) {
                     if (p && !p->isBad()) {
                         auto frame = p->GetReferenceKeyFrame();
@@ -298,6 +329,34 @@ void AutonomousDrone::saveMap(int fileNumber) {
                                   << ',' << Rwc.at<float>(2, 1) << ',' << Rwc.at<float>(2, 2) << "," << frameId <<
                                   "," << twc.at<float>(0) << "," << twc.at<float>(1) << "," << twc.at<float>(2)
                                   << std::endl;
+
+                        auto lower = std::lower_bound(this->roomsFramesIDs.begin(), this->roomsFramesIDs.end(), frameId);
+                        int iter;
+                        if (lower != this->roomsFramesIDs.end())
+                            iter = std::distance(this->roomsFramesIDs.begin(), lower);
+                        else
+                            iter = this->roomsFramesIDs.size() - 1;
+
+                        if (iter < 0 || iter >= this->roomsFramesIDs.size())
+                            continue;
+
+                        this->pointDataRooms[iter].open("/tmp/pointData" + std::to_string(iter) + ".csv", std::ios_base::app);
+                        if (!this->pointDataRooms[iter])
+                            std::cout << "No such file" << std::endl;
+                        this->pointDataRooms[iter] << v.x() << "," << v.y() << "," << v.z() << ","
+                                                              << Rwc.at<float>(0, 0) << ','
+                                                              << Rwc.at<float>(0, 1) << ',' << Rwc.at<float>(0, 2)
+                                                              << ',' << Rwc.at<float>(1, 0) << ','
+                                                              << Rwc.at<float>(1, 1) << ','
+                                                              << Rwc.at<float>(1, 2) << ','
+                                                              << Rwc.at<float>(2, 0)
+                                                              << ',' << Rwc.at<float>(2, 1) << ','
+                                                              << Rwc.at<float>(2, 2) << "," << frameId <<
+                                                              "," << twc.at<float>(0) << "," << twc.at<float>(1)
+                                                              << "," << twc.at<float>(2)
+                                                              << std::endl;
+                        this->pointDataRooms[iter].close();
+
                     }
                 }
                 pointData.close();
@@ -645,7 +704,7 @@ void AutonomousDrone::beginScan(bool findHome, int rotationAngle) {
     }
     if (!loadMap) {
         std::cout << "starting scan" << std::endl;
-        for (int i = 0; i < std::ceil(360 / rotationAngle) + 1; i++) {
+        for (int i = 0; i < std::ceil(360 / rotationAngle) + 1; i++) {//TODO: remember to change back to 360
             if (lowBattery) {
                 switchBattery();
                 lowBattery = false;
@@ -687,6 +746,7 @@ void AutonomousDrone::beginScan(bool findHome, int rotationAngle) {
         std::string filename = saveMapPath;
         *holdCamera = true;
         sleep(1);
+        std::cout << "Saving Map" << std::endl;
         orbSlamPointer->SaveMap(filename);
         *holdCamera = false;
     }
@@ -1065,6 +1125,7 @@ void AutonomousDrone::goUpOrDown(const Point &destination) {
 
 void AutonomousDrone::monitorDroneProgress(const Point &destination, bool toHome) {
     double previousDistance = 10000;
+    gettingCloser = false;
     usleep(500000);
     int i = 0;
     int amountOfGettingFurther = 4;
@@ -1318,7 +1379,7 @@ void AutonomousDrone::BFS_navigation(const std::vector<Point> &basePoints, const
         std::cout << "navigate to base" << std::endl;
         navigateDrone(base, true, false);
         getNavigationPointsBFS(true, base, cloud); // TODO : check if isExit is true
-        for (int i=0; i<currentRoom.exitPoints.size(); i++)
+        for (int j=0; j<currentRoom.exitPoints.size(); j++)
             this->navigateDroneHomePath.push("stop");
         std::cout << "navigate to navigation points" << std::endl;
         flyToNavigationPoints();
@@ -1336,6 +1397,8 @@ void AutonomousDrone::flyToNavigationPoints() {
     bool isHome = false;
     int check = 0;
     for (const Point &point: currentRoom.exitPoints) {
+        if (!isHome)
+            this->updateIteration();
         int battery = drone->GetBatteryStatus();
         if (battery < 40) {
             switchBattery();

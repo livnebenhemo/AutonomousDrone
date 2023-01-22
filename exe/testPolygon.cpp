@@ -69,7 +69,7 @@ void divide_points(std::vector<Point> basePoints, std::vector<Point> points){
 
 
 void plot_for_dan(){
-    std::string datasetFilePathBase = Auxiliary::GetDataSetsDirPath() + "pointData1.csv";
+    std::string datasetFilePathBase = Auxiliary::GetDataSetsDirPath() + "pointData0.csv";
     std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "pointDataExtended.csv";
     auto points = getPointsFromFile(datasetFilePath);
     auto basePoints = getPointsFromFile(datasetFilePathBase);
@@ -82,17 +82,20 @@ void plot_for_dan(){
 
 int main() {
 
-    //std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "pointData1.csv";
-    /*std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "pointDataExtended.csv";
+    std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "pointData1.csv";
     auto points = getPointsFromFile(datasetFilePath);
+    std::string datasetFilePath1 = Auxiliary::GetDataSetsDirPath() + "pointDataExtended.csv";
+    auto points1 = getPointsFromFile(datasetFilePath1);
+    matplotlibcpp::scatter(Auxiliary::getXValues(points1), Auxiliary::getYValues(points1), 3);
+    matplotlibcpp::scatter(Auxiliary::getXValues(points), Auxiliary::getYValues(points), 3);
+    matplotlibcpp::show();
     auto start = std::chrono::high_resolution_clock::now();
-    Polygon polygon(points, Point());
+    //auto points = getPointsFromFile(datasetFilePath);
+    Polygon polygon(points, Point(), true);
     auto vertex = polygon.getExitPointsByPolygon(true);
     auto stop = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
     std::cout << duration.count() << std::endl;
-    Auxiliary::SetupPangolin("full path");
-    Auxiliary::drawPathPangolin(points, polygon.vertices, "full path",{Point(),Point()});*/
-    plot_for_dan();
+    //plot_for_dan();
 
 }

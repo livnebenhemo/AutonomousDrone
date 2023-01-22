@@ -224,13 +224,16 @@ private:
 
     void BFS_navigation(const std::vector<Point> &basePoints, const std::vector<std::vector<Point>> &clouds);
 
-    void getNavigationPointsBFS(bool isExit, const Point &base, const std::vector<Point> &cloud);
+    void getNavigationPointsBFS(bool isExit, const Point &base, const std::vector<Point> &cloud,
+                                int angle=10, double ratio=0.5);
 
     void chargerHelper();
 
     void lowBatteryHelper();
 
     std::vector<std::vector<Point>> divide_points(std::vector<Point> basePoints, std::vector<Point> points);
+
+    std::pair<std::vector<Point>, int> extractCloudfromPoint(Point q);
 };
 
 #endif //TELLO_AUTONOMOUSDRONE_H

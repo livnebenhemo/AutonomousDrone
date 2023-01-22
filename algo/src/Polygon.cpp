@@ -53,14 +53,14 @@ std::vector<Point> Polygon::getExitPointsByPolygon(bool isDebug, bool returnPoly
     }
     auto navigationPoints = filterCheckpoints(rawNavigationPoints);
     std::cout << "amount of navigationPoints " << navigationPoints.size() << std::endl;
-    if (isDebug) {
-        Auxiliary::showCloudPoint(navigationPoints, points);
-    }
     if (isExit) {
         auto center = polygonCenter;
         std::sort(navigationPoints.begin(), navigationPoints.end(), [&center](Point p1, Point p2) {
             return Auxiliary::calculateDistanceXY(p1, center) > Auxiliary::calculateDistanceXY(p2, center);
         });
+    }
+    if (isDebug) {
+        Auxiliary::showCloudPoint(navigationPoints, points);
     }
     return navigationPoints;
 }
@@ -132,7 +132,7 @@ std::vector<Point> Polygon::getNavigationPoints(std::vector<Point> goodPoints, i
     return navigationPoints;
 }
 Point Polygon::getNavigationPointFromCluster(std::vector<Point> cluster){
-    double maxDistanceToPolygon = -1;
+    /*double maxDistanceToPolygon = -1;
     Point bestPoint;
     for (Point clusterPoint : cluster) {
         double distanceToPolygon = Auxiliary::getDistanceToClosestSegment(clusterPoint, edges);
@@ -141,7 +141,8 @@ Point Polygon::getNavigationPointFromCluster(std::vector<Point> cluster){
             bestPoint = clusterPoint;
         }
     }
-    return bestPoint;
+    return bestPoint;*/
+    return Auxiliary::GetCenterOfMass(cluster); // think about it !!!
 }
 std::vector<Point>
 Polygon::filterPointsByVariances(std::vector<std::pair<double, std::vector<Point>>> slices, double epsilon) {

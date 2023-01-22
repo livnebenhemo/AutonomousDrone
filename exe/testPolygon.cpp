@@ -82,7 +82,7 @@ void plot_for_dan(){
 
 int main() {
 
-    std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "pointData1.csv";
+    std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "pointData0.csv";
     auto points = getPointsFromFile(datasetFilePath);
     std::string datasetFilePath1 = Auxiliary::GetDataSetsDirPath() + "pointDataExtended.csv";
     auto points1 = getPointsFromFile(datasetFilePath1);

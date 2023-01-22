@@ -104,6 +104,7 @@ void AutonomousDrone::updateIteration() {
     this->iteration++;
 }
 
+
 double AutonomousDrone::colorDetection() {
     if (!currentImage->empty()) {
         cv::Mat im = *currentImage;
@@ -208,6 +209,7 @@ void AutonomousDrone::runOrbSlam() {
     orbSlamPointer->Shutdown();
     cvDestroyAllWindows();
 }
+
 
 void AutonomousDrone::updateCurrentLocation(const cv::Mat &Tcw) {
     cv::Mat Rwc = Tcw.rowRange(0, 3).colRange(0, 3);
@@ -367,17 +369,17 @@ void AutonomousDrone::saveMap(int fileNumber) {
                         if (!this->pointDataRooms[iter])
                             std::cout << "No such file" << std::endl;
                         this->pointDataRooms[iter] << v.x() << "," << v.y() << "," << v.z() << ","
-                                                              << Rwc.at<float>(0, 0) << ','
-                                                              << Rwc.at<float>(0, 1) << ',' << Rwc.at<float>(0, 2)
-                                                              << ',' << Rwc.at<float>(1, 0) << ','
-                                                              << Rwc.at<float>(1, 1) << ','
-                                                              << Rwc.at<float>(1, 2) << ','
-                                                              << Rwc.at<float>(2, 0)
-                                                              << ',' << Rwc.at<float>(2, 1) << ','
-                                                              << Rwc.at<float>(2, 2) << "," << frameId <<
-                                                              "," << twc.at<float>(0) << "," << twc.at<float>(1)
-                                                              << "," << twc.at<float>(2)
-                                                              << std::endl;
+                                                   << Rwc.at<float>(0, 0) << ','
+                                                   << Rwc.at<float>(0, 1) << ',' << Rwc.at<float>(0, 2)
+                                                   << ',' << Rwc.at<float>(1, 0) << ','
+                                                   << Rwc.at<float>(1, 1) << ','
+                                                   << Rwc.at<float>(1, 2) << ','
+                                                   << Rwc.at<float>(2, 0)
+                                                   << ',' << Rwc.at<float>(2, 1) << ','
+                                                   << Rwc.at<float>(2, 2) << "," << frameId <<
+                                                   "," << twc.at<float>(0) << "," << twc.at<float>(1)
+                                                   << "," << twc.at<float>(2)
+                                                   << std::endl;
                         this->pointDataRooms[iter].close();
 
                     }
@@ -395,6 +397,7 @@ void AutonomousDrone::saveMap(int fileNumber) {
         }
     }
 }
+
 
 bool AutonomousDrone::manageDroneCommand(const std::string &command, int amountOfAttempt, int amountOfSleep) {
     while (orbSlamPointer->GetLocalMapping()->isStopped()) {
@@ -806,7 +809,7 @@ void AutonomousDrone::getNavigationPoints(bool isExit) {
     std::vector<Point> points(currentRoom.points);
     Polygon polygon(points, home == Point() ? currentLocation : home, isExit);
     std::vector<Point> exitPoints = polygon.getExitPointsByPolygon();
-    //exitPoints = std::vector<Point>(exitPoints.begin(), exitPoints.begin()+2); // TODO : delete;
+    //exitPoints = std::vector<Point>(exitPoints.begin(), exitPoints.begin()+1); // TODO : delete;
     std::cout << "we saved exitPoints" << std::endl;
     int pointIndex = 0;
     for (const auto &point: exitPoints) {
@@ -1412,14 +1415,16 @@ void AutonomousDrone::BFS_navigation(const std::vector<Point> &basePoints, const
         navigateDrone(base, true, false);
         //auto cloud = extractCloudfromPoint(base).first;
         getNavigationPointsBFS(true, base, cloud, 30, 0.4);
-        std::cout << "insert stops to stack" << std::endl;
-        for (int j=0; j<currentRoom.exitPoints.size(); j++)
-            this->navigateDroneHomePath.push("stop");
-        std::cout << "navigate to navigation points" << std::endl;
-        flyToNavigationPoints();
-        std::cout << "go deep DFS" << std::endl;
-        auto new_clouds = divide_points(currentRoom.exitPoints, currentRoom.points);
-        BFS_navigation(currentRoom.exitPoints, new_clouds);  // TODO : need to change clouds
+        if (currentRoom.exitPoints.size() > 0) {  // TODO : need to check
+            std::cout << "insert stops to stack" << std::endl;
+            for (int j = 0; j < currentRoom.exitPoints.size(); j++)
+                this->navigateDroneHomePath.push("stop");
+            std::cout << "navigate to navigation points" << std::endl;
+            flyToNavigationPoints();
+            std::cout << "go deep DFS" << std::endl;
+            auto new_clouds = divide_points(currentRoom.exitPoints, currentRoom.points);
+            BFS_navigation(currentRoom.exitPoints, new_clouds);  // TODO : need to change clouds
+        }
         std::cout << "back DFS" << std::endl;
         std::cout << "navigate to home" << std::endl;
         navigateDrone(home, true, true);
@@ -1680,6 +1685,7 @@ void AutonomousDrone::switchBattery(int switchingTime) {
 
 void AutonomousDrone::run() {
     std::thread orbThread(&AutonomousDrone::runOrbSlam, this);
+    //bool first = false;  // TODO : delete ?
     bool first = true;
     while (runDrone) {
         if (canStart) {

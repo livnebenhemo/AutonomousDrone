@@ -37,7 +37,6 @@ public:
     void runSimulator(int maxForwardDistance, int forwardAmount);
 
 private:
-    bool updateCurrentFrame(ORB_SLAM2::Frame frame);
 
     static int
     protectiveSphere(const Point &dronePosition, const std::vector<Point> &points, double sphereRadius = 0.4,
@@ -73,7 +72,7 @@ private:
 
     bool checkIfPointInFront(const Point &point, int minSamples = 15, double eps = 0.125);
 
-    void beginScan(bool findHome = false, int rotationAngle = 25);
+    void beginScan(bool findHome = false, int rotationAngle = 40); // TODO : 25 ?
 
     void getNavigationPoints(bool isExit = false);
 
@@ -211,14 +210,17 @@ private:
     std::string mapPath;
     std::string loadMapCSV;
     std::vector<std::vector<Point>> pointsPerCloud;
+    bool endIteration;
 
     bool stopCondition(const std::vector<Point> &navigationPoints);
 
     void updateIteration();
 
+    void finishIteration();
+
     std::stack<std::string> navigateDroneHomePath;
 
-    std::vector<int> roomsFramesIDs;
+    std::vector<std::pair<int, int>> roomsFramesIDs;
     int iteration;
     std::vector<std::ofstream> pointDataRooms;
 
@@ -233,7 +235,11 @@ private:
 
     std::vector<std::vector<Point>> divide_points(std::vector<Point> basePoints, std::vector<Point> points);
 
-    std::pair<std::vector<Point>, int> extractCloudfromPoint(Point q);
+    /*std::pair<std::vector<Point>, int> extractCloudfromPoint(Point q);
+
+    std::vector<cv::Point3f> align_destinations(std::vector<cv::Point3f> destinations, cv::Mat R_align, cv::Mat mu_align);
+
+    cv::Mat align_pose(cv::Mat pose, cv::Mat R_align, cv::Mat mu_align);*/
 };
 
 #endif //TELLO_AUTONOMOUSDRONE_H

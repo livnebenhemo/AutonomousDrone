@@ -135,6 +135,9 @@ namespace ORB_SLAM2 {
         LocalMapping *GetLocalMapping() { return mpLocalMapper.get(); };
 
         LoopClosing *GetLoopClosing() { return mpLoopCloser.get(); };
+
+        // Map structure that stores the pointers to all KeyFrames and MapPoints.
+        std::shared_ptr<Map> mpMap;
     private:
 
         // Input sensor
@@ -147,7 +150,7 @@ namespace ORB_SLAM2 {
         std::shared_ptr<KeyFrameDatabase> mpKeyFrameDatabase;
 
         // Map structure that stores the pointers to all KeyFrames and MapPoints.
-        std::shared_ptr<Map> mpMap;
+        // std::shared_ptr<Map> mpMap; // TODO: I copy to public, need to check
 
         // Tracker. It receives a frame and computes the associated camera pose.
         // It also decides when to insert a new keyframe, create some new MapPoints and

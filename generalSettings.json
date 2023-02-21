@@ -1,21 +1,21 @@
 {
-  "VocabularyPath": "/home/ronel/AutonomousDroneCPP/Vocabulary/ORBvoc.bin",
-  "DroneYamlPathSlam": "/home/ronel/AutonomousDroneCPP/config/tello_9EE955.yaml",
-  "DroneYamlPathAruco": "/home/ronel/AutonomousDroneCPP/config/tello_aruco_5BFA7F.yaml",
-  "DroneName": "TELLO-5BFF71",
+  "VocabularyPath": "/home/livne/CLionProjects/AutonomousDroneCPP_master/Vocabulary/ORBvoc.bin",
+  "DroneYamlPathSlam": "/home/livne/CLionProjects/AutonomousDroneCPP_master/config/tello_9EE955.yaml",
+  "DroneYamlPathAruco": "/home/livne/CLionProjects/AutonomousDroneCPP_master/config/tello_aruco_5BFA7F.yaml",
+  "DroneName": "TELLO-9EE955",
   "WithPlot": false,
   "sizeOfFrameStack": 20,
-  "offlineVideoTestPath": "/home/ronel/Videos/best.avi",
+  "offlineVideoTestPath": "/home/livne/Videos/best.avi",
   "onlineVideoPath": "udp://0.0.0.0:11111?overrun_nonfatal=1&fifo_size=1000",
-  "onlineVideoSettingsPath": "/home/ronel/AutonomousDroneCPP/config/tzukComputerCamera.yaml",
+  "onlineVideoSettingsPath": "/home/livne/CLionProjects/AutonomousDroneCPP_master/config/tzukComputerCamera.yaml",
   "runSimulator": false,
   "maxForwardForSimulator" : 1500,
   "sizeOfForwardStepSimulator": 200,
-  "loadMap": false,
-  "loadMapCSV" : "/home/ronel/AutonomousDroneCPP/datasets/buildings/RonelLab/iterationCSVs/iteration4/pointData0.csv",
-  "loadMapPath": "/home/ronel/slamMaps/slamMapLabOpenSpace.bin",
-  "saveMap": true,
-  "saveMapPath": "/home/ronel/slamMaps/slamMapLabOpenSpace.bin",
-  "saveMapPathCSV": "/home/ronel/CSVMaps/pointData1.csv"
+  "loadMap": true,
+  "loadMapCSV" : "/home/livne/CSVMaps/pointData1000.csv",
+  "loadMapPath": "/home/livne/slamMapLabOpenSpace.bin",
+  "saveMap": false,
+  "saveMapPath": "/home/livne/slamMapLabOpenSpace.bin",
+  "saveMapPathCSV": "/home/livne/CSVMaps/pointData1000.csv"
 }
 

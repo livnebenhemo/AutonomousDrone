@@ -12,8 +12,9 @@
 bool FirstCopy = true;
 bool runDrone = true;
 double relativeChange = 0;
-double lastRelativeChange = 0;
-std::string fixComment = "down 30";
+std::vector<double> lastRelativeChangeStack{};
+std::string fixComment = "down 40";
+bool first = false;  // TODO : if I want True, need to add variable (BFS navigation & CSV)
 
 
 AutonomousDrone::AutonomousDrone(std::shared_ptr<ctello::Tello> drone,
@@ -66,7 +67,9 @@ AutonomousDrone::AutonomousDrone(std::shared_ptr<ctello::Tello> drone,
     this->roomsFramesIDs = std::vector<std::pair<int, int>>();//(1, std::make_pair(0, 0));
     this->iteration = -1;
     this->pointDataRooms = std::vector<std::ofstream>();
+    this->pointToIterations = std::vector<std::pair<Point, int>>();
     this->endIteration = false;
+    this->metzuded = false;
 }
 
 void AutonomousDrone::getCameraFeed() {
@@ -94,12 +97,14 @@ void AutonomousDrone::getCameraFeed() {
     video.release();
 }
 
-void AutonomousDrone::updateIteration() {
+void AutonomousDrone::updateIteration(const Point &destination) {
     std::cout << "New iteration, Iteration number " + std::to_string(this->iteration + 1) << std::endl;
     // std::cout << "This Iteration frames are " + std::to_string(this->roomsFramesIDs[this->iteration].first) + "-" + std::to_string(this->roomsFramesIDs[this->iteration].second) << std::endl;
     this->iteration = this->iteration + 1;
     std::cout << "The starting frameId is: " << currentFrame.frameId << std::endl;
     this->roomsFramesIDs.emplace_back(std::make_pair(currentFrame.frameId, 0));
+    std::cout << "insert mapping between point to iteration : " << this->iteration << std::endl;
+    this->pointToIterations.emplace_back(std::make_pair(destination, this->iteration));
     for (int i = 0; i < this->roomsFramesIDs.size(); i++)
     {
         std::cout << "The frameIds of " << i << "are " << this->roomsFramesIDs[i].first << "-" << this->roomsFramesIDs[i].second << std::endl;
@@ -376,14 +381,6 @@ void AutonomousDrone::saveMap(int fileNumber) {
                             if (frameId > this->roomsFramesIDs[i].first && frameId < this->roomsFramesIDs[i].second)
                                 iter = i;
                         }
-                        std::cout << "iter is: " << iter << std::endl;
-                        std::cout << "size of rooms is " << this->roomsFramesIDs.size() << std::endl;
-                        for (int j = 0; j < this->roomsFramesIDs.size(); j++)
-                        {
-                            std::cout << "The frames of iteration " + std::to_string(j) << " are: " << std::to_string(
-                                    this->roomsFramesIDs[j].first) << "-" << std::to_string(
-                                    this->roomsFramesIDs[j].second) << std::endl;
-                        }
                         if (iter < 0 || iter >= this->roomsFramesIDs.size())
                             continue;
                         if (frameId < this->roomsFramesIDs[iter].first && frameId > this->roomsFramesIDs[iter].second)
@@ -495,7 +492,7 @@ void AutonomousDrone::rotateDrone(int angle, bool clockwise, bool buildMap, bool
                     this->navigateDroneHomePath.push("cw "  + std::to_string(angle));
             }
         }
-        else if (!localized  && !stop) {
+        else if ((!localized  && !stop) || (!localized && metzuded)) {
             lossLocalization = true;
             std::cout << "[loss localization] : backward" << std::endl;
             manageDroneCommand("back 20", 1, 1);
@@ -524,10 +521,10 @@ void AutonomousDrone::rotateDrone(int angle, bool clockwise, bool buildMap, bool
         if (lossLocalization) {  // TODO : delete after check
             amountOfLostLocalizations %= int(360 / maxRotationAngle);
             while (amountOfLostLocalizations) {
-                rotateDrone(maxRotationAngle, clockwise, false);
+                rotateDrone(maxRotationAngle, clockwise, false, isHome);
                 amountOfLostLocalizations--;
             }
-            rotateDrone(angle, clockwise, true);
+            rotateDrone(angle, clockwise, true, isHome);
         }
     }
     else
@@ -548,7 +545,15 @@ void AutonomousDrone::howToRotate(int angle, bool clockwise, bool buildMap, bool
                     // return;
                 }
             }
-            rotateDrone(int(angle % maxRotationAngle), clockwise, buildMap, isHome);
+            int modAngle = int(angle % maxRotationAngle);
+            rotateDrone(modAngle, clockwise, buildMap, isHome);
+            if (modAngle < 3 && isHome)
+            {
+                if (!clockwise) // TODO : check if work
+                    relativeChange -= modAngle;
+                else
+                    relativeChange += modAngle;
+            }
         }
     }
 }
@@ -755,13 +760,6 @@ void AutonomousDrone::beginScan(bool findHome, int rotationAngle) {
                 switchBattery();
                 lowBattery = false;
             }
-            /*if (findHome) {
-                if (findAndGoHome(90, false)) {
-                    home = currentLocation;
-                    orbSlamPointer->GetMapDrawer()->SetCharger(home);
-                    findHome = false;
-                }
-            }*/
             howToRotate(rotationAngle, true, true, true); // isHome=true because we don't want add commands to stack
             std::cout << "we did: " << (i + 1) * rotationAngle << std::endl;
         }
@@ -775,11 +773,12 @@ void AutonomousDrone::beginScan(bool findHome, int rotationAngle) {
             lowBattery = false;
         }
     }
-
-    auto prevLocation = currentLocation;
-    manageDroneCommand("up 40", 3, 3);
-    isMinusUp = prevLocation.z > currentLocation.z;
-    manageDroneCommand("down 40", 3);
+    if (loadMap) {
+        auto prevLocation = currentLocation;
+        manageDroneCommand("up 40", 3, 3);
+        isMinusUp = prevLocation.z > currentLocation.z;
+        manageDroneCommand("down 40", 3);
+    }
     if (!loadMap)
         orbSlamPointer->GetLoopClosing()->RunGlobalBundleAdjustment(orbSlamPointer->GetMap()->GetMaxKFid());
 
@@ -823,25 +822,32 @@ void AutonomousDrone::getNavigationPoints(bool isExit) {
     std::vector<Point> points(currentRoom.points);
     Polygon polygon(points, home == Point() ? currentLocation : home, isExit);
     std::vector<Point> exitPoints = polygon.getExitPointsByPolygon();
-    //exitPoints = std::vector<Point>(exitPoints.begin(), exitPoints.begin()+1); // TODO : delete;
-    std::cout << "we saved exitPoints" << std::endl;
-    int pointIndex = 0;
+    std::cout << "take just the two farthest points" << std::endl;
+    if (exitPoints.size() >= 2)
+        exitPoints = std::vector<Point>(exitPoints.begin(), exitPoints.begin()+2); // TODO : delete;
+        // std::cout << "we saved exitPoints" << std::endl;
+    std::vector<Point> filteredExitPoints = std::vector<Point>{};
     for (const auto &point: exitPoints) {
+        bool toFilter = false;
         for (const auto &room: rooms) {
-            if (!room.visitedExitPoints.empty())
+            if (!room.visitedExitPoints.empty()) {
                 for (const auto &visitedExitPoint: room.visitedExitPoints) {
                     if (Auxiliary::calculateDistanceXY(point, visitedExitPoint) <
                         Auxiliary::calculateDistanceXY(currentLocation, point) / 2.5) {
-                        exitPoints.erase(exitPoints.begin() + pointIndex);
+                        toFilter = true;
+                        break;
                     }
                 }
-
+            }
+            if (toFilter)
+                break;
         }
-        pointIndex += 1;
+        if (!toFilter)
+            filteredExitPoints.push_back(point);
     }
     std::cout << "find optimal path" << std::endl;
     Navigation navigation;
-    exitPoints = navigation.findOptPath(exitPoints, currentLocation);
+    exitPoints = navigation.findOptPath(filteredExitPoints, currentLocation);
     if (!isManual) {
         std::cout << "amount of navigation points before star:" << exitPoints.size() << std::endl;
         exitPoints = navigation.createStarNavigation(exitPoints, currentLocation);
@@ -862,26 +868,31 @@ void AutonomousDrone::getNavigationPointsBFS(bool isExit, const Point &base, con
     Polygon polygon(points, base, isExit);
     std::vector<Point> exitPoints = polygon.getExitPointsByPolygon(false, false, angle, ratio);
     std::cout << "take just the two farthest points" << std::endl;
-    exitPoints = std::vector<Point>(exitPoints.begin(), exitPoints.begin()+2); // TODO : delete;
+    if (exitPoints.size() >= 2)
+        exitPoints = std::vector<Point>(exitPoints.begin(), exitPoints.begin()+2); // TODO : delete;
     std::cout << "we saved exitPoints" << std::endl;
-    int pointIndex = 0;
+    std::vector<Point> filteredExitPoints = std::vector<Point>{};
     for (const auto &point: exitPoints) {
+        bool toFilter = false;
         for (const auto &room: rooms) {
-            if (!room.visitedExitPoints.empty())
+            if (!room.visitedExitPoints.empty()) {
                 for (const auto &visitedExitPoint: room.visitedExitPoints) {
-                    std::cout << "delete points close to visited points" << std::endl;
                     if (Auxiliary::calculateDistanceXY(point, visitedExitPoint) <
-                        Auxiliary::calculateDistanceXY(currentLocation, point) / 2.5) { // TODO : think about it. important!! when I far the constant wrong
-                        exitPoints.erase(exitPoints.begin() + pointIndex);
+                        Auxiliary::calculateDistanceXY(currentLocation, point) / 2.5) {
+                        toFilter = true;
+                        break;
                     }
                 }
-
+            }
+            if (toFilter)
+                break;
         }
-        pointIndex += 1;
+        if (!toFilter)
+            filteredExitPoints.push_back(point);
     }
     std::cout << "find optimal path" << std::endl;
     Navigation navigation;
-    exitPoints = navigation.findOptPath(exitPoints, currentLocation);
+    exitPoints = navigation.findOptPath(filteredExitPoints, currentLocation);
     if (!isManual) {
         std::cout << "amount of navigation points before star:" << exitPoints.size() << std::endl;
         exitPoints = navigation.createStarNavigation(exitPoints, currentLocation);
@@ -1179,7 +1190,7 @@ void AutonomousDrone::monitorDroneProgress(const Point &destination, bool toHome
     usleep(500000);
     int i = 0;
     int amountOfGettingFurther = 4;
-    closeThreshold = Auxiliary::calculateDistanceXY(currentLocation, destination) / 1.8; // TODO : change 2.5
+    closeThreshold = Auxiliary::calculateDistanceXY(currentLocation, destination) / 1.5; // TODO : change 2.5
     if (toHome)
         closeThreshold /= 2;
     std::cout << "close threshold:" << closeThreshold << std::endl;
@@ -1212,6 +1223,23 @@ void AutonomousDrone::monitorDroneProgress(const Point &destination, bool toHome
     }
 }
 
+
+void AutonomousDrone::fixExtremeCase(bool clockwise)
+{
+    manageAngleDroneCommand(maxRotationAngle, !clockwise, 3, 5);
+    if (clockwise) {
+        this->navigateDroneHomePath.push("cw " + std::to_string(maxRotationAngle));
+        doTriangulation();
+        this->navigateDroneHomePath.push("ccw " + std::to_string(maxRotationAngle));
+    }
+    else {
+        this->navigateDroneHomePath.push("ccw " + std::to_string(maxRotationAngle));doTriangulation();
+        doTriangulation();
+        this->navigateDroneHomePath.push("cw " + std::to_string(maxRotationAngle));
+    }
+}
+
+
 bool AutonomousDrone::navigateDrone(const Point &destination, bool rotateToFrameAngle, bool isHome) {
     current_drone_mode = navigation;
     std::cout << "start navigation to:" << destination.to_string() << std::endl;
@@ -1228,21 +1256,19 @@ bool AutonomousDrone::navigateDrone(const Point &destination, bool rotateToFrame
             while (!this->navigateDroneHomePath.empty()) {
                 std::string command_drone = this->navigateDroneHomePath.top();
                 std::string stop_command = "stop";
-                std::string finishIterCommand = "finishIter";
                 this->navigateDroneHomePath.pop();
                 if (command_drone.compare(stop_command) == 0) {
                     std::cout << "stop command" << std::endl;
                     break;
                 }
-                if (command_drone.compare(finishIterCommand) == 0) {
-                    finishIteration();
-                    std::cout << "finish iter command" << std::endl;
-                    continue;
-                }
                 manageDroneCommand(command_drone);
                 std::cout << "size of stack : " << this->navigateDroneHomePath.size() << std::endl;
             }
+            relativeChange = lastRelativeChangeStack.back();
+            lastRelativeChangeStack.pop_back();
         }
+        else
+            lastRelativeChangeStack.push_back(relativeChange);
         return true;
     }
     //std::thread collisionDetectorThread(&AutonomousDrone::collisionDetector, this, destination);
@@ -1252,10 +1278,9 @@ bool AutonomousDrone::navigateDrone(const Point &destination, bool rotateToFrame
     bool areWeNavigatingHome = destination == home;
     if(!isHome) {
         //this->navigateDroneHomePath = std::stack<std::string>();
-        lastRelativeChange = relativeChange;
+        lastRelativeChangeStack.push_back(relativeChange);
         auto howToRotateToFrame = maintainAngleToPoint(destination, rotateToFrameAngle, false, relativeChange);
-        this->updateIteration();
-        this->navigateDroneHomePath.push("finishIter");
+        this->updateIteration(destination);
         while ((!stop && !loopCloserHappened) || (stop && lowBattery)) {
             if (lowBattery) {
                 switchBattery();
@@ -1269,6 +1294,8 @@ bool AutonomousDrone::navigateDrone(const Point &destination, bool rotateToFrame
                         if (!localized) {
                             doTriangulation();
                         }
+                        bool clockwise = howToRotateToFrame.second;
+                        fixExtremeCase(clockwise); // TODO : need to check ut, think if I want
                     } else {
                         if (!droneNotFly && !isDroneRotate) {
                             if (gettingCloser) {
@@ -1302,6 +1329,10 @@ bool AutonomousDrone::navigateDrone(const Point &destination, bool rotateToFrame
 
             sleep(2);
         }
+        if (stop) {
+            seeTheWorldWhenReachedPoint();
+            finishIteration();
+        }
         std::cout << "size of stack : " << this->navigateDroneHomePath.size() << std::endl;
     }
     else {
@@ -1324,16 +1355,10 @@ bool AutonomousDrone::navigateDrone(const Point &destination, bool rotateToFrame
                         if (!droneNotFly && !isDroneRotate) {
                             std::string command_drone = this->navigateDroneHomePath.top();
                             std::string stop_command = "stop";
-                            std::string finishIterCommand = "finishIter";
                             this->navigateDroneHomePath.pop();
                             if (command_drone.compare(stop_command) == 0) {
                                 std::cout << "stop command" << std::endl;
                                 break;
-                            }
-                            if (command_drone.compare(finishIterCommand) == 0) {
-                                finishIteration();
-                                std::cout << "finish iter command" << std::endl;
-                                continue;
                             }
                             manageDroneCommand(command_drone);
                             std::cout << "size of stack : " << this->navigateDroneHomePath.size() << std::endl;
@@ -1342,12 +1367,10 @@ bool AutonomousDrone::navigateDrone(const Point &destination, bool rotateToFrame
                 }
             }
         }
-        relativeChange = lastRelativeChange;
+        relativeChange = lastRelativeChangeStack.back();
+        lastRelativeChangeStack.pop_back();
     }
 
-    /*if (!droneNotFly) {
-        drone->SendCommand("rc 0 0 0 0");
-    }*/
     stop = true;
     if (current_drone_mode == noBattery) {
         lowBattery = true;
@@ -1362,6 +1385,49 @@ bool AutonomousDrone::navigateDrone(const Point &destination, bool rotateToFrame
     orbSlamPointer->GetMapDrawer()->ClearDestinationPoint();
     orbSlamPointer->GetFrameDrawer()->ClearDestinationPoint();
     return Auxiliary::calculateDistanceXY(currentLocation, destination) < closeThreshold * 1.5;
+}
+
+
+void AutonomousDrone::seeTheWorldWhenReachedPoint(int angle){
+    std::cout << "starting explore" << std::endl;
+    this->metzuded = true;
+    int rotationAngle = 20;
+    for (int i = 0; i < std::ceil(angle / rotationAngle); i++) {
+        if (lowBattery) {
+            switchBattery();
+            lowBattery = false;
+        }
+        howToRotate(rotationAngle, true, true, false); // isHome=true because we don't want add commands to stack
+        std::cout << "[right with triangulation] : we did: " << (i + 1) * rotationAngle  << " clockwise"<< std::endl;
+    }
+    for (int i = 0; i < std::ceil(angle / rotationAngle); i++) {
+        if (lowBattery) {
+            switchBattery();
+            lowBattery = false;
+        }
+        howToRotate(rotationAngle, false, false, false); // isHome=true because we don't want add commands to stack
+        std::cout << "[left without triangulation] : we did: " << (i + 1) * rotationAngle << " counter clockwise" << std::endl;
+    }
+    for (int i = 0; i < std::ceil(angle / rotationAngle); i++) {
+        if (lowBattery) {
+            switchBattery();
+            lowBattery = false;
+        }
+        howToRotate(rotationAngle, false, true, false); // isHome=true because we don't want add commands to stack
+        std::cout << "[left with triangulation] : we did: " << (i + 1) * rotationAngle << " counter clockwise" << std::endl;
+    }
+    for (int i = 0; i < std::ceil(angle / rotationAngle); i++) {
+        if (lowBattery) {
+            switchBattery();
+            lowBattery = false;
+        }
+        howToRotate(rotationAngle, true, false, false); // isHome=true because we don't want add commands to stack
+        std::cout << "[right without triangulation] : we did: " << (i + 1) * rotationAngle << "clockwise" << std::endl;
+    }
+    this->metzuded = false;
+    // TODO : need global bundle adjustment ?
+    if (!loadMap)
+        orbSlamPointer->GetLoopClosing()->RunGlobalBundleAdjustment(orbSlamPointer->GetMap()->GetMaxKFid());
 }
 
 
@@ -1434,14 +1500,28 @@ bool AutonomousDrone::manuallyNavigateDrone(const Point &destination, bool rotat
 }
 
 
+std::vector<Point> AutonomousDrone::extractCloudFromPoint(const Point &base){
+    int csv_index = -1;
+    for (auto pair : this->pointToIterations) {
+        if (pair.first == base) {
+            csv_index = pair.second;
+        }
+    }
+    if (csv_index == -1)
+        std::cout << "error while extract cloud" << std::endl;
+    std::string datasetFilePath = "/tmp/pointData" + std::to_string (csv_index) + ".csv";
+    return getPointsFromFile(datasetFilePath);
+}
+
+
 void AutonomousDrone::BFS_navigation(const std::vector<Point> &basePoints, const std::vector<std::vector<Point>> &clouds) {
     auto home = currentLocation;
     for (int i=0; i < basePoints.size(); i++){
         auto base = basePoints[i];
-        auto cloud = clouds[i];
-        //auto cloud = extractCloudfromPoint(base).first;
+        // auto cloud = clouds[i];
         std::cout << "[bfs] : navigate to base" << std::endl;
         navigateDrone(base, true, false);
+        auto cloud = extractCloudFromPoint(base);
         getNavigationPointsBFS(true, base, cloud, 30, 0.4);
         if (currentRoom.exitPoints.size() > 0) {
             std::cout << "[bfs] : insert stops to stack" << std::endl;
@@ -1485,12 +1565,6 @@ void AutonomousDrone::flyToNavigationPoints() {
                     std::cout << "we in wrong scale" << std::endl;
                     break;
                 }
-                /*if (!checkIfPointInFront(home)) {
-                    howToRotate(180, true, true);
-                }
-                 if (!navigateDrone(home, false) || loopCloserHappened || lowBattery) {
-                    break;
-                }*/
             }
             if (lowBattery) {
                 std::cout << "I'm here" << std::endl;
@@ -1713,8 +1787,6 @@ void AutonomousDrone::switchBattery(int switchingTime) {
 
 void AutonomousDrone::run() {
     std::thread orbThread(&AutonomousDrone::runOrbSlam, this);
-    //bool first = false;  // TODO : delete ?
-    bool first = true;
     while (runDrone) {
         if (canStart) {
             std::thread batteryThread(&AutonomousDrone::alertLowBattery, this);

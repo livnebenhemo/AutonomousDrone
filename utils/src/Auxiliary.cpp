@@ -6,7 +6,7 @@
 #include "include/Auxiliary.h"
 #include "opencv2/core.hpp"
 
-Point Auxiliary::rotationMatrixToEulerAngles(cv::Mat &R) {
+Point Auxiliary::rotationMatrixToEulerAngles(cv::Mat &R) {  // TODO : need to change to folat, acordingly - we neet to change relative chnage (maybe solved)
 
     double sy = std::sqrt(R.at<double>(0, 0) * R.at<double>(0, 0) +
                           R.at<double>(1, 0) * R.at<double>(1, 0));

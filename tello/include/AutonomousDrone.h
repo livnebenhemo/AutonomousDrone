@@ -177,6 +177,7 @@ private:
     bool weInAWrongScale;
     std::string saveMapPath;
     std::string saveMapPathCSV;
+    bool metzuded;
 
     double colorDetection();
 
@@ -214,7 +215,7 @@ private:
 
     bool stopCondition(const std::vector<Point> &navigationPoints);
 
-    void updateIteration();
+    void updateIteration(const Point &destination);
 
     void finishIteration();
 
@@ -223,6 +224,7 @@ private:
     std::vector<std::pair<int, int>> roomsFramesIDs;
     int iteration;
     std::vector<std::ofstream> pointDataRooms;
+    std::vector<std::pair<Point, int>> pointToIterations;
 
     void BFS_navigation(const std::vector<Point> &basePoints, const std::vector<std::vector<Point>> &clouds);
 
@@ -240,6 +242,11 @@ private:
     std::vector<cv::Point3f> align_destinations(std::vector<cv::Point3f> destinations, cv::Mat R_align, cv::Mat mu_align);
 
     cv::Mat align_pose(cv::Mat pose, cv::Mat R_align, cv::Mat mu_align);*/
+    void seeTheWorldWhenReachedPoint(int angle=50);
+
+    std::vector<Point> extractCloudFromPoint(const Point &base);
+
+    void fixExtremeCase(bool clockwise);
 };
 
 #endif //TELLO_AUTONOMOUSDRONE_H

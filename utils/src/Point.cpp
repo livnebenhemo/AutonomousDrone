@@ -39,3 +39,4 @@ Point::Point(double x, double y, double z,const cv::Mat &rotationMatrix, int fra
     this->label = label;
     this->frameId = frameId;
 }
+

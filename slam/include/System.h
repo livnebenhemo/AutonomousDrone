@@ -138,7 +138,7 @@ namespace ORB_SLAM2 {
 
         // Map structure that stores the pointers to all KeyFrames and MapPoints.
         std::shared_ptr<Map> mpMap;
-    private:
+    // private: // TODO : delete !!!
 
         // Input sensor
         eSensor mSensor;

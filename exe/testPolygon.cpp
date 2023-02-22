@@ -81,10 +81,9 @@ void plot_for_dan(){
 
 
 int main() {
-
     std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "pointData0.csv";
     auto points = getPointsFromFile(datasetFilePath);
-    std::string datasetFilePath1 = Auxiliary::GetDataSetsDirPath() + "pointDataExtended.csv";
+    std::string datasetFilePath1 = Auxiliary::GetDataSetsDirPath() + "pointData1000.csv";
     auto points1 = getPointsFromFile(datasetFilePath1);
     matplotlibcpp::scatter(Auxiliary::getXValues(points1), Auxiliary::getYValues(points1), 3);
     matplotlibcpp::scatter(Auxiliary::getXValues(points), Auxiliary::getYValues(points), 3);

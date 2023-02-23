@@ -52,7 +52,6 @@ std::vector<Point> Polygon::getExitPointsByPolygon(bool isDebug, bool returnPoly
         Auxiliary::showCloudPoint(rawNavigationPoints, points);
     }
     auto navigationPoints = filterCheckpoints(rawNavigationPoints);
-    std::cout << "amount of navigationPoints " << navigationPoints.size() << std::endl;
     if (isExit) {
         auto center = polygonCenter;
         std::sort(navigationPoints.begin(), navigationPoints.end(), [&center](Point p1, Point p2) {
@@ -62,6 +61,7 @@ std::vector<Point> Polygon::getExitPointsByPolygon(bool isDebug, bool returnPoly
     if (isDebug) {
         Auxiliary::showCloudPoint(navigationPoints, points);
     }
+    std::cout << "amount of navigationPoints " << navigationPoints.size() << std::endl;
     return navigationPoints;
 }
 

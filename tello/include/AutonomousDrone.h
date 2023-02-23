@@ -228,7 +228,7 @@ private:
 
     void BFS_navigation(const std::vector<Point> &basePoints, const std::vector<std::vector<Point>> &clouds);
 
-    void getNavigationPointsBFS(bool isExit, const Point &base, const std::vector<Point> &cloud,
+    void getNavigationPointsBFS(bool isExit, const Point &base, const Point &home, const std::vector<Point> &cloud,
                                 int angle=10, double ratio=0.5);
 
     void chargerHelper();
@@ -242,7 +242,7 @@ private:
     std::vector<cv::Point3f> align_destinations(std::vector<cv::Point3f> destinations, cv::Mat R_align, cv::Mat mu_align);
 
     cv::Mat align_pose(cv::Mat pose, cv::Mat R_align, cv::Mat mu_align);*/
-    void seeTheWorldWhenReachedPoint(int angle=50);
+    void seeTheWorldWhenReachedPoint(int angle=60);
 
     std::vector<Point> extractCloudFromPoint(const Point &base);
 

@@ -81,7 +81,7 @@ void plot_for_dan(){
 
 
 int main() {
-    std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "pointData0.csv";
+    std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "pointData2.csv";
     auto points = getPointsFromFile(datasetFilePath);
     std::string datasetFilePath1 = Auxiliary::GetDataSetsDirPath() + "pointData1000.csv";
     auto points1 = getPointsFromFile(datasetFilePath1);
@@ -91,7 +91,7 @@ int main() {
     auto start = std::chrono::high_resolution_clock::now();
     //auto points = getPointsFromFile(datasetFilePath);
     Polygon polygon(points, Point(), true);
-    auto vertex = polygon.getExitPointsByPolygon(true);
+    auto vertex = polygon.getExitPointsByPolygon(true, false, 30, 0.4);
     auto stop = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
     std::cout << duration.count() << std::endl;

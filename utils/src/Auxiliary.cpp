@@ -109,6 +109,13 @@ void Auxiliary::showCloudPoint(const std::vector<Point> &redPoints, const std::v
     matplotlibcpp::show();
 }
 
+void Auxiliary::showCloudPointAndExitPoints(const std::vector<Point> &redPoints, const std::vector<Point> &cloud) {
+    matplotlibcpp::clf();
+    matplotlibcpp::scatter(getXValues(cloud), getYValues(cloud), 2.0);
+    matplotlibcpp::scatter(getXValues(redPoints), getYValues(redPoints), 45.0);
+    matplotlibcpp::show();
+}
+
 
 void Auxiliary::saveCloudPoint(const std::vector<Point> &cloud, const std::string& fileName) {
     matplotlibcpp::clf();

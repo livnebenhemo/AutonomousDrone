@@ -59,7 +59,7 @@ std::vector<Point> Polygon::getExitPointsByPolygon(bool isDebug, bool returnPoly
         });
     }
     if (isDebug) {
-        Auxiliary::showCloudPoint(navigationPoints, points);
+        Auxiliary::showCloudPointAndExitPoints(navigationPoints, points);
     }
     std::cout << "amount of navigationPoints " << navigationPoints.size() << std::endl;
     return navigationPoints;

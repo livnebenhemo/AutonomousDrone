@@ -97,7 +97,7 @@ add_library(${PROJECT_NAME}
         utils/src/Room.cpp
         utils/src/Auxiliary.cpp
         tello/src/Charger.cpp
-        algo/src/Navigation.cpp)
+        algo/src/Navigation.cpp algo/src/thoretic.cpp algo/include/thoretic.h)
 
 
 target_link_libraries(${PROJECT_NAME}
@@ -110,14 +110,14 @@ target_link_libraries(${PROJECT_NAME}
         ${Boost_LIBRARIES}
 
         )
-add_executable(testPolygon exe/testPolygon.cpp)
+add_executable(testPolygon exe/testPolygon.cpp algo/src/thoretic.cpp algo/include/thoretic.h)
 target_link_libraries(testPolygon ${PROJECT_NAME})
 target_compile_options(${PROJECT_NAME} PRIVATE )
 
-add_executable(testNavigationPathing exe/testNavigationPathing.cpp)
+add_executable(testNavigationPathing exe/testNavigationPathing.cpp algo/src/thoretic.cpp algo/include/thoretic.h)
 target_link_libraries(testNavigationPathing ${PROJECT_NAME})
 target_compile_options(${PROJECT_NAME} PRIVATE )
-add_executable(runAutonomousDrone exe/runAutonomousDrone.cpp)
+add_executable(runAutonomousDrone exe/runAutonomousDrone.cpp algo/src/thoretic.cpp algo/include/thoretic.h)
 target_link_libraries(runAutonomousDrone ${PROJECT_NAME} nlohmann_json::nlohmann_json)
 
 add_executable(cameraCalibretion exe/cameraCalibretion.cpp)

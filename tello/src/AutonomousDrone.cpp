@@ -1556,6 +1556,7 @@ void AutonomousDrone::BFS_navigation(const std::vector<Point> &basePoints, const
         navigateDrone(base, true, false);
         auto cloud = extractCloudFromPoint(base);
         getNavigationPointsBFS(true, base, home, cloud, 30, 0.4);
+        // TODO : maybe save here the figures
         if (currentRoom.exitPoints.size() > 0) {
             if (currentRoom.exitPoints.size()==1) { // TODO : need to check
                 std::cout << "one navigation point" << std::endl;

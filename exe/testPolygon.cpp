@@ -3,6 +3,8 @@
 //
 
 #include "include/Polygon.h"
+#include "include/thoretic.h"
+#include <tqdm/tqdm.h>
 #include<fstream>
 #include <chrono>
 
@@ -81,20 +83,21 @@ void plot_for_dan(){
 
 
 int main() {
-    std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "pointData2.csv";
+    std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "pointData1234.csv";
     auto points = getPointsFromFile(datasetFilePath);
-    std::string datasetFilePath1 = Auxiliary::GetDataSetsDirPath() + "pointData1000.csv";
+    /*std::string datasetFilePath1 = Auxiliary::GetDataSetsDirPath() + "pointData1000.csv";
     auto points1 = getPointsFromFile(datasetFilePath1);
-    matplotlibcpp::scatter(Auxiliary::getXValues(points1), Auxiliary::getYValues(points1), 3);
+    matplotlibcpp::scatter(Auxiliary::getXValues(points1), Auxiliary::getYValues(points1), 3);*/
     matplotlibcpp::scatter(Auxiliary::getXValues(points), Auxiliary::getYValues(points), 3);
     matplotlibcpp::show();
     auto start = std::chrono::high_resolution_clock::now();
     //auto points = getPointsFromFile(datasetFilePath);
-    Polygon polygon(points, Point(), true);
-    auto vertex = polygon.getExitPointsByPolygon(true, false, 30, 0.4);
+    //Polygon polygon(points, Point(), true); // TODO : remove comment
+    // auto vertex = polygon.getExitPointsByPolygon(true); // TODO : remove comment
+    thoretic obj(points);
+    auto rectangle = obj.getOptimalRectangle(points);
     auto stop = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
     std::cout << duration.count() << std::endl;
     //plot_for_dan();
-
 }

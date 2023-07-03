@@ -4,7 +4,7 @@
 
 #include "include/Polygon.h"
 #include "include/thoretic.h"
-#include <tqdm/tqdm.h>
+//#include <tqdm/tqdm.h>
 #include<fstream>
 #include <chrono>
 
@@ -94,10 +94,11 @@ int main() {
     //auto points = getPointsFromFile(datasetFilePath);
     //Polygon polygon(points, Point(), true); // TODO : remove comment
     // auto vertex = polygon.getExitPointsByPolygon(true); // TODO : remove comment
-    thoretic obj(points);
-    auto rectangle = obj.getOptimalRectangle(points);
+    std::vector<Point> firstTen(points.begin(), points.begin() + 50);
+    thoretic obj(firstTen);
+    auto rectangle = obj.getOptimalRectangle(firstTen);
     auto stop = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-    std::cout << duration.count() << std::endl;
+    std::cout << duration.count() << " microseconds" << std::endl;
     //plot_for_dan();
 }

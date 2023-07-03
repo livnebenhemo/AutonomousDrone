@@ -26,11 +26,11 @@ public:
     double getDistanceToSegment(const Point& point) const;
 
     Point getLineIntersection(const Line& line);
+    double slope;
 
 private:
     Point point1;
     Point point2;
-    double slope;
     double yIntercept;
 };
 

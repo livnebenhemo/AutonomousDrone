@@ -6,6 +6,7 @@
 #define ORB_SLAM2_THORETIC_H
 
 #include "include/Point.h"
+#include "include/Line.h"
 #include <vector>
 #include <cmath>
 
@@ -17,7 +18,6 @@ public:
     static std::vector<Point> getOptimalRectangle(std::vector<Point> input_points);
 
 private:
-    static double calculateDistance(const Point& p, const Point& p1, const Point& p2);
     static double calculateDistanceSum(const std::vector<Point>& points, const std::vector<Point>& rect);
 };
 

@@ -27,11 +27,11 @@ public:
 
     Point getLineIntersection(const Line& line);
     double slope;
+    double yIntercept;
 
 private:
     Point point1;
     Point point2;
-    double yIntercept;
 };
 
 

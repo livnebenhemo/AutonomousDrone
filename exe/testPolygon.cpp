@@ -4,7 +4,6 @@
 
 #include "include/Polygon.h"
 #include "include/thoretic.h"
-//#include <tqdm/tqdm.h>
 #include<fstream>
 #include <chrono>
 
@@ -81,6 +80,57 @@ void plot_for_dan(){
 }
 
 
+void call_to_python_program(std::string data_path, int coreset_size, std::string output_path){
+    std::string arguments = data_path;
+    arguments  += " " + std::to_string(coreset_size) + " "; // coreset size  // TODO : change it it to argument
+    arguments  += output_path;
+
+    std::string fullCommand = "/home/livne/CLionProjects/callToPythonProgram/main " + arguments;
+
+    int result = system(fullCommand.c_str());
+    if (result == 0)
+    {
+        std::cout << "Command executed successfully." << std::endl;
+    }
+    else
+    {
+        std::cout << "Command execution failed." << std::endl;
+    }
+}
+
+
+std::vector<int> read_coreset_indexes_from_file(std::string path){
+    std::vector<int> indexes;
+
+    std::ifstream file(path);
+    if (file.is_open())
+    {
+        int index;
+        while (file >> index)
+        {
+            indexes.push_back(index);
+        }
+        file.close();
+    }
+    else
+    {
+        std::cout << "Failed to open file." << std::endl;
+    }
+    return indexes;
+}
+
+
+std::vector<Point> extractPoints(const std::vector<Point>& points, const std::vector<int>& indexes)
+{
+    std::vector<Point> extractedPoints;
+    for (int index : indexes) {
+        if (index >= 0 && index < points.size()) {
+            extractedPoints.push_back(points[index]);
+        }
+    }
+    return extractedPoints;
+}
+
 
 int main() {
     std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "pointData1234.csv";
@@ -94,9 +144,14 @@ int main() {
     //auto points = getPointsFromFile(datasetFilePath);
     //Polygon polygon(points, Point(), true); // TODO : remove comment
     // auto vertex = polygon.getExitPointsByPolygon(true); // TODO : remove comment
-    std::vector<Point> firstTen(points.begin(), points.begin() + 50);
-    thoretic obj(firstTen);
-    auto rectangle = obj.getOptimalRectangle(firstTen);
+    call_to_python_program("/home/livne/PycharmProjects/Polygon-coreset/datasets/buildings/Lab/pointData0.csv", 50,
+                           "/home/livne/CLionProjects/callToPythonProgram/output.txt");
+    auto indexes = read_coreset_indexes_from_file("/home/livne/CLionProjects/callToPythonProgram/output.txt");
+    auto coreset_points = extractPoints(points, indexes);
+    thoretic obj(coreset_points);
+    auto rectangle = obj.getOptimalRectangle(coreset_points);
+    auto vertices = obj.getVerticesOfRectangle(rectangle);
+    Auxiliary::showCloudPoint(vertices, points);
     auto stop = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
     std::cout << duration.count() << " microseconds" << std::endl;

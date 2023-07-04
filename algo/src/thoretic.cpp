@@ -11,8 +11,41 @@ thoretic::thoretic(std::vector<Point> input_points) {
 }
 
 
+Point thoretic::findIntersection(const Line& line1, const Line& line2)
+{
+    // Check if the lines are parallel
+    /*if (line1.slope == line2.slope) {
+        return false;
+    }*/
+
+    // Calculate the intersection point
+    double x = (line2.yIntercept - line1.yIntercept) / (line1.slope - line2.slope);
+    double y = line1.slope * x + line1.yIntercept;
+
+    return Point(x, y, 0);
+}
+
+
+
+std::vector<Point> thoretic::getVerticesOfRectangle(std::vector<Point> rect) {
+    Line line1(rect[0], rect[1]);
+    auto slope = line1.slope;
+    Line line2(rect[2], slope);
+    Line line3(rect[3], -1 / slope);
+    Line line4(rect[4], -1 / slope);
+
+    Point vertex1 = findIntersection(line1, line3);
+    Point vertex2 = findIntersection(line1, line4);
+    Point vertex3 = findIntersection(line2, line3);
+    Point vertex4 = findIntersection(line2, line4);
+
+    std::vector<Point> vertices = {vertex1, vertex3, vertex4, vertex2};
+    return vertices;
+}
+
+
 std::vector<Point> thoretic::getOptimalRectangle(std::vector<Point> input_points) {
-    std::vector<Point> optimal_rect(4);
+    std::vector<Point> optimal_rect(5);
     double min_distance_sum = std::numeric_limits<double>::max();
 
     // Iterate over every combination of 4 points  // TODO : nned to fix it - 5 points : 2 for the first line, and one for each other line

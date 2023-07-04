@@ -16,6 +16,8 @@ public:
     std::vector<Point> input_points;
 
     static std::vector<Point> getOptimalRectangle(std::vector<Point> input_points);
+    static std::vector<Point> getVerticesOfRectangle(std::vector<Point> rect);
+    static Point findIntersection(const Line& line1, const Line& line2);
 
 private:
     static double calculateDistanceSum(const std::vector<Point>& points, const std::vector<Point>& rect);

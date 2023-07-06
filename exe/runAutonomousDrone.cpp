@@ -4,14 +4,6 @@
 #include "include/AutonomousDrone.h"
 #include <nlohmann/json.hpp>
 
-std::vector<std::vector <double>> vector_of_points;// vector of vectorc [[x,y,in or out,above or under,dist],[x,y,in or out,above or under,dist],...]
-											  //					[0,1,2		  ,3			 ,4	  ]
-std::vector<std::vector <double>> vector_of_above_points;
-std::vector<std::vector <double>> vector_of_delete_points;
-std::vector<std::vector <double>> vector_of_inside_points;
-std::vector<std::vector <double>> vector_of_c_o_m_points;
-std::vector<std::vector <double>> vector_of_z_filterd_points;
-
 int main(int argc, char** argv) {
     bool isManual = false;
     bool switchBattery = false;

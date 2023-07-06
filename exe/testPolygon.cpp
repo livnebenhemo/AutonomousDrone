@@ -132,28 +132,54 @@ std::vector<Point> extractPoints(const std::vector<Point>& points, const std::ve
 }
 
 
-int main() {
-    std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "pointData1234.csv";
+void rectangle_main() {
+    std::string datasetFilePath = "/home/livne/CLionProjects/AutonomousDroneCPP_master/datasets/buildings/newLab/pointData.csv";
+    auto points = getPointsFromFile(datasetFilePath);
+    auto start = std::chrono::high_resolution_clock::now();
+    call_to_python_program(datasetFilePath, 50,
+                           "/home/livne/CLionProjects/callToPythonProgram/output.txt");
+    auto indexes = read_coreset_indexes_from_file("/home/livne/CLionProjects/callToPythonProgram/output.txt");
+    auto coreset_points = extractPoints(points, indexes);
+
+    auto stop1 = std::chrono::high_resolution_clock::now();
+    auto duration1 = std::chrono::duration_cast<std::chrono::seconds>(stop1 - start);
+    std::cout << "Call to coreset take " << duration1.count() << " seconds" << std::endl;
+
+    thoretic obj(coreset_points);
+    auto rectangle = obj.getOptimalRectangle(coreset_points);
+    auto rect_vertices = obj.getVerticesOfRectangle(rectangle);
+
+    auto stop2 = std::chrono::high_resolution_clock::now();
+    auto duration2 = std::chrono::duration_cast<std::chrono::seconds>(stop2 - stop1);
+    std::cout << "Calculate rectangle take " << duration2.count() << " seconds" << std::endl;
+
+    Auxiliary::showCloudPointAndCoreset(rect_vertices, points, coreset_points);
+
+    auto currentPosition = Auxiliary::GetCenterOfMass(points);
+    auto navigationPoints = obj.getExitPointsByRectangle(rect_vertices, points, currentPosition, true);
+    //plot_for_dan();
+}
+
+
+void polygon_main() {
+    //std::string datasetFilePath = Auxiliary::GetDataSetsDirPath() + "pointData1234.csv";
+    // std::string datasetFilePath = "/home/livne/CLionProjects/AutonomousDroneCPP_master/datasets/buildings/RoomsDatabase/dani_office/pointData0.csv";
+    std::string datasetFilePath = "/home/livne/CLionProjects/AutonomousDroneCPP_master/datasets/pointData1.csv";
     auto points = getPointsFromFile(datasetFilePath);
     /*std::string datasetFilePath1 = Auxiliary::GetDataSetsDirPath() + "pointData1000.csv";
     auto points1 = getPointsFromFile(datasetFilePath1);
     matplotlibcpp::scatter(Auxiliary::getXValues(points1), Auxiliary::getYValues(points1), 3);*/
-    matplotlibcpp::scatter(Auxiliary::getXValues(points), Auxiliary::getYValues(points), 3);
-    matplotlibcpp::show();
+    //matplotlibcpp::scatter(Auxiliary::getXValues(points), Auxiliary::getYValues(points), 3);
+    //matplotlibcpp::show();
     auto start = std::chrono::high_resolution_clock::now();
     //auto points = getPointsFromFile(datasetFilePath);
-    //Polygon polygon(points, Point(), true); // TODO : remove comment
-    // auto vertex = polygon.getExitPointsByPolygon(true); // TODO : remove comment
-    call_to_python_program("/home/livne/PycharmProjects/Polygon-coreset/datasets/buildings/Lab/pointData0.csv", 50,
-                           "/home/livne/CLionProjects/callToPythonProgram/output.txt");
-    auto indexes = read_coreset_indexes_from_file("/home/livne/CLionProjects/callToPythonProgram/output.txt");
-    auto coreset_points = extractPoints(points, indexes);
-    thoretic obj(coreset_points);
-    auto rectangle = obj.getOptimalRectangle(coreset_points);
-    auto vertices = obj.getVerticesOfRectangle(rectangle);
-    Auxiliary::showCloudPoint(vertices, points);
-    auto stop = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-    std::cout << duration.count() << " microseconds" << std::endl;
+    Polygon polygon(points, Point(), true);
+    auto vertex = polygon.getExitPointsByPolygon(true);
     //plot_for_dan();
+}
+
+
+int main() {
+    polygon_main();
+    return 0;
 }

@@ -74,6 +74,7 @@ private:
 
     void beginScan(bool findHome = false, int rotationAngle = 40); // TODO : 25 ?
 
+    std::vector<Point> getNavigationPoints_helper(const std::string& datasetFilePath);
     void getNavigationPoints(bool isExit = false);
 
     std::pair<int, bool> getRotationToFrameAngle(const Point &point, bool first=false, double relativeChange = 0);
@@ -227,6 +228,7 @@ private:
     std::vector<std::pair<Point, int>> pointToIterations;
 
     void BFS_navigation(const std::vector<Point> &basePoints, const std::vector<std::vector<Point>> &clouds);
+    void BFS_navigation(const std::vector<Point> &basePoints);
 
     void getNavigationPointsBFS(bool isExit, const Point &base, const Point &home, const std::vector<Point> &cloud,
                                 int angle=10, double ratio=0.5);

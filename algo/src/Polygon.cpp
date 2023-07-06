@@ -24,7 +24,7 @@ std::vector<Point> Polygon::getExitPointsByPolygon(bool isDebug, bool returnPoly
         epsilon += exitPoint.second;
         vertices.push_back(exitPoint.first);
     }
-    epsilon /= rawExitPoints.size() * 2;  // TODO : can improve it
+    epsilon /= rawExitPoints.size() * 1;  // TODO : can improve it // delete *2
     if (isDebug) {
         Auxiliary::showCloudPoint(vertices, points);
     }
@@ -131,6 +131,8 @@ std::vector<Point> Polygon::getNavigationPoints(std::vector<Point> goodPoints, i
     navigationPoints.push_back(getNavigationPointFromCluster(cluster));
     return navigationPoints;
 }
+
+
 Point Polygon::getNavigationPointFromCluster(std::vector<Point> cluster){
     /*double maxDistanceToPolygon = -1;
     Point bestPoint;
@@ -144,6 +146,8 @@ Point Polygon::getNavigationPointFromCluster(std::vector<Point> cluster){
     return bestPoint;*/
     return Auxiliary::GetCenterOfMass(cluster); // think about it !!!
 }
+
+
 std::vector<Point>
 Polygon::filterPointsByVariances(std::vector<std::pair<double, std::vector<Point>>> slices, double epsilon) {
     std::vector<Point> goodPoints;

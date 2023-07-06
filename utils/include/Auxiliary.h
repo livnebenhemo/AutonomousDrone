@@ -116,6 +116,9 @@ public:
     static void saveCloudPoint(const std::vector<Point> &cloud, const std::string &fileName);
 
     static void showCloudPointAndExitPoints(const std::vector<Point> &redPoints, const std::vector<Point> &cloud);
+
+    static void showCloudPointAndCoreset(const std::vector<Point> &redPoints, const std::vector<Point> &cloud,
+                                  const std::vector<Point> &coresetCloud);
 };
 
 static cv::Mat points3d_to_mat(const std::vector<cv::Point3d> &points3d);

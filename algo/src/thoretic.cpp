@@ -45,7 +45,7 @@ std::vector<Point> thoretic::getVerticesOfRectangle(std::vector<Point> rect) {
 }
 
 
-/*std::vector<Point> thoretic::getOptimalRectangle(std::vector<Point> input_points) {
+std::vector<Point> thoretic::getOptimalRectangle(std::vector<Point> input_points) {
     std::vector<Point> optimal_rect(5);
     double min_distance_sum = std::numeric_limits<double>::max();
 
@@ -70,9 +70,9 @@ std::vector<Point> thoretic::getVerticesOfRectangle(std::vector<Point> rect) {
         }
     }
     return optimal_rect;
-}*/
+}
 
-
+/*
 std::vector<Point> thoretic::getOptimalRectangle(std::vector<Point> points) {
     std::vector<Point> optimal_rect(5);
     double min_distance_sum = std::numeric_limits<double>::max();
@@ -102,28 +102,7 @@ std::vector<Point> thoretic::getOptimalRectangle(std::vector<Point> points) {
     std::cout << "cost : " << min_distance_sum << std::endl;
     return optimal_rect;
 }
-
-
-/*std::vector<Point> thoretic::getOptimalRectangle(std::vector<Point> input_points) {
-    std::vector<Point> optimal_rect(5);
-    double min_distance_sum = std::numeric_limits<double>::max();
-    // Iterate over every combination of 4 points  // TODO : nned to fix it - 5 points : 2 for the first line, and one for each other line
-    long count = 0;
-    auto g = std::mt19937 {std::random_device{}()};
-    while (count < 5000000) {
-        std::vector<Point> rect;
-        std::sample(input_points.begin(), input_points.end(), std::back_inserter(rect), 5, g);
-        // std::vector<Point> rect = {input_points[i], input_points[j], input_points[k], input_points[l], input_points[m]};
-        double distance_sum = calculateDistanceSum(input_points, rect);
-        if (distance_sum < min_distance_sum) {
-            min_distance_sum = distance_sum;
-            optimal_rect = rect;
-        }
-        count++;
-    }
-    std::cout << "cost : " << min_distance_sum << std::endl;
-    return optimal_rect;
-}*/
+*/
 
 
 double thoretic::calculateDistanceSum(const std::vector<Point>& points, const std::vector<Point>& rect) {

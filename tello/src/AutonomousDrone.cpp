@@ -831,7 +831,7 @@ void call_to_python_program(std::string data_path, int coreset_size, std::string
     //arguments +=  + " " + python_file_path;
 
     std::string fullCommand = "/home/livne/CLionProjects/AutonomousDroneCPP_master/exe/main " + arguments;
-
+    std::cout << "call to python program" << std::endl;
     int result = system(fullCommand.c_str());
     if (result == 0)
     {

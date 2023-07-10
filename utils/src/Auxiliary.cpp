@@ -112,10 +112,17 @@ void Auxiliary::showCloudPoint(const std::vector<Point> &redPoints, const std::v
 }
 
 
+void Auxiliary::showCloudPoint(const std::vector<Point> &cloud) {
+    matplotlibcpp::clf();
+    matplotlibcpp::scatter(getXValues(cloud), getYValues(cloud), 2.0);
+    matplotlibcpp::show();
+}
+
+
 void Auxiliary::showCloudPointAndCoreset(const std::vector<Point> &redPoints, const std::vector<Point> &cloud, const std::vector<Point> &coresetCloud) {
     matplotlibcpp::clf();
     matplotlibcpp::scatter(getXValues(cloud), getYValues(cloud), 2.0);
-    matplotlibcpp::scatter(getXValues(coresetCloud), getYValues(coresetCloud), 4.0);
+    matplotlibcpp::scatter(getXValues(coresetCloud), getYValues(coresetCloud), 10.0);
     matplotlibcpp::plot(getXValues(redPoints), getYValues(redPoints), "ro");
     std::vector<Point> circularRedPoints(redPoints);
     circularRedPoints.emplace_back(circularRedPoints.front());

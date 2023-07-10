@@ -179,7 +179,122 @@ void polygon_main() {
 }
 
 
+// Function to generate a rectangle and sample points near it with Gaussian noise
+std::vector<Point> generatePointsWithNoise(int samplesNumber, double noiseStdDev) {
+    // define random generators
+    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+    // noise generator
+    std::mt19937 gen(seed);
+    std::normal_distribution<double> noise_dis(0, noiseStdDev);
+    // defining points generator
+    std::uniform_real_distribution<double> defining_dis(-10, 10);
+
+    std::vector<Point> points_define_rect;
+    for (int i=0; i<5; i++){
+        double x = defining_dis(gen);
+        double y = defining_dis(gen);
+        points_define_rect.emplace_back(Point(x,y,0));
+    }
+    thoretic object(points_define_rect);
+    auto rect_vertices = object.getVerticesOfRectangle(points_define_rect);
+    std::vector<Point> points;
+    for (int j=0; j<4; j++) {
+        auto vertex1 = rect_vertices[j];
+        auto vertex2 = rect_vertices[(j+1)%4];
+        double slope = (vertex1.y - vertex2.y) / (vertex1.x - vertex2.x);
+        double y_intercept = vertex1.y - vertex1.x * slope;
+        double upperBound = vertex1.x > vertex2.x ? vertex1.x : vertex2.x;
+        double lowerBound = vertex1.x <= vertex2.x ? vertex1.x : vertex2.x;
+        // Random number generation
+        std::uniform_real_distribution<double> dis(lowerBound-2, upperBound+2);
+        for (int i = 0; i < samplesNumber / 4; i++) {
+            // Generate a random number
+            double random_x = dis(gen);
+            double noise = noise_dis(gen);
+            double noised_y = random_x * slope + y_intercept + noise;
+            points.emplace_back(Point(random_x, noised_y, 0));
+        }
+    }
+
+    // write points to file
+    std::ofstream pointData;
+    pointData.open("/tmp/pointDataTemp.csv");
+    for (auto p: points) {
+        pointData << p.x << "," << p.y << "," << p.z << std::endl; // TODO : IMPORTANT! need to check if it's appropriate python callee
+    }
+    pointData.close();
+
+    return points;
+}
+
+
+void costs_for_different_coreset_sizes(){
+    auto points = generatePointsWithNoise(1000, 0.3);
+    Auxiliary::showCloudPoint(points);
+
+    std::string outputFilePath = "/home/livne/CLionProjects/AutonomousDroneCPP_master/exe/output.txt";
+
+    std::ofstream pointData;
+    pointData.open("/home/livne/Documents/costs.txt");
+
+    for(int i=10; i<26; i++) {
+        std::cout << "----------------------------------- " << i << " -----------------------------------" << std::endl;
+        auto start = std::chrono::high_resolution_clock::now();
+        call_to_python_program("/tmp/pointDataTemp.csv", i, outputFilePath);
+        auto indexes = read_coreset_indexes_from_file(outputFilePath);
+        auto coreset_points = extractPoints(points, indexes);
+
+        auto stop1 = std::chrono::high_resolution_clock::now();
+        auto duration1 = std::chrono::duration_cast<std::chrono::seconds>(stop1 - start);
+
+        thoretic obj(coreset_points);
+        auto rectangle = obj.getOptimalRectangle(coreset_points);
+        auto rect_vertices = obj.getVerticesOfRectangle(rectangle);
+        auto cost = obj.calculateDistanceSum(points, rectangle);
+        pointData << cost << std::endl;
+
+        auto stop2 = std::chrono::high_resolution_clock::now();
+        auto duration2 = std::chrono::duration_cast<std::chrono::seconds>(stop2 - stop1);
+        std::cout << "Calculate rectangle take " << duration2.count() << " seconds" << std::endl;
+    }
+    pointData.close();
+}
+
+
+void running_times_for_different_coreset_sizes(){
+    auto points = generatePointsWithNoise(1000, 0.3);
+    Auxiliary::showCloudPoint(points);
+
+    std::string outputFilePath = "/home/livne/CLionProjects/AutonomousDroneCPP_master/exe/output.txt";
+
+    std::ofstream pointData;
+    pointData.open("/home/livne/Documents/times.txt");
+
+    for(int i=10; i<26; i++) {
+        std::cout << "----------------------------------- " << i << " -----------------------------------" << std::endl;
+        call_to_python_program("/tmp/pointDataTemp.csv", i, outputFilePath);
+        auto indexes = read_coreset_indexes_from_file(outputFilePath);
+        auto coreset_points = extractPoints(points, indexes);
+
+        thoretic obj(coreset_points);
+
+        auto start = std::chrono::high_resolution_clock::now();
+        auto rectangle = obj.getOptimalRectangle(coreset_points);
+        auto stop = std::chrono::high_resolution_clock::now();
+
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+        pointData << duration.count() << std::endl;
+
+        std::cout << "Calculate rectangle take " << duration.count() << " seconds" << std::endl;
+    }
+    pointData.close();
+}
+
+
 int main() {
-    polygon_main();
+    // polygon_main();
+    // costs_for_different_coreset_sizes();
+    running_times_for_different_coreset_sizes();
+    //Auxiliary::showCloudPointAndCoreset(rect_vertices, points, coreset_points);
     return 0;
 }

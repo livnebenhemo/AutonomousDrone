@@ -29,8 +29,6 @@ public:
     static std::vector<std::pair<Point, double>> createPointsWithDistanceFromCurrentPosition(std::vector<Point> points, const Point &currentPosition);
     static std::vector<std::pair<double, std::vector<Point>>> getSlicesWithVariances(const std::vector<std::pair<Point, double>> pointsOutsidePolygonWithDistance, const Point &currentPosition, int angle);
     static std::vector<Point> filterPointsByVariances(std::vector<std::pair<double, std::vector<Point>>> slices, std::vector<Point> rect, double epsilon);
-
-private:
     static double calculateDistanceSum(const std::vector<Point>& points, const std::vector<Point>& rect);
 };
 

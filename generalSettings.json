@@ -16,6 +16,8 @@
   "loadMapPath": "/home/livne/slamMapLabOpenSpace.bin",
   "saveMap": false,
   "saveMapPath": "/home/livne/slamMapLabOpenSpace.bin",
-  "saveMapPathCSV": "/home/livne/CSVMaps/pointData1000.csv"
+  "saveMapPathCSV": "/home/livne/CSVMaps/pointData1000.csv",
+  "coreset_size": 50,
+  "python_file_path": "/home/livne/PycharmProjects/Polygon-coreset/get_coreset_one_file.py"
 }
 

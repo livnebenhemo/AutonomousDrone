@@ -30,6 +30,7 @@ public:
                     std::string &mapPath,bool saveMap, std::string& saveMapPath,
                     std::string& saveMapPathCSV, int sizeOfFrameStack = 20,
                     bool withPlot = false,  bool isManual=false, bool switchBattery=false,
+                    int coreset_size=50, std::string python_file_path="/home/livne/PycharmProjects/Polygon-coreset/get_coreset_one_file.py",
                     std::string chargerBluetoothAddress = "3C:61:05:03:81:E2");
 
     void run();
@@ -162,6 +163,8 @@ private:
     bool holdMonitorThread = false;
     bool droneNotFly = false;
     bool isManual = false;
+    int coreset_size;
+    std::string python_file_path;
     bool useCharger = true;
     int maxRotationAngle = 25;
     bool reachedCheckpoint = false;
@@ -247,6 +250,7 @@ private:
     void seeTheWorldWhenReachedPoint(int angle=60);
 
     std::vector<Point> extractCloudFromPoint(const Point &base);
+    std::string extractCloudPathFromPoint(const Point &base);
 
     void fixExtremeCase(bool clockwise);
 };

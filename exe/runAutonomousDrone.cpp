@@ -42,10 +42,14 @@ int main(int argc, char** argv) {
     int sizeOfForwardStepSimulator = data["sizeOfForwardStepSimulator"];
     std::string saveMapPath = data["saveMapPath"];
     std::string saveMapPathCSV = data["saveMapPathCSV"];
+    int coreset_size = data["coreset_size"];
+    std::string python_file_path = data["python_file_path"];
 
 
-    AutonomousDrone autonomousDrone(drone, vocPath, droneYamlPathSlam, droneYamlPathAruco, droneName,
-                                    loadMap, loadMapCSV, mapPath, saveMap, saveMapPath, saveMapPathCSV, sizeOfFrameStack, withPlot, isManual, switchBattery);
+    AutonomousDrone autonomousDrone(drone, vocPath, droneYamlPathSlam,
+                                    droneYamlPathAruco, droneName, loadMap, loadMapCSV,
+                                    mapPath, saveMap, saveMapPath, saveMapPathCSV, sizeOfFrameStack, withPlot,
+                                    isManual, switchBattery, coreset_size, python_file_path);
     if (runSimulator) {
         autonomousDrone.runSimulator(maxForwardForSimulator, sizeOfForwardStepSimulator);
     } else {

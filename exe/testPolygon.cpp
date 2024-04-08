@@ -4,6 +4,7 @@
 
 #include "include/Polygon.h"
 #include "include/thoretic.h"
+#include "src/ransac_solver.cpp"
 #include<fstream>
 #include <chrono>
 
@@ -80,10 +81,11 @@ void plot_for_dan(){
 }
 
 
-void call_to_python_program(std::string data_path, int coreset_size, std::string output_path){
+void call_to_python_program(std::string data_path, int coreset_size, std::string output_path, std::string weights_output_path){
     std::string arguments = data_path;
     arguments  += " " + std::to_string(coreset_size) + " "; // coreset size  // TODO : change it it to argument
-    arguments  += output_path;
+    arguments  += output_path + " ";
+    arguments  += weights_output_path;
 
     std::string fullCommand = "/home/livne/CLionProjects/callToPythonProgram/main " + arguments;
 
@@ -134,11 +136,14 @@ std::vector<Point> extractPoints(const std::vector<Point>& points, const std::ve
 
 void rectangle_main() {
     std::string datasetFilePath = "/home/livne/CLionProjects/AutonomousDroneCPP_master/datasets/buildings/newLab/pointData.csv";
+    std::string weightsOutputFilePath = "/home/livne/CLionProjects/AutonomousDroneCPP_master/exe/weights_output.txt";
+
     auto points = getPointsFromFile(datasetFilePath);
     auto start = std::chrono::high_resolution_clock::now();
     call_to_python_program(datasetFilePath, 50,
-                           "/home/livne/CLionProjects/callToPythonProgram/output.txt");
+                           "/home/livne/CLionProjects/callToPythonProgram/output.txt", weightsOutputFilePath);
     auto indexes = read_coreset_indexes_from_file("/home/livne/CLionProjects/callToPythonProgram/output.txt");
+    auto weights = read_coreset_indexes_from_file(weightsOutputFilePath);
     auto coreset_points = extractPoints(points, indexes);
 
     auto stop1 = std::chrono::high_resolution_clock::now();
@@ -146,7 +151,7 @@ void rectangle_main() {
     std::cout << "Call to coreset take " << duration1.count() << " seconds" << std::endl;
 
     thoretic obj(coreset_points);
-    auto rectangle = obj.getOptimalRectangle(coreset_points);
+    auto rectangle = obj.getOptimalRectangle(coreset_points, weights);
     auto rect_vertices = obj.getVerticesOfRectangle(rectangle);
 
     auto stop2 = std::chrono::high_resolution_clock::now();
@@ -179,60 +184,13 @@ void polygon_main() {
 }
 
 
-// Function to generate a rectangle and sample points near it with Gaussian noise
-std::vector<Point> generatePointsWithNoise(int samplesNumber, double noiseStdDev) {
-    // define random generators
-    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-    // noise generator
-    std::mt19937 gen(seed);
-    std::normal_distribution<double> noise_dis(0, noiseStdDev);
-    // defining points generator
-    std::uniform_real_distribution<double> defining_dis(-10, 10);
-
-    std::vector<Point> points_define_rect;
-    for (int i=0; i<5; i++){
-        double x = defining_dis(gen);
-        double y = defining_dis(gen);
-        points_define_rect.emplace_back(Point(x,y,0));
-    }
-    thoretic object(points_define_rect);
-    auto rect_vertices = object.getVerticesOfRectangle(points_define_rect);
-    std::vector<Point> points;
-    for (int j=0; j<4; j++) {
-        auto vertex1 = rect_vertices[j];
-        auto vertex2 = rect_vertices[(j+1)%4];
-        double slope = (vertex1.y - vertex2.y) / (vertex1.x - vertex2.x);
-        double y_intercept = vertex1.y - vertex1.x * slope;
-        double upperBound = vertex1.x > vertex2.x ? vertex1.x : vertex2.x;
-        double lowerBound = vertex1.x <= vertex2.x ? vertex1.x : vertex2.x;
-        // Random number generation
-        std::uniform_real_distribution<double> dis(lowerBound-2, upperBound+2);
-        for (int i = 0; i < samplesNumber / 4; i++) {
-            // Generate a random number
-            double random_x = dis(gen);
-            double noise = noise_dis(gen);
-            double noised_y = random_x * slope + y_intercept + noise;
-            points.emplace_back(Point(random_x, noised_y, 0));
-        }
-    }
-
-    // write points to file
-    std::ofstream pointData;
-    pointData.open("/tmp/pointDataTemp.csv");
-    for (auto p: points) {
-        pointData << p.x << "," << p.y << "," << p.z << std::endl; // TODO : IMPORTANT! need to check if it's appropriate python callee
-    }
-    pointData.close();
-
-    return points;
-}
-
-
 void costs_for_different_coreset_sizes(){
-    auto points = generatePointsWithNoise(1000, 0.3);
+    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+    auto points = generatePointsWithNoise(1000, 0.3, 0.2, seed);
     Auxiliary::showCloudPoint(points);
 
     std::string outputFilePath = "/home/livne/CLionProjects/AutonomousDroneCPP_master/exe/output.txt";
+    std::string weightsOutputFilePath = "/home/livne/CLionProjects/AutonomousDroneCPP_master/exe/weights_output.txt";
 
     std::ofstream pointData;
     pointData.open("/home/livne/Documents/costs.txt");
@@ -240,17 +198,18 @@ void costs_for_different_coreset_sizes(){
     for(int i=10; i<26; i++) {
         std::cout << "----------------------------------- " << i << " -----------------------------------" << std::endl;
         auto start = std::chrono::high_resolution_clock::now();
-        call_to_python_program("/tmp/pointDataTemp.csv", i, outputFilePath);
+        call_to_python_program("/tmp/pointDataTemp.csv", i, outputFilePath, weightsOutputFilePath);
         auto indexes = read_coreset_indexes_from_file(outputFilePath);
+        auto weights = read_coreset_indexes_from_file(weightsOutputFilePath);
         auto coreset_points = extractPoints(points, indexes);
 
         auto stop1 = std::chrono::high_resolution_clock::now();
         auto duration1 = std::chrono::duration_cast<std::chrono::seconds>(stop1 - start);
 
         thoretic obj(coreset_points);
-        auto rectangle = obj.getOptimalRectangle(coreset_points);
+        auto rectangle = obj.getOptimalRectangle(coreset_points, weights);
         auto rect_vertices = obj.getVerticesOfRectangle(rectangle);
-        auto cost = obj.calculateDistanceSum(points, rectangle);
+        auto cost = obj.calculateDistanceSum(points, rectangle, weights);
         pointData << cost << std::endl;
 
         auto stop2 = std::chrono::high_resolution_clock::now();
@@ -262,24 +221,29 @@ void costs_for_different_coreset_sizes(){
 
 
 void running_times_for_different_coreset_sizes(){
-    auto points = generatePointsWithNoise(1000, 0.3);
+    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+    auto points = generatePointsWithNoise(1000, 0.3, 0.1, seed);
     Auxiliary::showCloudPoint(points);
 
     std::string outputFilePath = "/home/livne/CLionProjects/AutonomousDroneCPP_master/exe/output.txt";
+    std::string weightsOutputFilePath = "/home/livne/CLionProjects/AutonomousDroneCPP_master/exe/weights_output.txt";
 
     std::ofstream pointData;
     pointData.open("/home/livne/Documents/times.txt");
 
     for(int i=10; i<26; i++) {
         std::cout << "----------------------------------- " << i << " -----------------------------------" << std::endl;
-        call_to_python_program("/tmp/pointDataTemp.csv", i, outputFilePath);
+        call_to_python_program("/tmp/pointDataTemp.csv", i, outputFilePath, weightsOutputFilePath);
         auto indexes = read_coreset_indexes_from_file(outputFilePath);
+        auto weights = read_coreset_indexes_from_file(weightsOutputFilePath);
         auto coreset_points = extractPoints(points, indexes);
 
         thoretic obj(coreset_points);
 
         auto start = std::chrono::high_resolution_clock::now();
-        auto rectangle = obj.getOptimalRectangle(coreset_points);
+        auto rectangle = obj.getOptimalRectangle(coreset_points, weights);
+        auto rect_vertices = obj.getVerticesOfRectangle(rectangle);
+        Auxiliary::showCloudPointAndCoreset(rect_vertices, points, coreset_points);
         auto stop = std::chrono::high_resolution_clock::now();
 
         auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
@@ -291,10 +255,181 @@ void running_times_for_different_coreset_sizes(){
 }
 
 
+double calculateCost(const std::vector<Point>& points, const std::vector<Point>& rect) {
+    double sum = 0.0;
+
+    Line line1(rect[0], rect[1]);
+    auto slope = line1.slope;
+    Line line2(rect[2], slope);
+    Line line3(rect[3], -1 / slope);
+    Line line4(rect[4], -1 / slope);
+
+    std::vector<Line> rect_lines = {line1, line2, line3, line4};
+    for (const Point& point : points) {
+        double min_distance = std::numeric_limits<double>::max();
+        for (const Line& line : rect_lines) {
+            double distance = line.getDistanceToPoint(point);
+            min_distance = std::min(min_distance, distance);
+        }
+        sum += min_distance;
+    }
+    return sum / points.size();
+}
+
+
+void running_times_for_different_input_sizes(double k){
+    std::string outputFilePath = "/home/livne/CLionProjects/AutonomousDroneCPP_master/exe/output.txt";
+    std::string weightsOutputFilePath = "/home/livne/CLionProjects/AutonomousDroneCPP_master/exe/weights_output.txt";
+
+    for (int i=0; i<20; i++) {
+
+        std::ofstream pointData1; // times for our algorithm
+        std::ofstream pointData2; // times for ransac + coreset
+        std::ofstream pointData3; // costs for our algorithm
+        std::ofstream pointData4; // costs for ransac + coreset
+        std::ofstream pointData5; // times for ransac + uniform sampling
+        std::ofstream pointData6; // costs for ransac + uniform sampling
+        pointData1.open("/home/livne/Documents/graphs/times_as_function_of_input_size/our_algorithm/k=" +
+                        std::to_string(k) + "_" + std::to_string(i) + ".txt");
+        pointData2.open("/home/livne/Documents/graphs/times_as_function_of_input_size/ransac_algorithm_coreset/k=" +
+                        std::to_string(k) + "_" + std::to_string(i) + ".txt");
+        pointData3.open("/home/livne/Documents/graphs/costs_as_function_of_input_size/our_algorithm/k=" +
+                        std::to_string(k) + "_" + std::to_string(i) + ".txt");
+        pointData4.open("/home/livne/Documents/graphs/costs_as_function_of_input_size/ransac_algorithm_coreset/k=" +
+                        std::to_string(k) + "_" + std::to_string(i) + ".txt");
+        pointData5.open("/home/livne/Documents/graphs/times_as_function_of_input_size/ransac_algorithm_uniform/k=" +
+                        std::to_string(k) + "_" + std::to_string(i) + ".txt");
+        pointData6.open("/home/livne/Documents/graphs/costs_as_function_of_input_size/ransac_algorithm_uniform/k=" +
+                        std::to_string(k) + "_" + std::to_string(i) + ".txt");
+
+        unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+        for (int size = 100; size <= 1000; size += 50) {
+            std::cout << "----------------------------------- iteration: " << i+1 << ", input size: " << size <<
+                      " -----------------------------------" << std::endl;
+            auto points = generatePointsWithNoise(size, 0.3, k, seed);
+            // our algorithm
+            auto start = std::chrono::high_resolution_clock::now();
+            call_to_python_program("/tmp/pointDataTemp.csv", sqrt(size), outputFilePath, weightsOutputFilePath);
+            auto indexes = read_coreset_indexes_from_file(outputFilePath);
+            auto weights = read_coreset_indexes_from_file(weightsOutputFilePath);
+            auto coreset_points = extractPoints(points, indexes);
+
+            thoretic obj(coreset_points);
+            auto rectangle = obj.getOptimalRectangle(coreset_points, weights);
+            auto stop = std::chrono::high_resolution_clock::now();
+
+            auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+            pointData1 << duration.count() << std::endl;
+
+            auto cost = calculateCost(points, rectangle);
+            pointData3 << cost << std::endl;
+
+            // ransac algorithm + coreset
+            /*start = std::chrono::high_resolution_clock::now();
+            call_to_python_program("/tmp/pointDataTemp.csv", sqrt(points.size()), outputFilePath, weightsOutputFilePath);
+            indexes = read_coreset_indexes_from_file(outputFilePath);
+            weights = read_coreset_indexes_from_file(weightsOutputFilePath);
+            coreset_points = extractPoints(points, indexes);
+
+            double threshold = 1;
+            auto bestModel = ransac_loop(coreset_points, threshold);
+
+            stop = std::chrono::high_resolution_clock::now();
+            duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+            pointData2 << duration.count() << std::endl;
+
+            cost = calculateCost(points, bestModel);
+            pointData4 << cost << std::endl;*/
+
+            start = std::chrono::high_resolution_clock::now();
+
+            double threshold = 1;
+            auto bestModel = ransac_loop_early_termination(points, threshold, 1-k);
+
+            stop = std::chrono::high_resolution_clock::now();
+            duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+            pointData2 << duration.count() << std::endl;
+
+            cost = calculateCost(points, bestModel);
+            pointData4 << cost << std::endl;
+
+            // ransac algorithm + uniform sampling
+            start = std::chrono::high_resolution_clock::now();
+
+            int lower_bound = 0;
+            int upper_bound = sqrt(points.size());
+            // Create a random number generator engine
+            std::mt19937 gen(std::random_device{}());
+            // Create a uniform integer distribution with the desired range
+            std::uniform_int_distribution<int> dist(lower_bound, upper_bound);
+            std::unordered_set<int> sampled_indexes;
+            while (sampled_indexes.size() < sqrt(points.size())) {
+                int sampled_number = dist(gen);
+                sampled_indexes.insert(sampled_number);
+            }
+            // Convert the unordered set to a vector (optional)
+            std::vector<int> indices(sampled_indexes.begin(), sampled_indexes.end());
+
+            coreset_points = extractPoints(points, indices);
+
+            threshold = 1;
+            bestModel = ransac_loop(coreset_points, threshold);
+
+            stop = std::chrono::high_resolution_clock::now();
+            duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+            pointData5 << duration.count() << std::endl;
+
+            cost = calculateCost(points, bestModel);
+            pointData6 << cost << std::endl;
+        }
+        pointData1.close();
+        pointData2.close();
+        pointData3.close();
+        pointData4.close();
+        pointData5.close();
+        pointData6.close();
+    }
+}
+
+
+int ransac_runner(double inliers_percent) {
+    std::string outputFilePath = "/home/livne/CLionProjects/AutonomousDroneCPP_master/exe/output.txt";
+    std::string weightsOutputFilePath = "/home/livne/CLionProjects/AutonomousDroneCPP_master/exe/weightsOutput.txt";
+    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+    auto points = generatePointsWithNoise(1000, 0.3, 1-inliers_percent, seed);
+    /*call_to_python_program("/tmp/pointDataTemp.csv", sqrt(points.size()), outputFilePath, weightsOutputFilePath);
+    auto indexes = read_coreset_indexes_from_file(outputFilePath);
+    auto weights = read_coreset_indexes_from_file(weightsOutputFilePath);
+    auto coreset_points = extractPoints(points, indexes);*/
+
+    double threshold = 1;
+    auto start = std::chrono::high_resolution_clock::now();
+
+    auto bestModel = ransac_loop_early_termination(points, threshold, inliers_percent);
+
+    auto stop = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+    std::cout << duration.count() << std::endl;
+
+    thoretic obj(points);
+    auto rect_vertices = obj.getVerticesOfRectangle(bestModel);
+    double cost = calculateCost(points, bestModel);
+    std::cout << cost << std::endl;
+    Auxiliary::showCloudPointAndCoreset(rect_vertices, points, points);
+
+    return 0;
+}
+
+
 int main() {
-    // polygon_main();
-    // costs_for_different_coreset_sizes();
-    running_times_for_different_coreset_sizes();
+    // rectangle_main();
+    std::cout << "find me : k=0" << std::endl;
+    running_times_for_different_input_sizes(0.01);
+    std::cout << "find me : k=0.1" << std::endl;
+    running_times_for_different_input_sizes(0.1);
+    std::cout << "find me : k=0.5" << std::endl;
+    running_times_for_different_input_sizes(0.5);
+    // ransac_runner(0.99);
     //Auxiliary::showCloudPointAndCoreset(rect_vertices, points, coreset_points);
     return 0;
 }

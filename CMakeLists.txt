@@ -97,7 +97,7 @@ add_library(${PROJECT_NAME}
         utils/src/Room.cpp
         utils/src/Auxiliary.cpp
         tello/src/Charger.cpp
-        algo/src/Navigation.cpp algo/src/thoretic.cpp algo/include/thoretic.h)
+        algo/src/Navigation.cpp algo/src/thoretic.cpp algo/include/thoretic.h algo/src/ransac_solver.cpp)
 
 
 target_link_libraries(${PROJECT_NAME}

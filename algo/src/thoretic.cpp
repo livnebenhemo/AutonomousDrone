@@ -45,11 +45,11 @@ std::vector<Point> thoretic::getVerticesOfRectangle(std::vector<Point> rect) {
 }
 
 
-std::vector<Point> thoretic::getOptimalRectangle(std::vector<Point> input_points) {
+std::vector<Point> thoretic::getOptimalRectangle(std::vector<Point> input_points, const std::vector<int>& weights) {
     std::vector<Point> optimal_rect(5);
     double min_distance_sum = std::numeric_limits<double>::max();
 
-    // Iterate over every combination of 4 points  //
+    // Iterate over every combination of 5 points  //
     for (size_t i = 0; i < input_points.size() - 4; ++i) {
         for (size_t j = i + 1; j < input_points.size() - 3; ++j) {
             for (size_t k = j + 1; k < input_points.size() - 2; ++k) {
@@ -58,7 +58,7 @@ std::vector<Point> thoretic::getOptimalRectangle(std::vector<Point> input_points
                         std::vector<unsigned long> indices = {i, j, k, l, m};
                         do{
                             std::vector<Point> rect = {input_points[indices[0]], input_points[indices[1]], input_points[indices[2]], input_points[indices[3]], input_points[indices[4]]};
-                            double distance_sum = calculateDistanceSum(input_points, rect);
+                            double distance_sum = calculateDistanceSum(input_points, rect, weights);
                             if (distance_sum < min_distance_sum) {
                                 min_distance_sum = distance_sum;
                                 optimal_rect = rect;
@@ -105,21 +105,47 @@ std::vector<Point> thoretic::getOptimalRectangle(std::vector<Point> points) {
 */
 
 
-double thoretic::calculateDistanceSum(const std::vector<Point>& points, const std::vector<Point>& rect) {
+std::vector<double> thoretic::normalize_vector(const std::vector<int>& input_vector) {
+    // Calculate the sum of elements in the input vector
+    int sum = 0;
+    for (int num : input_vector) {
+        sum += num;
+    }
+
+    // Create a new vector to store the normalized values
+    std::vector<double> normalized_vector;
+
+    // Normalize each element and store it in the normalized vector
+    for (int num : input_vector) {
+        double normalized_value = static_cast<double>(num) / static_cast<double>(sum);
+        normalized_vector.push_back(normalized_value);
+    }
+
+    return normalized_vector;
+}
+
+
+double thoretic::calculateDistanceSum(const std::vector<Point>& points, const std::vector<Point>& rect, const std::vector<int>& weights) {
     double sum = 0.0;
+    double threshold = 1;
+    auto normalizedWeights = normalize_vector(weights);
+
     Line line1(rect[0], rect[1]);
     auto slope = line1.slope;
     Line line2(rect[2], slope);
     Line line3(rect[3], -1 / slope);
     Line line4(rect[4], -1 / slope);
+
     std::vector<Line> rect_lines = {line1, line2, line3, line4};
+    int i = 0;
     for (const Point& point : points) {
         double min_distance = std::numeric_limits<double>::max();
         for (const Line& line : rect_lines) {
             double distance = line.getDistanceToPoint(point);
             min_distance = std::min(min_distance, distance);
         }
-        sum += min_distance;
+        sum += std::min(min_distance, threshold) * normalizedWeights[i];
+        i++;
     }
     return sum;
 }

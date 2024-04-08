@@ -879,14 +879,17 @@ std::vector<Point> extractPoints(const std::vector<Point>& points, const std::ve
 
 std::vector<Point> AutonomousDrone::getNavigationPoints_helper(const std::string& datasetFilePath) {
     auto output_path = "/tmp/coreset_indexes.txt";
+    std::string weightsOutputFilePath = "/home/livne/CLionProjects/AutonomousDroneCPP_master/exe/weights_output.txt";
+
     call_to_python_program(datasetFilePath, coreset_size,
                            output_path, python_file_path);
     auto indexes = read_coreset_indexes_from_file(output_path);
+    auto weights = read_coreset_indexes_from_file(weightsOutputFilePath);
     auto points = getPointsFromFile(datasetFilePath);
     auto coreset_points = extractPoints(points, indexes);
 
     thoretic obj(coreset_points);
-    auto rectangle = obj.getOptimalRectangle(coreset_points);
+    auto rectangle = obj.getOptimalRectangle(coreset_points, weights);
     auto rect_vertices = obj.getVerticesOfRectangle(rectangle);
 
     // Auxiliary::showCloudPointAndCoreset(rect_vertices, points, coreset_points);

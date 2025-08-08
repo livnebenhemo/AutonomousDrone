@@ -72,6 +72,35 @@ std::vector<Point> thoretic::getOptimalRectangle(std::vector<Point> input_points
     return optimal_rect;
 }
 
+std::vector<Point> thoretic::getAxisAlignedOptimalRectangle(std::vector<Point> input_points, const std::vector<int>& weights) {
+    std::vector<Point> optimal_rect(4);
+    double min_distance_sum = std::numeric_limits<double>::max();
+
+    // Iterate over every combination of 4 points  //
+    for (size_t i = 0; i < input_points.size() - 3; ++i) {
+        for (size_t j = i + 1; j < input_points.size() - 2; ++j) {
+            for (size_t k = j + 1; k < input_points.size() - 1; ++k) {
+                for (size_t l = k + 1; l < input_points.size(); ++l) {
+                    std::vector<unsigned long> indices = {i, j, k, l};
+                    do{
+                        Point point1(input_points[indices[0]].x,input_points[indices[2]].y);
+                        Point point2(input_points[indices[0]].x,input_points[indices[3]].y);
+                        Point point3(input_points[indices[1]].x,input_points[indices[2]].y);
+                        Point point4(input_points[indices[1]].x,input_points[indices[3]].y);
+                        std::vector<Point> rect = {point1,point2,point3,point4};
+                        double distance_sum = calculateDistanceSumAxisAligned(input_points, rect, weights);
+                        if (distance_sum < min_distance_sum) {
+                            min_distance_sum = distance_sum;
+                            optimal_rect = rect;
+                        }
+                    } while(std::next_permutation(indices.begin(), indices.end()));
+                }
+            }
+        }
+    }
+    return optimal_rect;
+}
+
 /*
 std::vector<Point> thoretic::getOptimalRectangle(std::vector<Point> points) {
     std::vector<Point> optimal_rect(5);
@@ -142,6 +171,29 @@ double thoretic::calculateDistanceSum(const std::vector<Point>& points, const st
         double min_distance = std::numeric_limits<double>::max();
         for (const Line& line : rect_lines) {
             double distance = line.getDistanceToPoint(point);
+            min_distance = std::min(min_distance, distance);
+        }
+        sum += std::min(min_distance, threshold) * normalizedWeights[i];
+        i++;
+    }
+    return sum;
+}
+double thoretic::calculateDistanceSumAxisAligned(const std::vector<Point>& points, const std::vector<Point>& rect, const std::vector<int>& weights) {
+    double sum = 0.0;
+    double threshold = 1;
+    auto normalizedWeights = normalize_vector(weights);
+
+    Line line1(rect[0], rect[1]);
+    Line line2(rect[0], rect[2]);
+    Line line3(rect[3], rect[1]);
+    Line line4(rect[3], rect[2]);
+
+    std::vector<Line> rect_lines = {line1, line2, line3, line4};
+    int i = 0;
+    for (const Point& point : points) {
+        double min_distance = std::numeric_limits<double>::max();
+        for (const Line& line : rect_lines) {
+            double distance = line.getDistanceToSegment(point);
             min_distance = std::min(min_distance, distance);
         }
         sum += std::min(min_distance, threshold) * normalizedWeights[i];

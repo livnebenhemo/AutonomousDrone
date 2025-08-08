@@ -1,6 +1,6 @@
 * Clone the GitHub repo
 ```
-git clone git@github.com:rbdlabhaifa/AutonomousDroneCPP.git
+git clone https://github.com/livnebenhemo/AutonomousDrone.git
 ```
 * Install Opencv with the following link: https://linuxize.com/post/how-to-install-opencv-on-ubuntu-20-04/
 
